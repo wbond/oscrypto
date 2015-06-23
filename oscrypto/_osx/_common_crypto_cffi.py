@@ -1,9 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from ctypes.util import find_library
-
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import FFIEngineError
 
 try:
     from cffi import FFI

@@ -1,8 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError
-from ._ffi import is_null
+from .._ffi import FFIEngineError, is_null
 
 try:
     from ._core_foundation_cffi import CoreFoundation, CFHelpers  #pylint: disable=W0611
