@@ -13,21 +13,20 @@ print('Running pylint...')
 
 files = [
     '__init__.py',
-    'algos.py',
-    'core.py',
-    'crl.py',
-    'ocsp.py',
-    'pkcs1.py',
-    'pkcs5.py',
-    'pkcs6.py',
-    'pkcs7.py',
-    'pkcs8.py',
-    'pkcs12.py',
-    'teletex_codec.py',
-    'x509.py',
+    '_osx_ctypes.py',
+    '_osx_public_key.py',
+    '_osx_symmetric.py',
+    '_osx_util.py',
+    '_win_util.py',
+    'errors.py',
+    'kdf.py',
+    'keys.py',
+    'public_key.py',
+    'symmetric.py',
+    'util.py',
 ]
 
 args = ['--rcfile=%s' % rc_path]
-args += ['asn1crypto/' + f for f in files]
+args += ['oscrypto/' + f for f in files]
 
 Run(args)

@@ -470,6 +470,8 @@ def extract_error():
 
 libcrypto = cdll.LoadLibrary(find_library('libcrypto'))
 
+# PKCS12_key_gen_uni
+
 ERR_load_crypto_strings = libcrypto.ERR_load_crypto_strings
 ERR_load_crypto_strings.argtypes = []
 ERR_load_crypto_strings.restype = None

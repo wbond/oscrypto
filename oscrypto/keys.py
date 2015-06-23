@@ -4,160 +4,162 @@ from __future__ import absolute_import
 
 import sys
 import hashlib
+import hmac
 import re
 import base64
 import binascii
 
-from asn1crypto import algos, core, pkcs12, cms, keys
+from asn1crypto import core, pkcs12, cms, keys, x509
+
+from .kdf import pbkdf1, pbkdf2, pkcs12_kdf
+from .symmetric import rc2_cbc_pkcs5_decrypt, rc4_decrypt, des_cbc_pkcs5_decrypt, tripledes_cbc_pkcs5_decrypt, aes_cbc_pkcs7_decrypt
+from .util import constant_compare
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
     byte_cls = str
-
 else:
     str_cls = str
     byte_cls = bytes
 
+crypto_funcs = {
+    'rc2': rc2_cbc_pkcs5_decrypt,
+    'rc4': rc4_decrypt,
+    'des': des_cbc_pkcs5_decrypt,
+    'tripledes': tripledes_cbc_pkcs5_decrypt,
+    'aes': aes_cbc_pkcs7_decrypt,
+}
 
 
-def normalize_der(expected_type, data, password, crypto_funcs):
+def parse_public(data):
     """
-    Parses a der-encoded file, returning normalized, der-encoded bytes for
-    private and public keys since they can be stored in various formats. Can
-    handle the following formats:
-
-     - PKCS#1 Private
-     - PKCS#8 Private
-     - PKCS#8 Encrypted Private
-
-     - PKCS#1 Public
-     - X509 Public Key
-
-     - X509 Certificate
-
-    There is no support for PKCS#1 encrypted private keys since the encryption
-    information for PKCS#1 is not stored in the ASN1 structure. Since the
-    pem encoding wraps the ASN1 structure, it can add encryption, whereas this
-    der encoding can not.
-
-    The resulting normalized, der-encoded bytes will always be:
-
-     - "private": the RSAPrivateKey structure from RFC3447
-     - "public": the PublicKeyInfo structue from RFC5280
-     - "certificate": the Certificate structure from RFC5280
-
-    :param expected_type:
-        The expected type: "certificate", "private", "public"
+    Loads a public key from a DER or PEM-formatted file. Supports RSA, DSA and
+    ECDSA public keys. For RSA keys, both the old RSAPublicKey and
+    SubjectPublicKeyInfo structures are supported. Also allows extracting a
+    public key from an X509 certificate.
 
     :param data:
-        A byte string of the der data to decode
-
-    :param password:
-        A byte string of the password to decrypt encrypted private keys with
-
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'. This prevents cyclic
-        imports.
-
-    :raises:
-        ValueError - when the file is not of the expected type or one of the parameters is of the incorrect data type
+        A byte string to load the public key from
 
     :return:
-        A byte string of the normalized, der-encoded data
+        A two-element tuple with (byte string, unicode string) where the byte
+        string is a DER-encoded SubjectPublicKeyInfo structure and the unicode
+        string is the key type: "rsa", "dsa" or "ecdsa".
     """
-
-    if expected_type not in ('certificate', 'private', 'public'):
-        raise ValueError('expected_type must be one of "certificate", "private", "public"')
 
     if not isinstance(data, byte_cls):
         raise ValueError('data must be a byte string')
 
-    if password is not None:
-        if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string')
-    else:
-        password = b''
+    key_type = None
 
-    if expected_type == 'certificate':
-        return data
+    # Appears to be PEM formatted
+    if data[0:5] == b'-----':
+        key_type, algo, data = _unarmor_pem(data)
 
-    if expected_type == 'public':
-        # If we can parse it as PublicKeyInfo, it is already in
-        # the correct format, otherwise we end up having to wrap it
+        if key_type == 'private key':
+            raise ValueError('The data specified does not appear to be a public key or certificate, but rather a private key')
+
+        # When a public key returning from _unarmor_pem has a known algorithm
+        # of RSA, that means the DER structure is of the type RSAPublicKey, so
+        # we need to wrap it in the PublicKeyInfo structure.
+        if algo == 'rsa':
+            return (keys.PublicKeyInfo.wrap(data, 'rsa').dump(), algo)
+
+    if key_type is None or key_type == 'public key':
         try:
-            _ = keys.PublicKeyInfo.load(data)
-            return data
-        except (ValueError):
-            return _wrap_rsa_public(data)
-
-    # For private keys we have a few different formats to try
-
-    for spec in [keys.RSAPrivateKey, keys.PrivateKeyInfo, keys.EncryptedPrivateKeyInfo]:
-        try:
-            _ = spec.load(data)
-
-            if spec == keys.PrivateKeyInfo:
-                return _unwrap_pkcs8(False, data, None, None)
-
-            if spec == keys.EncryptedPrivateKeyInfo:
-                return _unwrap_pkcs8(True, data, password, crypto_funcs)
-
-            if spec == keys.RSAPrivateKey:
-                return data
-
+            parsed = keys.PublicKeyInfo.load(data)
+            algo = parsed['algorithm']['algorithm'].native
+            return (data, algo)
         except (ValueError):  #pylint: disable=W0704
-            pass
+            pass  # Data was not PublicKeyInfo
 
-    raise ValueError('data does not appear to be a der-encoded private key')
+        try:
+            # Call .native to fully parse since asn1crypto is lazy
+            _ = keys.RSAPublicKey.load(data).native
+            return (keys.PublicKeyInfo.wrap(data, 'rsa').dump(), 'rsa')
+        except (ValueError):  #pylint: disable=W0704
+            pass  # Data was not an RSAPublicKey
+
+    if key_type is None or key_type == 'certificate':
+        try:
+            parsed_cert = x509.Certificate.load(data)
+            key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
+            data = key_info.dump()
+            algo = key_info['algorithm']['algorithm'].native
+            return (data, algo)
+        except (ValueError):  #pylint: disable=W0704
+            pass  # Data was not a cert
+
+    raise ValueError('The data specified does not appear to be a known public key or certificate format')
 
 
-def parse_pem(expected_type, data, password, crypto_funcs):
+def parse_certificate(data):
     """
-    Parses a pem file, returning the raw der-encoded bytes. Can handle the
-    following formats:
+    Loads a certificate from a DER or PEM-formatted file. Supports X509
+    certificates only.
+
+    :param data:
+        A byte string to load the certificate from
+
+    :return:
+        A two-element tuple with (byte string, unicode string) where the byte
+        string is a DER-encoded Certificate structure and the unicode
+        string is the public key type: "rsa", "dsa" or "ecdsa".
+    """
+
+    if not isinstance(data, byte_cls):
+        raise ValueError('data must be a byte string')
+
+    key_type = None
+
+    # Appears to be PEM formatted
+    if data[0:5] == b'-----':
+        key_type, algo, data = _unarmor_pem(data)
+
+        if key_type == 'private key':
+            raise ValueError('The data specified does not appear to be a certificate, but rather a private key')
+
+        if key_type == 'public key':
+            raise ValueError('The data specified does not appear to be a certificate, but rather a public key')
+
+    if key_type is None or key_type == 'certificate':
+        try:
+            parsed_cert = x509.Certificate.load(data)
+            key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
+            algo = key_info['algorithm']['algorithm'].native
+            return (data, algo)
+        except (ValueError):  #pylint: disable=W0704
+            pass  # Data was not a Certificate
+
+    raise ValueError('The data specified does not appear to be a known certificate format')
+
+
+def parse_private(data, password=None):
+    """
+    Loads a private key from a DER or PEM-formatted file. Supports RSA, DSA and
+    ECDSA private keys. Works with the follow formats:
 
      - RSAPrivateKey (PKCS#1)
-     - DSAPrivateKey (OpenSSL)
      - ECPrivateKey (SECG SEC1 V2)
-     - Encrypted RSAPrivateKey (OpenSSL)
-     - PrivateKeyI
-     - PKCS#8 Encrypted Private
-
-     - RSAPublicKey (PKCS#1)
-     - PublicKeyInfo (RSA/DSA/ECDSA)
-
-     - X509 Certificate
-
-    The resulting normalized, der-encoded bytes will always be:
-
-     - "private": the RSAPrivateKey structure from RFC3447
-     - "public": the PublicKeyInfo structue from RFC5280
-     - "certificate": the Certificate structure from RFC5280
-
-    :param expected_type:
-        The expected type: "certificate", "private", "public"
+     - DSAPrivateKey (OpenSSL)
+     - PrivateKeyInfo (RSA/DSA/ECDSA - PKCS#8)
+     - EncryptedPrivateKeyInfo (RSA/DSA/ECDSA - PKCS#8)
+     - Encrypted RSAPrivateKey (PEM only, OpenSSL)
+     - Encrypted DSAPrivateKey (PEM only, OpenSSL)
+     - Encrypted ECPrivateKey (PEM only, OpenSSL)
 
     :param data:
-        A byte string of the pem data to decode
+        A byte string to load the private key from
 
     :param password:
-        A byte string of the password to decrypt encrypted private keys with
-
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'. This prevents cyclic
-        imports.
-
-    :raises:
-        ValueError - when the file is not of the expected type or one of the parameters is of the incorrect data type
+        The password to unencrypt the private key
 
     :return:
-        A byte string of the normalized, der-encoded data
+        A two-element tuple with (PrivateKeyInfo object, unicode string) where
+        the unicode string is the key type: "rsa", "dsa" or "ecdsa". If the
+        unwrapped parameter is True, the first element is an RSAPrivateKey,
+        DSAPrivateKey, or ECPrivateKey object instead of PrivateKeyInfo.
     """
-
-    if expected_type not in ('certificate', 'private', 'public'):
-        raise ValueError('expected_type must be one of "certificate", "private", "public"')
 
     if not isinstance(data, byte_cls):
         raise ValueError('data must be a byte string')
@@ -168,23 +170,94 @@ def parse_pem(expected_type, data, password, crypto_funcs):
     else:
         password = b''
 
+    # Appears to be PEM formatted
+    if data[0:5] == b'-----':
+        key_type, algo, data = _unarmor_pem(data, password)
+
+        if key_type == 'public key':
+            raise ValueError('The data specified does not appear to be a private key, but rather a public key')
+
+        if key_type == 'certificate':
+            raise ValueError('The data specified does not appear to be a private key, but rather a certificate')
+
+    try:
+        parsed = keys.PrivateKeyInfo.load(data)
+        algo = parsed['private_key_algorithm']['algorithm'].native
+        return (parsed, algo)
+    except (ValueError):  #pylint: disable=W0704
+        pass  # Data was not PrivateKeyInfo
+
+    try:
+        parsed_wrapper = keys.EncryptedPrivateKeyInfo.load(data)
+        encryption_algorithm_info = parsed_wrapper['encryption_algorithm']
+        encrypted_data = parsed_wrapper['encrypted_data'].native
+        decrypted_data = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_data, password)
+        parsed = keys.PrivateKeyInfo.load(decrypted_data)
+        algo = parsed['private_key_algorithm']['algorithm'].native
+        return (parsed, algo)
+    except (ValueError):  #pylint: disable=W0704
+        pass  # Data was not EncryptedPrivateKeyInfo
+
+    try:
+        parsed = keys.RSAPrivateKey.load(data)
+        # Call .native to fully parse since asn1crypto is lazy
+        _ = parsed.native
+        return (keys.PrivateKeyInfo.wrap(parsed, 'rsa'), 'rsa')
+    except (ValueError):  #pylint: disable=W0704
+        pass  # Data was not an RSAPrivateKey
+
+    try:
+        parsed = keys.DSAPrivateKey.load(data)
+        # Call .native to fully parse since asn1crypto is lazy
+        _ = parsed.native
+        return (keys.PrivateKeyInfo.wrap(parsed, 'dsa'), 'dsa')
+    except (ValueError):  #pylint: disable=W0704
+        pass  # Data was not a DSAPrivateKey
+
+    try:
+        parsed = keys.ECPrivateKey.load(data)
+        # Call .native to fully parse since asn1crypto is lazy
+        _ = parsed.native
+        return (keys.PrivateKeyInfo.wrap(parsed, 'ecdsa'), 'ecdsa')
+    except (ValueError):  #pylint: disable=W0704
+        pass  # Data was not an ECPrivateKey
+
+    raise ValueError('The data specified does not appear to be a known private key format')
+
+
+def _unarmor_pem(data, password=None):
     beginning = data[0:40].strip()
 
     if beginning[0:5] != b'-----':
         raise ValueError('data does not begin with -----')
 
-    armor_type = re.match(b'----- ?(BEGIN RSA PRIVATE KEY|BEGIN ENCRYPTED PRIVATE KEY|BEGIN PRIVATE KEY|BEGIN PUBLIC KEY|BEGIN RSA PUBLIC KEY|BEGIN CERTIFICATE) ?-----', beginning)
+    armor_type = re.match(b'----- ?(BEGIN (DSA|EC|RSA) PRIVATE KEY|BEGIN ENCRYPTED PRIVATE KEY|BEGIN PRIVATE KEY|BEGIN PUBLIC KEY|BEGIN RSA PUBLIC KEY|BEGIN CERTIFICATE) ?-----', beginning)
     if not armor_type:
         raise ValueError('data does seem to contain a PEM-encoded certificate, private key or public key')
 
-    pem_type = armor_type.group(1).decode('ascii')
+    pem_header = armor_type.group(1).decode('ascii')
 
     data = data.strip()
 
-    # RSA private keys are encrypted after being der-encoded, but before base64
+    # RSA private keys are encrypted after being DER-encoded, but before base64
     # encoding, so they need to be hanlded specially
-    if pem_type == 'BEGIN RSA PRIVATE KEY':
-        return _parse_pem_rsa_private(data, password, crypto_funcs)
+    if pem_header in ('BEGIN RSA PRIVATE KEY', 'BEGIN DSA PRIVATE KEY', 'BEGIN EC PRIVATE KEY'):
+        algo = armor_type.group(2).decode('ascii').lower()
+        if algo == 'ec':
+            algo = 'ecdsa'
+        return ('private key', algo, _unarmor_pem_openssl_private(data, password))
+
+    key_type = None
+    algo = None
+    if pem_header in ('BEGIN PRIVATE KEY', 'BEGIN ENCRYPTED PRIVATE KEY'):
+        key_type = 'private key'
+    elif pem_header == 'BEGIN PUBLIC KEY':
+        key_type = 'public key'
+    elif pem_header == 'BEGIN RSA PUBLIC KEY':
+        key_type = 'public key'
+        algo = 'rsa'
+    elif pem_header == 'BEGIN CERTIFICATE':
+        key_type = 'certificate'
 
     base64_data = b''
     for line in data.splitlines(False):
@@ -196,26 +269,10 @@ def parse_pem(expected_type, data, password, crypto_funcs):
             base64_data += line
 
     decoded_data = base64.b64decode(base64_data)
-
-    # PKCS#8 private or encrypted private key
-    if pem_type == 'BEGIN ENCRYPTED PRIVATE KEY':
-        return _unwrap_pkcs8(True, decoded_data, password, crypto_funcs)
-
-    if pem_type == 'BEGIN PRIVATE KEY':
-        return _unwrap_pkcs8(False, decoded_data, None, None)
-
-    if pem_type == 'BEGIN PUBLIC KEY':
-        return decoded_data
-
-    if pem_type == 'BEGIN RSA PUBLIC KEY':
-        return _wrap_rsa_public(decoded_data)
-
-    if pem_type == 'BEGIN CERTIFICATE':
-        return decoded_data
+    return (key_type, algo, decoded_data)
 
 
-
-def _parse_pem_rsa_private(data, password, crypto_funcs):
+def _unarmor_pem_openssl_private(data, password):
     """
     Parses a PKCS#1 private key, or encrypted private key
 
@@ -225,25 +282,24 @@ def _parse_pem_rsa_private(data, password, crypto_funcs):
     :param password:
         A byte string of the password to use if the private key is encrypted
 
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'. This prevents cyclic
-        imports.
-
     :return:
-        A byte string of the der-encoded private key
+        A byte string of the DER-encoded private key
     """
 
     base64_data = b''
     enc_algo = None
     enc_iv_hex = None
+    enc_iv = None
 
     for line in data.splitlines(False):
         if line[0:5] == b'-----':
             continue
         elif line[0:9] == b'DEK-Info:':
             _, enc_params = line.split(b':')
-            enc_algo, enc_iv_hex = enc_params.strip().split(b',')
+            if enc_params.find(b',') != -1:
+                enc_algo, enc_iv_hex = enc_params.strip().split(b',')
+            else:
+                enc_algo = b'RC4'
         elif line == b'' or line[0:10] == b'Proc-Type:':
             continue
         else:
@@ -253,7 +309,8 @@ def _parse_pem_rsa_private(data, password, crypto_funcs):
     if not enc_algo:
         return data
 
-    enc_iv = binascii.unhexlify(enc_iv_hex)
+    if enc_iv_hex:
+        enc_iv = binascii.unhexlify(enc_iv_hex)
     enc_algo = enc_algo.decode('ascii').lower()
 
     enc_key_length = {
@@ -306,88 +363,40 @@ def _parse_pem_rsa_private(data, password, crypto_funcs):
     }[enc_algo]
     decrypt_func = crypto_funcs[enc_algo_name]
 
+    if enc_algo_name == 'rc4':
+        return decrypt_func(enc_key, data)
+
     return decrypt_func(enc_key, data, enc_iv)
 
 
-def _unwrap_pkcs8(encrypted, data, password, crypto_funcs):
+def parse_pkcs12(data, password=None):
     """
-    Parses a PKCS#8 private or encrypted private key
-
-    :param encrypted:
-        If the private key is encrypted
+    Parses a PKCS#12 ANS.1 DER-encoded structure and extracts certs and keys
 
     :param data:
-        A byte string of the der-encoded PKCS#8 private key
-
-    :param password:
-        A byte string of the password to use for decryption
-
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'. This prevents cyclic
-        imports.
-
-    :return:
-        A byte string of the der-encoded private key
-    """
-
-    if encrypted:
-        parsed_key = keys.EncryptedPrivateKeyInfo.load(data)
-        encryption_algorithm_info = parsed_key['encryption_algorithm']
-        encrypted_content = parsed_key['encrypted_data'].native
-        decrypted_content = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, password, crypto_funcs)
-        parsed_key = keys.PrivateKeyInfo.load(decrypted_content)
-
-    else:
-        parsed_key = keys.PrivateKeyInfo.load(data)
-
-    return parsed_key['private_key'].native
-
-
-def _wrap_rsa_public(data):
-    """
-    Converts a der-encoded RSAPublicKey structure into a der-encoded
-    PublicKeyInfo structure, which is what most software expects
-
-    :param data:
-        A byte string of the der-encoded RSAPublicKey
-
-    :return:
-        A byte string of the der-encoded PublicKeyInfo
-    """
-
-    public_key_algo = algos.PublicKeyAlgorithm()
-    public_key_algo['algorithm'] = algos.PublicKeyAlgorithmId('rsa')
-    public_key_algo['parameters'] = core.Null()
-
-    container = keys.PublicKeyInfo()
-    container['algorithm'] = public_key_algo
-    container['subject_public_key'] = core.OctetBitString(data)
-
-    return container.dump()
-
-
-def parse_pkcs12(data, password, crypto_funcs):
-    """
-    Parses a PKCS#12 ANS.1 der-encoded structure and extracts certs and keys
-
-    :param data:
-        A byte string of a der-encoded PKCS#12 file
+        A byte string of a DER-encoded PKCS#12 file
 
     :param password:
         A byte string of the password to any encrypted data
-
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'. This prevents cyclic
-        imports.
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
         OSError - when an error is returned by one of the OS decryption functions
 
     :return:
-        A three-element tuple (key [byte string], cert [byte string], extra_certs [list of byte strings])
+        A three-element tuple of:
+         1. A two-element tuple with (byte string, unicode string) where the
+            byte string is a DER-encoded PrivateKeyInfo structure and the
+            unicode string is the key type: "rsa", "dsa" or "ecdsa"
+         2. A two-element tuple with (byte string, unicode string) where the
+            byte string is a DER-encoded Certificate structure that is related
+            to the private key and the unicode string is the key type: "rsa",
+            "dsa", "ecdsa"
+         3. A list of zero or more two-element tuples, each (byte string,
+            unicode string) where the byte string is a DER-encoded Certificate
+            structure that is an extra certificate (possibly in the cert chain)
+            and the unicode string is the key type of that certificate: "rsa",
+            "dsa" or "ecdsa"
     """
 
     if not isinstance(data, byte_cls):
@@ -407,25 +416,51 @@ def parse_pkcs12(data, password, crypto_funcs):
     auth_safe = pfx['auth_safe']
     if auth_safe['content_type'].native != 'data':
         raise ValueError('Only password-protected PKCS12 files are currently supported')
-    authenticated_safe = auth_safe.authenticated_safe
+    authenticated_safe = pfx.authenticated_safe
+
+    mac_data = pfx['mac_data']
+    if mac_data:
+        mac_algo = mac_data['mac']['digest_algorithm']['algorithm'].native
+        key_length = {
+            'sha1': 20,
+            'sha224': 28,
+            'sha256': 32,
+            'sha384': 48,
+            'sha512': 64,
+            'sha512_224': 28,
+            'sha512_256': 32,
+        }[mac_algo]
+        mac_key = pkcs12_kdf(
+            mac_algo,
+            password,
+            mac_data['mac_salt'].native,
+            mac_data['iterations'].native,
+            key_length,
+            3  # ID 3 is for generating an HMAC key
+        )
+        hash_mod = getattr(hashlib, mac_algo)
+        computed_hmac = hmac.new(mac_key, auth_safe['content'].contents, hash_mod).digest()
+        stored_hmac = mac_data['mac']['digest'].native
+        if not constant_compare(computed_hmac, stored_hmac):
+            raise ValueError('Password provided is invalid')
 
     for content_info in authenticated_safe:
         content = content_info['content']
 
-        if isinstance(content, cms.Data):
-            _parse_safe_contents(content.native, certs, private_keys, password, crypto_funcs)
+        if isinstance(content, core.OctetString):
+            _parse_safe_contents(content.native, certs, private_keys, password)
 
         elif isinstance(content, cms.EncryptedData):
             encrypted_content_info = content['encrypted_content_info']
 
             encryption_algorithm_info = encrypted_content_info['content_encryption_algorithm']
             encrypted_content = encrypted_content_info['encrypted_content'].native
-            decrypted_content = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, password, crypto_funcs)
+            decrypted_content = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, password)
 
-            _parse_safe_contents(decrypted_content, certs, private_keys, password, crypto_funcs)
+            _parse_safe_contents(decrypted_content, certs, private_keys, password)
 
         else:
-            raise Exception('Public-key-based PKCS12 files are currently not supported')
+            raise Exception('Public-key-based PKCS12 files are not currently supported')
 
     key_fingerprints = set(private_keys.keys())
     cert_fingerprints = set(certs.keys())
@@ -458,7 +493,7 @@ def parse_pkcs12(data, password, crypto_funcs):
     return (key, cert, other_certs)
 
 
-def _parse_safe_contents(safe_contents, certs, private_keys, password, crypto_funcs):
+def _parse_safe_contents(safe_contents, certs, private_keys, password):
     """
     Parses a SafeContents PKCS#12 ANS.1 structure and extracts certs and keys
 
@@ -474,43 +509,42 @@ def _parse_safe_contents(safe_contents, certs, private_keys, password, crypto_fu
 
     :param password:
         A byte string of the password to any encrypted data
-
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'
     """
 
     if isinstance(safe_contents, byte_cls):
         safe_contents = pkcs12.SafeContents.load(safe_contents)
 
     for safe_bag in safe_contents:
-        parsed_bag = safe_bag.parsed
+        bag_value = safe_bag['bag_value']
 
-        if isinstance(parsed_bag, pkcs12.CertBag):
-            if parsed_bag['cert_id'].native == 'x509':
-                cert = parsed_bag['cert_value'].parsed
-                subject_public_key = cert['tbs_certificate']['subject_public_key_info']['subject_public_key'].parsed
-                certs[subject_public_key.fingerprint] = parsed_bag['cert_value'].dump()
+        if isinstance(bag_value, pkcs12.CertBag):
+            if bag_value['cert_id'].native == 'x509':
+                cert = bag_value['cert_value'].parsed
+                public_key_info = cert['tbs_certificate']['subject_public_key_info']
+                algo = public_key_info['algorithm']['algorithm'].native
+                certs[public_key_info.fingerprint] = (bag_value['cert_value'].parsed.dump(), algo)
 
-        elif isinstance(parsed_bag, keys.PrivateKeyInfo):
-            private_keys[parsed_bag.fingerprint] = parsed_bag.dump()
+        elif isinstance(bag_value, keys.PrivateKeyInfo):
+            algo = bag_value['private_key_algorithm']['algorithm'].native
+            private_keys[bag_value.fingerprint] = (bag_value.dump(), algo)
 
-        elif isinstance(parsed_bag, keys.EncryptedPrivateKeyInfo):
-            encryption_algorithm_info = parsed_bag['encryption_algorithm']
-            encrypted_key_bytes = parsed_bag['encrypted_data'].native
-            decrypted_key_bytes = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_key_bytes, password, crypto_funcs)
+        elif isinstance(bag_value, keys.EncryptedPrivateKeyInfo):
+            encryption_algorithm_info = bag_value['encryption_algorithm']
+            encrypted_key_bytes = bag_value['encrypted_data'].native
+            decrypted_key_bytes = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_key_bytes, password)
             private_key = keys.PrivateKeyInfo.load(decrypted_key_bytes)
-            private_keys[private_key.fingerprint] = private_key.dump()
+            algo = private_key['private_key_algorithm']['algorithm'].native
+            private_keys[private_key.fingerprint] = (private_key.dump(), algo)
 
-        elif isinstance(parsed_bag, pkcs12.SafeContents):
-            _parse_safe_contents(parsed_bag, certs, private_keys, password, crypto_funcs)
+        elif isinstance(bag_value, pkcs12.SafeContents):
+            _parse_safe_contents(bag_value, certs, private_keys, password)
 
         else:
             # We don't care about CRL bags or secret bags
             pass
 
 
-def _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, password, crypto_funcs):
+def _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, password):
     """
     Decrypts encrypted ASN.1 data
 
@@ -523,15 +557,11 @@ def _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, passwo
     :param password:
         A byte string of the encrypted content's password
 
-    :param crypto_funcs:
-        A dict with OS-implementations of various decryption and KDF functions:
-        'des', 'tripledes', 'rc2', 'rc4', 'aes', 'pbkdf2'
-
     :return:
         A byte string of the decrypted plaintext
     """
 
-    decrypt_func = crypto_funcs.get(encryption_algorithm_info.encryption_cipher)
+    decrypt_func = crypto_funcs[encryption_algorithm_info.encryption_cipher]
 
     # Modern, PKCS#5 PBES2-based encryption
     if encryption_algorithm_info.kdf == 'pbkdf2':
@@ -539,7 +569,7 @@ def _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, passwo
         if encryption_algorithm_info.encryption_cipher == 'rc5':
             raise ValueError('PBES2 encryption scheme utilizing RC5 encryption is not supported')
 
-        enc_key = crypto_funcs['pbkdf2'](
+        enc_key = pbkdf2(
             encryption_algorithm_info.kdf_hmac,
             password,
             encryption_algorithm_info.kdf_salt,
