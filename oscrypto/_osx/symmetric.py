@@ -340,7 +340,7 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
 
 def _encrypt(cipher, key, data, iv, padding):
     """
-    Encrypts plaintext using RC4/RC2/3DES/DES with a 40-128 bit key
+    Encrypts plaintext
 
     :param cipher:
         A kSecAttrKeyType* value that specifies the cipher to use
@@ -432,7 +432,7 @@ def _encrypt(cipher, key, data, iv, padding):
 
 def _decrypt(cipher, key, data, iv, padding):
     """
-    Decrypts RC4/RC2/3DES/DES ciphertext using a 40-128 bit key
+    Decrypts AES/RC4/RC2/3DES/DES ciphertext
 
     :param cipher:
         A kSecAttrKeyType* value that specifies the cipher to use
