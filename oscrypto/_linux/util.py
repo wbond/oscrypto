@@ -128,7 +128,6 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     utf16_password = password.decode('utf-8').encode('utf-16be') + b'\x00\x00'
 
     digest_type = {
-        'md2': libcrypto.EVP_md2,
         'md5': libcrypto.EVP_md5,
         'sha1': libcrypto.EVP_sha1,
         'sha224': libcrypto.EVP_sha224,
