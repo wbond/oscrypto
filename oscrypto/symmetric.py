@@ -33,7 +33,7 @@ elif sys.platform == 'win32':
     )
 
 else:
-    from ._linux_symmetric import (  #pylint: disable=W0611
+    from ._linux.symmetric import (  #pylint: disable=W0611
         aes_cbc_pkcs7_encrypt,
         aes_cbc_pkcs7_decrypt,
         rc4_encrypt,

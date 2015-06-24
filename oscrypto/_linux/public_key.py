@@ -3,11 +3,10 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import new
-from ._security import Security, handle_sec_error
-from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
+from .._ffi import new, null, buffer_from_bytes, is_null, deref, bytes_from_buffer, buffer_pointer
+from ._libcrypto import libcrypto, extract_openssl_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
-from ..errors import SignatureError, PrivateKeyError
+from ..errors import SignatureError
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -112,15 +111,11 @@ def _load_x509(source, algo):
         A Certificate object
     """
 
-    cf_source = None
-    try:
-        cf_source = CFHelpers.cf_data_from_bytes(source)
-        sec_key_ref = Security.SecCertificateCreateWithData(CoreFoundation.kCFAllocatorDefault, cf_source)
-        return Certificate(sec_key_ref, algo)
-
-    finally:
-        if cf_source:
-            CoreFoundation.CFRelease(cf_source)
+    buffer = buffer_from_bytes(source)
+    evp_pkey = libcrypto.d2i_X509(null(), buffer_pointer(buffer), len(source))
+    if is_null(evp_pkey):
+        raise OSError(extract_openssl_error())
+    return Certificate(evp_pkey, algo)
 
 
 def load_private_key(source, source_type, password=None):
@@ -162,19 +157,8 @@ def load_private_key(source, source_type, password=None):
 
     private_object, algo = parse_private(source, password)
 
-    if private_object.algorithm == 'ecdsa':
-        curve_type, details = private_object.curve
-        if curve_type != 'named':
-            raise PrivateKeyError('OS X only supports ECDSA private keys using named curves')
-        if details not in ('secp256r1', 'secp384r1', 'secp521r1'):
-            raise PrivateKeyError('OS X only supports ECDSA private keys using the named curves secp256r1, secp384r1 and secp521r1')
-
-    elif private_object.algorithm == 'dsa':
-        if private_object.bit_size > 2048:
-            raise PrivateKeyError('OS X only supports DSA private keys of 2048 bits or less, this key is %s bits' % private_object.bit_size)
-
     source = private_object.unwrap().dump()
-    return _load_key(source, algo, Security.kSecAttrKeyClassPrivate)
+    return _load_key(source, algo)
 
 
 def load_public_key(source, source_type):
@@ -205,13 +189,17 @@ def load_public_key(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    source, algo = parse_public(source)
-    return _load_key(source, algo, Security.kSecAttrKeyClassPublic)
+    public_key, algo = parse_public(source)
+    buffer = buffer_from_bytes(public_key)
+    evp_pkey = libcrypto.d2i_PUBKEY(null(), buffer_pointer(buffer), len(source))
+    if is_null(evp_pkey):
+        raise OSError(extract_openssl_error())
+    return PublicKey(evp_pkey, algo)
 
 
-def _load_key(source, algo, key_class):
+def _load_key(source, algo):
     """
-    Loads a private or public key into a format usable with various functions
+    Loads a private key into a format usable with various functions
 
     :param source:
         A byte string of the DER-encoded key
@@ -219,47 +207,15 @@ def _load_key(source, algo, key_class):
     :param algo:
         A unicode string of "rsa", "dsa" or "ecdsa"
 
-    :param key_class:
-        Security.kSecAttrKeyClassPrivate or Security.kSecAttrKeyClassPublic
-
     :return:
-        A PrivateKey or PublicKey object
+        A PrivateKey object
     """
 
-    cf_source = None
-    cf_dict = None
-    cf_output = None
-
-    try:
-        cf_source = CFHelpers.cf_data_from_bytes(source)
-        key_type = {
-            'dsa': Security.kSecAttrKeyTypeDSA,
-            'ecdsa': Security.kSecAttrKeyTypeECDSA,
-            'rsa': Security.kSecAttrKeyTypeRSA,
-        }[algo]
-        cf_dict = CFHelpers.cf_dictionary_from_pairs([
-            (Security.kSecAttrKeyType, key_type),
-            (Security.kSecAttrKeyClass, key_class),
-            (Security.kSecAttrCanSign, CoreFoundation.kCFBooleanTrue),
-            (Security.kSecAttrCanVerify, CoreFoundation.kCFBooleanTrue),
-        ])
-        error = new(CoreFoundation, 'CFErrorRef')
-        sec_key_ref = Security.SecKeyCreateFromData(cf_dict, cf_source, error)
-        handle_cf_error(error)
-
-        if key_class == Security.kSecAttrKeyClassPublic:
-            return PublicKey(sec_key_ref, algo)
-
-        if key_class == Security.kSecAttrKeyClassPrivate:
-            return PrivateKey(sec_key_ref, algo)
-
-    finally:
-        if cf_source:
-            CoreFoundation.CFRelease(cf_source)
-        if cf_dict:
-            CoreFoundation.CFRelease(cf_dict)
-        if cf_output:
-            CoreFoundation.CFRelease(cf_output)
+    buffer = buffer_from_bytes(source)
+    evp_pkey = libcrypto.d2i_AutoPrivateKey(null(), buffer_pointer(buffer), len(source))
+    if is_null(evp_pkey):
+        raise OSError(extract_openssl_error())
+    return PrivateKey(evp_pkey, algo)
 
 
 def load_pkcs12(source, source_type, password=None):
@@ -305,7 +261,7 @@ def load_pkcs12(source, source_type, password=None):
     cert = None
 
     if key_info:
-        key = _load_key(key_info[0], key_info[1], Security.kSecAttrKeyClassPrivate)
+        key = _load_key(key_info[0], key_info[1])
 
     if cert_info:
         cert = _load_x509(cert_info[0], cert_info[1])
@@ -433,67 +389,38 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512"')
 
-    cf_signature = None
-    cf_data = None
-    cf_hash_length = None
-    sec_transform = None
+    evp_md_ctx = None
 
     try:
-        error = new(CoreFoundation, 'CFErrorRef')
-        cf_signature = CFHelpers.cf_data_from_bytes(signature)
-        sec_transform = Security.SecVerifyTransformCreate(certificate_or_public_key.sec_key_ref, cf_signature, error)
-        handle_cf_error(error)
+        evp_md_ctx = libcrypto.EVP_MD_CTX_create()
 
-        hash_constant = {
-            'md5': Security.kSecDigestMD5,
-            'sha1': Security.kSecDigestSHA1,
-            'sha224': Security.kSecDigestSHA2,
-            'sha256': Security.kSecDigestSHA2,
-            'sha384': Security.kSecDigestSHA2,
-            'sha512': Security.kSecDigestSHA2
-        }[hash_algorithm]
+        evp_md = {
+            'md5': libcrypto.EVP_md5,
+            'sha1': libcrypto.EVP_sha1,
+            'sha224': libcrypto.EVP_sha224,
+            'sha256': libcrypto.EVP_sha256,
+            'sha384': libcrypto.EVP_sha384,
+            'sha512': libcrypto.EVP_sha512
+        }[hash_algorithm]()
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error)
-        handle_cf_error(error)
+        res = libcrypto.EVP_DigestInit_ex(evp_md_ctx, evp_md, null())
+        if res != 1:
+            raise OSError(extract_openssl_error())
 
-        if hash_algorithm in ('sha224', 'sha256', 'sha384', 'sha512'):
-            hash_length = {
-                'sha224': 224,
-                'sha256': 256,
-                'sha384': 384,
-                'sha512': 512
-            }[hash_algorithm]
+        res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
+        if res != 1:
+            raise OSError(extract_openssl_error())
 
-            cf_hash_length = CFHelpers.cf_number_from_integer(hash_length)
+        res = libcrypto.EVP_VerifyFinal(evp_md_ctx, signature, len(signature), certificate_or_public_key.evp_pkey)
+        if res == -1:
+            raise OSError(extract_openssl_error())
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error)
-            handle_cf_error(error)
-
-        if certificate_or_public_key.algo == 'rsa':
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error)
-            handle_cf_error(error)
-
-        cf_data = CFHelpers.cf_data_from_bytes(data)
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error)
-        handle_cf_error(error)
-
-        res = Security.SecTransformExecute(sec_transform, error)
-        handle_cf_error(error)
-
-        res = bool(CoreFoundation.CFBooleanGetValue(res))
-
-        if not res:
+        if res == 0:
             raise SignatureError('Signature is invalid')
 
     finally:
-        if sec_transform:
-            CoreFoundation.CFRelease(sec_transform)
-        if cf_signature:
-            CoreFoundation.CFRelease(cf_signature)
-        if cf_data:
-            CoreFoundation.CFRelease(cf_data)
-        if cf_hash_length:
-            CoreFoundation.CFRelease(cf_hash_length)
+        if evp_md_ctx:
+            libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
 
 
 def rsa_pkcsv15_sign(private_key, data, hash_algorithm):
@@ -607,61 +534,37 @@ def _sign(private_key, data, hash_algorithm):
     if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
-    cf_signature = None
-    cf_data = None
-    cf_hash_length = None
-    sec_transform = None
+    evp_md_ctx = None
 
     try:
-        error = new(CoreFoundation, 'CFErrorRef')
-        sec_transform = Security.SecSignTransformCreate(private_key.sec_key_ref, error)
-        handle_cf_error(error)
+        evp_md_ctx = libcrypto.EVP_MD_CTX_create()
 
-        hash_constant = {
-            'md5': Security.kSecDigestMD5,
-            'sha1': Security.kSecDigestSHA1,
-            'sha224': Security.kSecDigestSHA2,
-            'sha256': Security.kSecDigestSHA2,
-            'sha384': Security.kSecDigestSHA2,
-            'sha512': Security.kSecDigestSHA2
-        }[hash_algorithm]
+        evp_md = {
+            'md5': libcrypto.EVP_md5,
+            'sha1': libcrypto.EVP_sha1,
+            'sha224': libcrypto.EVP_sha224,
+            'sha256': libcrypto.EVP_sha256,
+            'sha384': libcrypto.EVP_sha384,
+            'sha512': libcrypto.EVP_sha512
+        }[hash_algorithm]()
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error)
-        handle_cf_error(error)
+        res = libcrypto.EVP_DigestInit_ex(evp_md_ctx, evp_md, null())
+        if res != 1:
+            raise OSError(extract_openssl_error())
 
-        if hash_algorithm in ('sha224', 'sha256', 'sha384', 'sha512'):
-            hash_length = {
-                'sha224': 224,
-                'sha256': 256,
-                'sha384': 384,
-                'sha512': 512
-            }[hash_algorithm]
+        res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
+        if res != 1:
+            raise OSError(extract_openssl_error())
 
-            cf_hash_length = CFHelpers.cf_number_from_integer(hash_length)
+        signature_buffer = buffer_from_bytes(libcrypto.EVP_PKEY_size(private_key.evp_pkey))
+        signature_length = new(libcrypto, 'unsigned int *')
+        res = libcrypto.EVP_SignFinal(evp_md_ctx, signature_buffer, signature_length, private_key.evp_pkey)
+        if res != 1:
+            raise OSError(extract_openssl_error())
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error)
-            handle_cf_error(error)
-
-        if private_key.algo == 'rsa':
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error)
-            handle_cf_error(error)
-
-        cf_data = CFHelpers.cf_data_from_bytes(data)
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error)
-        handle_cf_error(error)
-
-        cf_signature = Security.SecTransformExecute(sec_transform, error)
-        handle_cf_error(error)
-
-        return CFHelpers.cf_data_to_bytes(cf_signature)
+        return bytes_from_buffer(signature_buffer, deref(signature_length))
 
     finally:
-        if sec_transform:
-            CoreFoundation.CFRelease(sec_transform)
-        if cf_signature:
-            CoreFoundation.CFRelease(cf_signature)
-        if cf_data:
-            CoreFoundation.CFRelease(cf_data)
-        if cf_hash_length:
-            CoreFoundation.CFRelease(cf_hash_length)
+        if evp_md_ctx:
+            libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
 

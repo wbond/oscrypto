@@ -8,7 +8,7 @@ if sys.platform == 'darwin':
 elif sys.platform == 'win32':
     from ._win_util import rand_bytes  #pylint: disable=W0611
 else:
-    from ._linux_util import rand_bytes  #pylint: disable=W0611
+    from ._linux.util import rand_bytes  #pylint: disable=W0611
 
 if sys.version_info < (3,):
     byte_cls = str

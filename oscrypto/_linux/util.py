@@ -1,83 +1,18 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import os
 import sys
 
-from .._ffi import buffer_from_bytes, bytes_from_buffer, errno, byte_string_from_buffer
-from ._common_crypto import CommonCrypto
-from ._libcrypto import libcrypto
-from ._security import Security
+from .._ffi import buffer_from_bytes, bytes_from_buffer
+from ._libcrypto import libcrypto, extract_openssl_error
 
 if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
     byte_cls = str
     int_types = (int, long)  #pylint: disable=E0602
 else:
-    str_cls = str
     byte_cls = bytes
     int_types = int
 
-
-
-_encoding = 'utf-8'
-_fallback_encodings = ['utf-8', 'cp1252']
-
-
-def _try_decode(value):
-
-    try:
-        return str_cls(value, _encoding)
-
-    # If the "correct" encoding did not work, try some defaults, and then just
-    # obliterate characters that we can't seen to decode properly
-    except (UnicodeDecodeError):
-        for encoding in _fallback_encodings:
-            try:
-                return str_cls(value, encoding, errors='strict')
-            except (UnicodeDecodeError):  #pylint: disable=W0704
-                pass
-
-    return str_cls(value, errors='replace')
-
-
-def extract_error():
-    """
-    Extracts the last OS error message into a python unicode string
-
-    :return:
-        A unicode string error message
-    """
-
-    error_num = errno()
-
-    try:
-        error_string = os.strerror(error_num)
-    except (ValueError):
-        return str_cls(error_num)
-
-    if isinstance(error_string, str_cls):
-        return error_string
-
-    _try_decode(error_string)
-
-
-def extract_openssl_error():
-    """
-    Extracts the last OpenSSL error message into a python unicode string
-
-    :return:
-        A unicode string error message
-    """
-
-    error_num = libcrypto.ERR_get_error()
-    buffer = buffer_from_bytes(120)
-    libcrypto.ERR_error_string(error_num, buffer)
-
-    # Since we are dealing with a string, it is NULL terminated
-    error_string = byte_string_from_buffer(buffer)
-
-    return _try_decode(error_string)
 
 
 def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
@@ -124,18 +59,18 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     if hash_algorithm not in ('sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
 
-    algo = {
-        'sha1': CommonCrypto.kCCPRFHmacAlgSHA1,
-        'sha224': CommonCrypto.kCCPRFHmacAlgSHA224,
-        'sha256': CommonCrypto.kCCPRFHmacAlgSHA256,
-        'sha384': CommonCrypto.kCCPRFHmacAlgSHA384,
-        'sha512': CommonCrypto.kCCPRFHmacAlgSHA512
-    }[hash_algorithm]
+    evp_md = {
+        'sha1': libcrypto.EVP_sha1,
+        'sha224': libcrypto.EVP_sha224,
+        'sha256': libcrypto.EVP_sha256,
+        'sha384': libcrypto.EVP_sha384,
+        'sha512': libcrypto.EVP_sha512
+    }[hash_algorithm]()
 
     output_buffer = buffer_from_bytes(key_length)
-    result = CommonCrypto.CCKeyDerivationPBKDF(CommonCrypto.kCCPBKDF2, password, len(password), salt, len(salt), algo, iterations, output_buffer, key_length)
-    if result != 0:
-        raise OSError(extract_error())
+    result = libcrypto.PKCS5_PBKDF2_HMAC(password, len(password), salt, len(salt), iterations, evp_md, key_length, output_buffer)
+    if result != 1:
+        raise OSError(extract_openssl_error())
 
     return bytes_from_buffer(output_buffer)
 
@@ -145,7 +80,7 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     KDF from RFC7292 appendix B.2 - https://tools.ietf.org/html/rfc7292#page-19
 
     :param hash_algorithm:
-        The string name of the hash algorithm to use: "md2", "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
+        The string name of the hash algorithm to use: "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
 
     :param password:
         A byte string of the password to use an input to the KDF
@@ -184,8 +119,8 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     if key_length < 1:
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
 
-    if hash_algorithm not in ('md2', 'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
-        raise ValueError('hash_algorithm must be one of "md2", "md5", "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
+    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
 
     if id_ not in (1, 2, 3):
         raise ValueError('id_ must be one of 1, 2, 3 - is %s' % repr(id_))
@@ -244,8 +179,8 @@ def rand_bytes(length):
         raise ValueError('length must not be greater than 1024')
 
     buffer = buffer_from_bytes(length)
-    result = Security.SecRandomCopyBytes(Security.kSecRandomDefault, length, buffer)
-    if result != 0:
-        raise OSError(extract_error())
+    result = libcrypto.RAND_bytes(buffer, length)
+    if result != 1:
+        raise OSError(extract_openssl_error())
 
     return bytes_from_buffer(buffer)
