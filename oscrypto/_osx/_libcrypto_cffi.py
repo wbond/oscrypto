@@ -17,7 +17,6 @@ ffi = FFI()
 ffi.cdef("""
     typedef ... EVP_MD;
 
-    const EVP_MD *EVP_md2();
     const EVP_MD *EVP_md5();
     const EVP_MD *EVP_sha1();
     const EVP_MD *EVP_sha224();

@@ -15,9 +15,6 @@ if not libcrypto_path:
 libcrypto = CDLL(libcrypto_path, use_errno=True)
 
 try:
-    libcrypto.EVP_md2.argtypes = []
-    libcrypto.EVP_md2.restype = c_void_p
-
     libcrypto.EVP_md5.argtypes = []
     libcrypto.EVP_md5.restype = c_void_p
 

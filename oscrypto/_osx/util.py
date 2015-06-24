@@ -145,7 +145,7 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     KDF from RFC7292 appendix B.2 - https://tools.ietf.org/html/rfc7292#page-19
 
     :param hash_algorithm:
-        The string name of the hash algorithm to use: "md2", "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
+        The string name of the hash algorithm to use: "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
 
     :param password:
         A byte string of the password to use an input to the KDF
@@ -184,8 +184,8 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     if key_length < 1:
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
 
-    if hash_algorithm not in ('md2', 'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
-        raise ValueError('hash_algorithm must be one of "md2", "md5", "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
+    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
 
     if id_ not in (1, 2, 3):
         raise ValueError('id_ must be one of 1, 2, 3 - is %s' % repr(id_))
@@ -193,7 +193,6 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     utf16_password = password.decode('utf-8').encode('utf-16be') + b'\x00\x00'
 
     digest_type = {
-        'md2': libcrypto.EVP_md2,
         'md5': libcrypto.EVP_md5,
         'sha1': libcrypto.EVP_sha1,
         'sha224': libcrypto.EVP_sha224,
