@@ -81,9 +81,7 @@ class KeyTests(unittest.TestCase):
     @data('public_keys')
     def parse_public(self, input_filename, algo):
         with open(os.path.join(fixtures_dir, input_filename), 'rb') as f:
-            normalized_public, algo = keys.parse_public(f.read())
-
-        parsed = asn1crypto.keys.PublicKeyInfo.load(normalized_public)
+            parsed, algo = keys.parse_public(f.read())
 
         self.assertEqual(algo, parsed['algorithm']['algorithm'].native)
 
@@ -108,9 +106,7 @@ class KeyTests(unittest.TestCase):
     @data('certificates')
     def parse_certificate(self, input_filename, algo):
         with open(os.path.join(fixtures_dir, input_filename), 'rb') as f:
-            normalized_cert, algo = keys.parse_certificate(f.read())
-
-        parsed = asn1crypto.x509.Certificate.load(normalized_cert)
+            parsed, algo = keys.parse_certificate(f.read())
 
         self.assertEqual(algo, parsed['tbs_certificate']['subject_public_key_info']['algorithm']['algorithm'].native)
         self.assertEqual('Codex Non Sufficit LC', parsed['tbs_certificate']['subject'].native['organization_name'])
@@ -140,8 +136,8 @@ class KeyTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'keys/test-der.crt'), 'rb') as f:
             cert_der = f.read()
 
-        self.assertEqual(key_der, key_info[0])
-        self.assertEqual(cert_der, cert_info[0])
+        self.assertEqual(key_der, key_info[0].dump())
+        self.assertEqual(cert_der, cert_info[0].dump())
         self.assertEqual([], extra_cert_infos)
 
         # Make sure we can parse the DER
@@ -165,12 +161,12 @@ class KeyTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'keys/test-der.crt'), 'rb') as f:
             root_cert_der = f.read()
 
-        self.assertEqual(key_der, key_info[0])
-        self.assertEqual(cert_der, cert_info[0])
-        self.assertEqual(sorted([intermediate_cert_der, root_cert_der]), sorted([info[0] for info in extra_cert_infos]))
+        self.assertEqual(key_der, key_info[0].dump())
+        self.assertEqual(cert_der, cert_info[0].dump())
+        self.assertEqual(sorted([intermediate_cert_der, root_cert_der]), sorted([info[0].dump() for info in extra_cert_infos]))
 
         # Make sure we can parse the DER
-        _ = asn1crypto.keys.PrivateKeyInfo.load(key_info[0]).native
-        _ = asn1crypto.x509.Certificate.load(cert_info[0]).native
+        _ = key_info[0].native
+        _ = cert_info[0].native
         for info in extra_cert_infos:
-            _ = asn1crypto.x509.Certificate.load(info[0]).native
+            _ = info[0].native

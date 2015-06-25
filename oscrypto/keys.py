@@ -62,20 +62,20 @@ def parse_public(data):
         # of RSA, that means the DER structure is of the type RSAPublicKey, so
         # we need to wrap it in the PublicKeyInfo structure.
         if algo == 'rsa':
-            return (keys.PublicKeyInfo.wrap(data, 'rsa').dump(), algo)
+            return (keys.PublicKeyInfo.wrap(data, 'rsa'), algo)
 
     if key_type is None or key_type == 'public key':
         try:
             parsed = keys.PublicKeyInfo.load(data)
             algo = parsed['algorithm']['algorithm'].native
-            return (data, algo)
+            return (parsed, algo)
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not PublicKeyInfo
 
         try:
             # Call .native to fully parse since asn1crypto is lazy
             _ = keys.RSAPublicKey.load(data).native
-            return (keys.PublicKeyInfo.wrap(data, 'rsa').dump(), 'rsa')
+            return (keys.PublicKeyInfo.wrap(data, 'rsa'), 'rsa')
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not an RSAPublicKey
 
@@ -83,9 +83,8 @@ def parse_public(data):
         try:
             parsed_cert = x509.Certificate.load(data)
             key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
-            data = key_info.dump()
             algo = key_info['algorithm']['algorithm'].native
-            return (data, algo)
+            return (key_info, algo)
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not a cert
 
@@ -101,9 +100,8 @@ def parse_certificate(data):
         A byte string to load the certificate from
 
     :return:
-        A two-element tuple with (byte string, unicode string) where the byte
-        string is a DER-encoded Certificate structure and the unicode
-        string is the public key type: "rsa", "dsa" or "ecdsa".
+        A two-element tuple with (Certificate object, unicode string) where the
+        unicode string is the public key type: "rsa", "dsa" or "ecdsa".
     """
 
     if not isinstance(data, byte_cls):
@@ -126,7 +124,7 @@ def parse_certificate(data):
             parsed_cert = x509.Certificate.load(data)
             key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
             algo = key_info['algorithm']['algorithm'].native
-            return (data, algo)
+            return (parsed_cert, algo)
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not a Certificate
 
@@ -521,11 +519,11 @@ def _parse_safe_contents(safe_contents, certs, private_keys, password):
                 cert = bag_value['cert_value'].parsed
                 public_key_info = cert['tbs_certificate']['subject_public_key_info']
                 algo = public_key_info['algorithm']['algorithm'].native
-                certs[public_key_info.fingerprint] = (bag_value['cert_value'].parsed.dump(), algo)
+                certs[public_key_info.fingerprint] = (bag_value['cert_value'].parsed, algo)
 
         elif isinstance(bag_value, keys.PrivateKeyInfo):
             algo = bag_value['private_key_algorithm']['algorithm'].native
-            private_keys[bag_value.fingerprint] = (bag_value.dump(), algo)
+            private_keys[bag_value.fingerprint] = (bag_value, algo)
 
         elif isinstance(bag_value, keys.EncryptedPrivateKeyInfo):
             encryption_algorithm_info = bag_value['encryption_algorithm']
@@ -533,7 +531,7 @@ def _parse_safe_contents(safe_contents, certs, private_keys, password):
             decrypted_key_bytes = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_key_bytes, password)
             private_key = keys.PrivateKeyInfo.load(decrypted_key_bytes)
             algo = private_key['private_key_algorithm']['algorithm'].native
-            private_keys[private_key.fingerprint] = (private_key.dump(), algo)
+            private_keys[private_key.fingerprint] = (private_key, algo)
 
         elif isinstance(bag_value, pkcs12.SafeContents):
             _parse_safe_contents(bag_value, certs, private_keys, password)

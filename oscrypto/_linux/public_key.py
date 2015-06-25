@@ -93,8 +93,8 @@ def load_certificate(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    source, algo = parse_certificate(source)
-    return _load_x509(source, algo)
+    certificate, algo = parse_certificate(source)
+    return _load_x509(certificate.dump(), algo)
 
 
 def _load_x509(source, algo):
@@ -190,7 +190,7 @@ def load_public_key(source, source_type):
         raise ValueError('source is not a byte string')
 
     public_key, algo = parse_public(source)
-    buffer = buffer_from_bytes(public_key)
+    buffer = buffer_from_bytes(public_key.dump())
     evp_pkey = libcrypto.d2i_PUBKEY(null(), buffer_pointer(buffer), len(source))
     if is_null(evp_pkey):
         raise OSError(extract_openssl_error())

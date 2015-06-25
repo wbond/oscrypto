@@ -96,8 +96,8 @@ def load_certificate(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    source, algo = parse_certificate(source)
-    return _load_x509(source, algo)
+    certificate, algo = parse_certificate(source)
+    return _load_x509(certificate.dump(), algo)
 
 
 def _load_x509(source, algo):
@@ -207,8 +207,8 @@ def load_public_key(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    source, algo = parse_public(source)
-    return _load_key(source, algo, Security.kSecAttrKeyClassPublic)
+    public_key, algo = parse_public(source)
+    return _load_key(public_key.dump(), algo, Security.kSecAttrKeyClassPublic)
 
 
 def _load_key(source, algo, key_class):
