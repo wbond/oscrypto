@@ -22,7 +22,7 @@ if sys.platform == 'darwin':
     )
 
 elif sys.platform == 'win32':
-    from ._win_public_key import (  #pylint: disable=W0611
+    from ._win.public_key import (  #pylint: disable=W0611
         Certificate,
         dsa_sign,
         dsa_verify,

@@ -19,7 +19,7 @@ if sys.platform == 'darwin':
     )
 
 elif sys.platform == 'win32':
-    from ._win_symmetric import (  #pylint: disable=W0611
+    from ._win.symmetric import (  #pylint: disable=W0611
         aes_cbc_pkcs7_encrypt,
         aes_cbc_pkcs7_decrypt,
         rc4_encrypt,

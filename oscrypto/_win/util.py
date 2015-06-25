@@ -2,53 +2,17 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
-import hashlib
-import math
 
+from .._ffi import buffer_from_bytes, bytes_from_buffer
+from ._libcrypto import libcrypto, extract_openssl_error
 
 if sys.version_info < (3,):
     byte_cls = str
-    chr_cls = chr
     int_types = (int, long)  #pylint: disable=E0602
-
-    def int_to_bytes(value, signed=False):
-        # Handle negatives in two's complement
-        if signed and value < 0:
-            value = (~value) + 1
-
-        hex_str = '%x' % value
-        if len(hex_str) & 1:
-            hex_str = '0' + hex_str
-        return hex_str.decode('hex')
-
-    def int_from_bytes(value, signed=False):
-        num = long(value.encode("hex"), 16)  #pylint: disable=E0602
-
-        if not signed:
-            return num
-
-        # Check for sign bit and handle two's complement
-        if ord(value[0:1]) & 0x80:
-            bit_len = len(value) * 8
-            return num - (1 << bit_len)
-
-        return num
-
 else:
     byte_cls = bytes
     int_types = int
 
-    def chr_cls(num):
-        return bytes([num])
-
-    def int_to_bytes(value, signed=False):
-        result = value.to_bytes((value.bit_length() // 8) + 1, byteorder='big', signed=signed)
-        if not signed:
-            return result.lstrip(b'\x00')
-        return result
-
-    def int_from_bytes(value, signed=False):
-        return int.from_bytes(value, 'big', signed=signed)
 
 
 def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
@@ -95,6 +59,20 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     if hash_algorithm not in ('sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
 
+    evp_md = {
+        'sha1': libcrypto.EVP_sha1,
+        'sha224': libcrypto.EVP_sha224,
+        'sha256': libcrypto.EVP_sha256,
+        'sha384': libcrypto.EVP_sha384,
+        'sha512': libcrypto.EVP_sha512
+    }[hash_algorithm]()
+
+    output_buffer = buffer_from_bytes(key_length)
+    result = libcrypto.PKCS5_PBKDF2_HMAC(password, len(password), salt, len(salt), iterations, evp_md, key_length, output_buffer)
+    if result != 1:
+        raise OSError(extract_openssl_error())
+
+    return bytes_from_buffer(output_buffer)
 
 
 def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
@@ -149,86 +127,31 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
 
     utf16_password = password.decode('utf-8').encode('utf-16be') + b'\x00\x00'
 
-    algo = getattr(hashlib, hash_algorithm)
+    digest_type = {
+        'md5': libcrypto.EVP_md5,
+        'sha1': libcrypto.EVP_sha1,
+        'sha224': libcrypto.EVP_sha224,
+        'sha256': libcrypto.EVP_sha256,
+        'sha384': libcrypto.EVP_sha384,
+        'sha512': libcrypto.EVP_sha512,
+    }[hash_algorithm]()
 
-    # u and v values are bytes (not bits as in the RFC)
-    u = {
-        'md5': 16,
-        'sha1': 20,
-        'sha224': 28,
-        'sha256': 32,
-        'sha384': 48,
-        'sha512': 64
-    }[hash_algorithm]
+    output_buffer = buffer_from_bytes(key_length)
+    result = libcrypto.PKCS12_key_gen_uni(
+        utf16_password,
+        len(utf16_password),
+        salt,
+        len(salt),
+        id_,
+        iterations,
+        key_length,
+        output_buffer,
+        digest_type
+    )
+    if result != 1:
+        raise OSError(extract_openssl_error())
 
-    if hash_algorithm in ['sha384', 'sha512']:
-        v = 128
-    else:
-        v = 64
-
-    # Step 1
-    D = chr_cls(id_) * v
-
-    # Step 2
-    S = b''
-    if salt != b'':
-        s_len = v * int(math.ceil(float(len(salt)) / v))
-        while len(S) < s_len:
-            S += salt
-        S = S[0:s_len]
-
-    # Step 3
-    P = b''
-    if utf16_password != b'':
-        p_len = v * int(math.ceil(float(len(utf16_password)) / v))
-        while len(P) < p_len:
-            P += utf16_password
-        P = P[0:p_len]
-
-    # Step 4
-    I = S + P
-
-    # Step 5
-    c = int(math.ceil(float(key_length) / u))
-
-    A = b'\x00' * (c * u)
-
-    for i in range(1, c + 1):
-        # Step 6A
-        A2 = algo(D + I).digest()
-        for _ in range(2, iterations + 1):
-            A2 = algo(A2).digest()
-
-        if i < c:
-            # Step 6B
-            B = b''
-            while len(B) < v:
-                B += A2
-
-            B = int_from_bytes(B[0:v]) + 1
-
-            # Step 6C
-            for j in range(0, len(I) // v):
-                start = j * v
-                end = (j + 1) * v
-                I_j = I[start:end]
-
-                I_j = int_to_bytes(int_from_bytes(I_j) + B)
-
-                # Ensure the new slice is the right size
-                I_j_l = len(I_j)
-                if I_j_l > v:
-                    I_j = I_j[I_j_l-v:]
-
-                I = I[0:start] + I_j + I[end:]
-
-        # Step 7 (one peice at a time)
-        begin = (i - 1) * u
-        to_copy = min(key_length, u)
-        A = A[0:begin] + A2[0:to_copy] + A[begin+to_copy:]
-
-    return A[0:key_length]
-
+    return bytes_from_buffer(output_buffer)
 
 def rand_bytes(length):
     """
@@ -253,3 +176,10 @@ def rand_bytes(length):
 
     if length > 1024:
         raise ValueError('length must not be greater than 1024')
+
+    buffer = buffer_from_bytes(length)
+    result = libcrypto.RAND_bytes(buffer, length)
+    if result != 1:
+        raise OSError(extract_openssl_error())
+
+    return bytes_from_buffer(buffer)

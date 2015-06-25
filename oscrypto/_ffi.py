@@ -45,16 +45,24 @@ try:
         # cffi was trying to reparse the cdef any time it ran into these types.
         if type_ in ('CFErrorRef', 'SecKeyRef'):
             return ffi.new('void **')
+        if type_ in ('BCRYPT_ALG_HANDLE', 'BCRYPT_KEY_HANDLE'):
+            return ffi.new('void *')
         return ffi.new(type_)
 
     def deref(point):
         return point[0]
 
+    def struct(library, name):  #pylint: disable=W0613
+        return ffi.new('struct %s *' % name)
+
+    def struct_bytes(struct_):
+        return ffi.buffer(struct_, ffi.sizeof(struct_))[:]
+
     engine = 'cffi'
 
 except (ImportError):
 
-    from ctypes import create_string_buffer, get_errno, pointer, c_int, cast, c_char_p, c_uint
+    from ctypes import create_string_buffer, get_errno, pointer, c_int, cast, c_char_p, c_uint, string_at, sizeof, addressof
 
 
 
@@ -90,6 +98,12 @@ except (ImportError):
 
     def deref(point):
         return point[0]
+
+    def struct(library, name):
+        return getattr(library, name)()
+
+    def struct_bytes(struct_):
+        return string_at(addressof(struct_), sizeof(struct_))
 
     engine = 'ctypes'
 

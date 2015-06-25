@@ -7,7 +7,7 @@ import hashlib
 if sys.platform == 'darwin':
     from ._osx.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
 elif sys.platform == 'win32':
-    from ._win_util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
+    from ._win.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
 else:
     from ._linux.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
 

@@ -6,7 +6,7 @@ import sys
 if sys.platform == 'darwin':
     from ._osx.util import rand_bytes  #pylint: disable=W0611
 elif sys.platform == 'win32':
-    from ._win_util import rand_bytes  #pylint: disable=W0611
+    from ._win.util import rand_bytes  #pylint: disable=W0611
 else:
     from ._linux.util import rand_bytes  #pylint: disable=W0611
 
