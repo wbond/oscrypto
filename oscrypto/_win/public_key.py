@@ -2,10 +2,14 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
+import hashlib
 
-from .._ffi import new, null, buffer_from_bytes, is_null, deref, bytes_from_buffer, buffer_pointer, struct, struct_bytes
-from ._cng import bcrypt, format_error
-from ._int_conversion import int_to_bytes, fill_width
+from asn1crypto.keys import PublicKeyInfo
+from asn1crypto import core
+
+from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer
+from ._cng import bcrypt, handle_error, open_alg_handle, close_alg_handle
+from ._int_conversion import int_to_bytes, int_from_bytes, fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, PrivateKeyError
 
@@ -22,16 +26,19 @@ class PrivateKey():
 
     bcrypt_key_handle = None
     algo = None
+    curve = None
+    bit_size = None
 
-    def __init__(self, bcrypt_key_handle, algo):
+    def __init__(self, bcrypt_key_handle, algo, curve=None, bit_size=None):
         self.bcrypt_key_handle = bcrypt_key_handle
         self.algo = algo
+        self.curve = curve
+        self.bit_size = bit_size
 
     def __del__(self):
         if self.bcrypt_key_handle:
             res = bcrypt.BCryptDestroyKey(self.bcrypt_key_handle)
-            if res != bcrypt.STATUS_SUCCESS:
-                raise OSError(format_error())
+            handle_error(res)
             self.bcrypt_key_handle = None
 
 
@@ -45,18 +52,40 @@ class Certificate(PublicKey):
     pass
 
 
-def _open_algo(constant, flags=0):
-    handle = new(bcrypt, 'BCRYPT_ALG_HANDLE')
-    res = bcrypt.BCryptOpenAlgorithmProvider(handle, constant, null(), flags)
-    if res != bcrypt.STATUS_SUCCESS:
-        raise OSError(format_error())
-    return handle
+class Signature(core.Sequence):
+    _fields = [
+        ('r', core.Integer),
+        ('s', core.Integer),
+    ]
 
+    @classmethod
+    def from_bcrypt(cls, data):
+        """
+        Reads a signature from a byte string created by Microsoft's
+        BCryptSignHash() function.
 
-def _close_algo(handle):
-    res = bcrypt.BCryptCloseAlgorithmProvider(handle, 0)
-    if res != bcrypt.STATUS_SUCCESS:
-        raise OSError(format_error())
+        :param data:
+            A byte string from BCryptSignHash()
+
+        :return:
+            A Signature object
+        """
+
+        r = int_from_bytes(data[0:len(data)//2])
+        s = int_from_bytes(data[len(data)//2:])
+        return cls({'r': r, 's': s})
+
+    def to_bcrypt(self):
+        """
+        Dumps a signature to a byte string compatible with Microsoft's
+        BCryptVerifySignature() function.
+
+        :return:
+            A byte string compatible with BCryptVerifySignature()
+        """
+
+        return int_to_bytes(self['r'].native) + int_to_bytes(self['s'].native)
+
 
 
 def load_certificate(source, source_type):
@@ -88,41 +117,52 @@ def load_certificate(source, source_type):
         raise ValueError('source is not a byte string')
 
     certificate, algo = parse_certificate(source)
-    return _load_public_key(certificate['tbs_certificate']['subject_public_key_info'], algo)
+    return _load_key(certificate['tbs_certificate']['subject_public_key_info'], algo, Certificate)
 
 
-def _load_public_key(public_key, algo, container):
+def _load_key(key_object, algo, container):
     """
-    Loads a certificate into a format usable with various functions
+    Loads a public or private key into a format usable with various functions
 
-    :param public_key:
-        An asn1crypto.keys.PublicKeyInfo object
+    :param key_object:
+        An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
+        object
 
     :param algo:
         A unicode string of "rsa", "dsa" or "ecdsa"
 
+    :param container:
+        The class of the object to hold the bcrypt_key_handle
+
     :return:
-        A Certificate object
+        A PrivateKey, PublicKey or Certificate object, based on container
     """
+
+    key_type = 'public' if isinstance(key_object, PublicKeyInfo) else 'private'
 
     alg_handle = None
     key_handle = None
+    curve_name = None
+    bit_size = None
 
     try:
         if algo == 'ecdsa':
-            curve_type, details = public_key.curve
+            curve_type, curve_name = key_object.curve
             if curve_type != 'named':
                 raise PrivateKeyError('Windows only supports ECDSA private keys using named curves')
-            if details not in ('secp256r1', 'secp384r1', 'secp521r1'):
+            if curve_name not in ('secp256r1', 'secp384r1', 'secp521r1'):
                 raise PrivateKeyError('Windows only supports ECDSA private keys using the named curves secp256r1, secp384r1 and secp521r1')
 
         elif algo == 'dsa':
             ver_info = sys.getwindowsversion()
             pair = (ver_info.major, ver_info.minor)
-            if public_key.bit_size > 1024 and pair < (6, 2):
-                raise PrivateKeyError('Windows only supports DSA private keys of 512-1024 bits on Vista/7/Server 2008/Server 2008 R2, this key is %s bits' % public_key.bit_size)
+            if key_object.bit_size > 1024 and pair < (6, 2):
+                raise PrivateKeyError('Windows only supports DSA keys of 512-1024 bits on Vista/7/Server 2008/Server 2008 R2, this key is %s bits' % key_object.bit_size)
 
-        alg_selector = public_key.curve[1] if algo == 'ecdsa' else algo
+        if algo != 'ecdsa':
+            bit_size = key_object.bit_size
+
+        alg_selector = key_object.curve[1] if algo == 'ecdsa' else algo
         alg_constant = {
             'rsa': bcrypt.BCRYPT_RSA_ALGORITHM,
             'dsa': bcrypt.BCRYPT_DSA_ALGORITHM,
@@ -130,72 +170,194 @@ def _load_public_key(public_key, algo, container):
             'secp384r1': bcrypt.BCRYPT_ECDSA_P384_ALGORITHM,
             'secp521r1': bcrypt.BCRYPT_ECDSA_P521_ALGORITHM,
         }[alg_selector]
-        alg_handle = _open_algo(alg_constant)
+        alg_handle = open_alg_handle(alg_constant)
 
         key_handle = new(bcrypt, 'BCRYPT_KEY_HANDLE')
 
         if algo == 'rsa':
-            blob_type = bcrypt.BCRYPT_RSAPUBLIC_BLOB
+            if key_type == 'public':
+                blob_type = bcrypt.BCRYPT_RSAPUBLIC_BLOB
+                magic = bcrypt.BCRYPT_RSAPUBLIC_MAGIC
+                parsed_key = key_object['public_key'].parsed
+                prime1_size = 0
+                prime2_size = 0
+            else:
+                blob_type = bcrypt.BCRYPT_RSAFULLPRIVATE_BLOB
+                magic = bcrypt.BCRYPT_RSAFULLPRIVATE_MAGIC
+                parsed_key = key_object['private_key'].parsed
+                prime1 = int_to_bytes(parsed_key['prime1'].native)
+                prime2 = int_to_bytes(parsed_key['prime2'].native)
+                exponent1 = int_to_bytes(parsed_key['exponent1'].native)
+                exponent2 = int_to_bytes(parsed_key['exponent2'].native)
+                coefficient = int_to_bytes(parsed_key['coefficient'].native)
+                private_exponent = int_to_bytes(parsed_key['private_exponent'].native)
+                prime1_size = len(prime1)
+                prime2_size = len(prime2)
 
-            public_exponent = int_to_bytes(public_key['public_key'].parsed['public_exponent'].native)
-            modulus = int_to_bytes(public_key['public_key'].parsed['modulus'].native)
+            public_exponent = int_to_bytes(parsed_key['public_exponent'].native)
+            modulus = int_to_bytes(parsed_key['modulus'].native)
 
             blob_struct = struct(bcrypt, 'BCRYPT_RSAKEY_BLOB')
-            blob_struct.Magic = bcrypt.BCRYPT_RSAPUBLIC_MAGIC
-            blob_struct.BitLength = public_key.bit_size
+            blob_struct.Magic = magic
+            blob_struct.BitLength = key_object.bit_size
             blob_struct.cbPublicExp = len(public_exponent)
             blob_struct.cbModulus = len(modulus)
-            blob_struct.cbPrime1 = 0
-            blob_struct.cbPrime2 = 0
+            blob_struct.cbPrime1 = prime1_size
+            blob_struct.cbPrime2 = prime2_size
 
             blob = struct_bytes(blob_struct) + public_exponent + modulus
+            if key_type == 'private':
+                blob += prime1 + prime2
+                blob += fill_width(exponent1, prime1_size)
+                blob += fill_width(exponent2, prime2_size)
+                blob += fill_width(coefficient, prime1_size)
+                blob += fill_width(private_exponent, len(modulus))
 
         elif algo == 'dsa':
-            blob_type = bcrypt.BCRYPT_DSA_PUBLIC_BLOB
+            if key_type == 'public':
+                blob_type = bcrypt.BCRYPT_DSA_PUBLIC_BLOB
+                public_key = key_object['public_key'].parsed.native
+                params = key_object['algorithm']['parameters']
+            else:
+                blob_type = bcrypt.BCRYPT_DSA_PRIVATE_BLOB
+                public_key = key_object.public_key.native
+                private_bytes = int_to_bytes(key_object['private_key'].parsed.native)
+                params = key_object['private_key_algorithm']['parameters']
 
-            params = public_key['algorithm']['parameters']
-
-            key = int_to_bytes(public_key['public_key'].parsed.native)
+            public_bytes = int_to_bytes(public_key)
             p = int_to_bytes(params['p'].native)
             g = int_to_bytes(params['g'].native)
             q = int_to_bytes(params['q'].native)
 
-            key_width = max(len(key), len(g), len(g))
+            q_len = len(q)
 
-            key = fill_width(key, key_width)
+            key_width = max(len(public_bytes), len(g), len(p))
+
+            public_bytes = fill_width(public_bytes, key_width)
             p = fill_width(p, key_width)
             g = fill_width(g, key_width)
-            q = fill_width(q, 20)
+            # We don't know the count or seed, so we set them to the max value
+            # since setting them to 0 results in a parameter error
+            count = b'\xff' * 4
+            seed = b'\xff' * q_len
 
-            if public_key.bit_size > 1024:
+            if key_object.bit_size > 1024:
+                if key_type == 'public':
+                    magic = bcrypt.BCRYPT_DSA_PUBLIC_MAGIC_V2
+                else:
+                    magic = bcrypt.BCRYPT_DSA_PRIVATE_MAGIC_V2
+
+                if q_len == 20:
+                    raise ValueError('Windows does not support 2048 bit DSA keys containing a 160 bit prime - this is a non-standard key size, usually generated by old versions of OpenSSL. Only 2048 bit DSA keys with 224 or 256 bit primes are supported, per FIPS186-3.')
+
                 blob_struct = struct(bcrypt, 'BCRYPT_DSA_KEY_BLOB_V2')
+                blob_struct.dwMagic = magic
+                blob_struct.cbKey = key_width
+                # We don't know if SHA256 was used here, but the output is long
+                # enough for the generation of q for the supported 2048/224,
+                # 2048/256 and 3072/256 FIPS approved pairs
+                blob_struct.hashAlgorithm = bcrypt.DSA_HASH_ALGORITHM_SHA256
+                blob_struct.standardVersion = bcrypt.DSA_FIPS186_3
+                blob_struct.cbSeedLength = q_len
+                blob_struct.cbGroupSize = q_len
+                blob_struct.Count = count
 
+                blob = struct_bytes(blob_struct)
+                blob += seed + q + p + g + public_bytes
+                if key_type == 'private':
+                    blob += private_bytes
 
             else:
+                if key_type == 'public':
+                    magic = bcrypt.BCRYPT_DSA_PUBLIC_MAGIC
+                else:
+                    magic = bcrypt.BCRYPT_DSA_PRIVATE_MAGIC
+
                 blob_struct = struct(bcrypt, 'BCRYPT_DSA_KEY_BLOB')
-                blob_struct.dwMagic = bcrypt.BCRYPT_DSA_PUBLIC_MAGIC
+                blob_struct.dwMagic = magic
                 blob_struct.cbKey = key_width
-                blob_struct.Count = b'\xFF' * 4
-                blob_struct.Seed = b'\xFF' * 20
+                blob_struct.Count = count
+                blob_struct.Seed = seed
                 blob_struct.q = q
 
-            blob = struct_bytes(blob_struct) + p + g + key
+                blob = struct_bytes(blob_struct) + p + g + public_bytes
+                if key_type == 'private':
+                    blob += private_bytes
 
         elif algo == 'ecdsa':
-            blob_type = bcrypt.BCRYPT_ECCPUBLIC_BLOB
+            if key_type == 'public':
+                blob_type = bcrypt.BCRYPT_ECCPUBLIC_BLOB
+                public_key = key_object['public_key']
+            else:
+                blob_type = bcrypt.BCRYPT_ECCPRIVATE_BLOB
+                public_key = key_object.public_key
+                private_bytes = int_to_bytes(key_object['private_key'].parsed['private_key'].native)
+
             blob_struct = struct(bcrypt, 'BCRYPT_ECCKEY_BLOB')
 
-        blob = b''
+            magic = {
+                ('public', 'secp256r1'): bcrypt.BCRYPT_ECDSA_PUBLIC_P256_MAGIC,
+                ('public', 'secp384r1'): bcrypt.BCRYPT_ECDSA_PUBLIC_P384_MAGIC,
+                ('public', 'secp521r1'): bcrypt.BCRYPT_ECDSA_PUBLIC_P521_MAGIC,
+                ('private', 'secp256r1'): bcrypt.BCRYPT_ECDSA_PRIVATE_P256_MAGIC,
+                ('private', 'secp384r1'): bcrypt.BCRYPT_ECDSA_PRIVATE_P384_MAGIC,
+                ('private', 'secp521r1'): bcrypt.BCRYPT_ECDSA_PRIVATE_P521_MAGIC,
+            }[(key_type, curve_name)]
 
-        res = bcrypt.BCryptImportKeyPair(alg_handle, null(), blob_type, key_handle, blob, len(blob), 0)
-        if res != bcrypt.STATUS_SUCCESS:
-            raise OSError(format_error())
+            x, y = _decompose_ec_public_key(public_key)
 
-        return container(key_handle, algo)
+            x_bytes = int_to_bytes(x)
+            y_bytes = int_to_bytes(y)
+
+            key_width = max(len(x_bytes), len(y_bytes))
+
+            x_bytes = fill_width(x_bytes, key_width)
+            y_bytes = fill_width(y_bytes, key_width)
+
+            blob_struct.dwMagic = magic
+            blob_struct.cbKey = key_width
+
+            blob = struct_bytes(blob_struct) + x_bytes + y_bytes
+            if key_type == 'private':
+                blob += private_bytes
+
+        res = bcrypt.BCryptImportKeyPair(alg_handle, null(), blob_type, key_handle, blob, len(blob), bcrypt.BCRYPT_NO_KEY_VALIDATION)
+        handle_error(res)
+
+        return container(key_handle, algo, curve_name, bit_size)
 
     finally:
         if alg_handle:
-            _close_algo(alg_handle)
+            close_alg_handle(alg_handle)
+
+
+def _decompose_ec_public_key(octet_string):
+    """
+    Takes the ECPoint representation of an elliptic curve public key and
+    decomposes it into the integers x and y
+
+    :param octet_string:
+        An asn1crypto.core.OctetString object containing the ECPoint value
+
+    :return:
+        A 2-element tuple of integers (x, y)
+    """
+
+    data = octet_string.native
+    first_byte = data[0:1]
+
+    # Uncompressed
+    if first_byte == b'\x04':
+        remaining = data[1:]
+        field_len = len(remaining) // 2
+        x = int_from_bytes(remaining[0:field_len])
+        y = int_from_bytes(remaining[field_len:])
+        return (x, y)
+
+    if first_byte not in (b'\x02', b'\x03'):
+        raise ValueError('Invalid EC public key - first byte is incorrect')
+
+    raise ValueError('Compressed representations of EC public keys are not supported due to patent US6252960')
 
 
 def load_private_key(source, source_type, password=None):
@@ -237,8 +399,7 @@ def load_private_key(source, source_type, password=None):
 
     private_object, algo = parse_private(source, password)
 
-    source = private_object.unwrap().dump()
-    return _load_key(source, algo)
+    return _load_key(private_object, algo, PrivateKey)
 
 
 def load_public_key(source, source_type):
@@ -270,32 +431,8 @@ def load_public_key(source, source_type):
         raise ValueError('source is not a byte string')
 
     public_key, algo = parse_public(source)
-    buffer = buffer_from_bytes(public_key.dump())
-    evp_pkey = libcrypto.d2i_PUBKEY(null(), buffer_pointer(buffer), len(source))
-    if is_null(evp_pkey):
-        raise OSError(extract_openssl_error())
-    return PublicKey(evp_pkey, algo)
 
-
-def _load_key(source, algo):
-    """
-    Loads a private key into a format usable with various functions
-
-    :param source:
-        A byte string of the DER-encoded key
-
-    :param algo:
-        A unicode string of "rsa", "dsa" or "ecdsa"
-
-    :return:
-        A PrivateKey object
-    """
-
-    buffer = buffer_from_bytes(source)
-    evp_pkey = libcrypto.d2i_AutoPrivateKey(null(), buffer_pointer(buffer), len(source))
-    if is_null(evp_pkey):
-        raise OSError(extract_openssl_error())
-    return PrivateKey(evp_pkey, algo)
+    return _load_key(public_key, algo, PublicKey)
 
 
 def load_pkcs12(source, source_type, password=None):
@@ -341,12 +478,12 @@ def load_pkcs12(source, source_type, password=None):
     cert = None
 
     if key_info:
-        key = _load_key(key_info[0], key_info[1])
+        key = _load_key(key_info[0], key_info[1], PrivateKey)
 
     if cert_info:
-        cert = _load_x509(cert_info[0], cert_info[1])
+        cert = _load_key(cert_info[0]['tbs_certificate']['subject_public_key_info'], cert_info[1], Certificate)
 
-    extra_certs = [_load_x509(info[0], info[1]) for info in extra_certs_info]
+    extra_certs = [_load_key(info[0]['tbs_certificate']['subject_public_key_info'], info[1]) for info in extra_certs_info]
 
     return (key, cert, extra_certs)
 
@@ -449,7 +586,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -466,41 +603,37 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
-        raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512"')
+    if hash_algorithm not in ('md5', 'sha1', 'sha256', 'sha384', 'sha512'):
+        raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
-    evp_md_ctx = None
+    hash_constant = {
+        'md5': bcrypt.BCRYPT_MD5_ALGORITHM,
+        'sha1': bcrypt.BCRYPT_SHA1_ALGORITHM,
+        'sha256': bcrypt.BCRYPT_SHA256_ALGORITHM,
+        'sha384': bcrypt.BCRYPT_SHA384_ALGORITHM,
+        'sha512': bcrypt.BCRYPT_SHA512_ALGORITHM
+    }[hash_algorithm]
 
-    try:
-        evp_md_ctx = libcrypto.EVP_MD_CTX_create()
+    digest = getattr(hashlib, hash_algorithm)(data).digest()
 
-        evp_md = {
-            'md5': libcrypto.EVP_md5,
-            'sha1': libcrypto.EVP_sha1,
-            'sha224': libcrypto.EVP_sha224,
-            'sha256': libcrypto.EVP_sha256,
-            'sha384': libcrypto.EVP_sha384,
-            'sha512': libcrypto.EVP_sha512
-        }[hash_algorithm]()
+    padding_info = null()
+    flags = 0
 
-        res = libcrypto.EVP_DigestInit_ex(evp_md_ctx, evp_md, null())
-        if res != 1:
-            raise OSError(extract_openssl_error())
+    if certificate_or_public_key.algo == 'rsa':
+        flags = bcrypt.BCRYPT_PAD_PKCS1
+        padding_info = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        padding_info.pszAlgId = hash_constant
+        padding_info = void_pointer(padding_info)
+    else:
+        # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
+        # so we have to convert it here for the verification to work
+        signature = Signature.load(signature).to_bcrypt()
 
-        res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
-        if res != 1:
-            raise OSError(extract_openssl_error())
+    res = bcrypt.BCryptVerifySignature(certificate_or_public_key.bcrypt_key_handle, padding_info, digest, len(digest), signature, len(signature), flags)
+    if res == bcrypt.STATUS_INVALID_SIGNATURE:
+        raise SignatureError('Signature is invalid')
 
-        res = libcrypto.EVP_VerifyFinal(evp_md_ctx, signature, len(signature), certificate_or_public_key.evp_pkey)
-        if res == -1:
-            raise OSError(extract_openssl_error())
-
-        if res == 0:
-            raise SignatureError('Signature is invalid')
-
-    finally:
-        if evp_md_ctx:
-            libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
+    handle_error(res)
 
 
 def rsa_pkcsv15_sign(private_key, data, hash_algorithm):
@@ -595,7 +728,7 @@ def _sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -611,40 +744,48 @@ def _sign(private_key, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in ('md5', 'sha1', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
-    evp_md_ctx = None
+    hash_constant = {
+        'md5': bcrypt.BCRYPT_MD5_ALGORITHM,
+        'sha1': bcrypt.BCRYPT_SHA1_ALGORITHM,
+        'sha256': bcrypt.BCRYPT_SHA256_ALGORITHM,
+        'sha384': bcrypt.BCRYPT_SHA384_ALGORITHM,
+        'sha512': bcrypt.BCRYPT_SHA512_ALGORITHM
+    }[hash_algorithm]
 
-    try:
-        evp_md_ctx = libcrypto.EVP_MD_CTX_create()
+    digest = getattr(hashlib, hash_algorithm)(data).digest()
 
-        evp_md = {
-            'md5': libcrypto.EVP_md5,
-            'sha1': libcrypto.EVP_sha1,
-            'sha224': libcrypto.EVP_sha224,
-            'sha256': libcrypto.EVP_sha256,
-            'sha384': libcrypto.EVP_sha384,
-            'sha512': libcrypto.EVP_sha512
-        }[hash_algorithm]()
+    padding_info = null()
+    flags = 0
 
-        res = libcrypto.EVP_DigestInit_ex(evp_md_ctx, evp_md, null())
-        if res != 1:
-            raise OSError(extract_openssl_error())
+    if private_key.algo == 'rsa':
+        flags = bcrypt.BCRYPT_PAD_PKCS1
+        padding_info_struct = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        padding_info_struct.pszAlgId = hash_constant
+        padding_info = void_pointer(padding_info_struct)
 
-        res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
-        if res != 1:
-            raise OSError(extract_openssl_error())
+    if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in ('md5', 'sha1'):
+        raise ValueError('Windows does not support sha1 signatures with DSA keys based on sha224, sha256 or sha512')
 
-        signature_buffer = buffer_from_bytes(libcrypto.EVP_PKEY_size(private_key.evp_pkey))
-        signature_length = new(libcrypto, 'unsigned int *')
-        res = libcrypto.EVP_SignFinal(evp_md_ctx, signature_buffer, signature_length, private_key.evp_pkey)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+    out_len = new(bcrypt, 'DWORD *')
+    res = bcrypt.BCryptSignHash(private_key.bcrypt_key_handle, padding_info, digest, len(digest), null(), 0, out_len, flags)
+    handle_error(res)
 
-        return bytes_from_buffer(signature_buffer, deref(signature_length))
+    buffer_len = deref(out_len)
+    buffer = buffer_from_bytes(buffer_len)
 
-    finally:
-        if evp_md_ctx:
-            libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
+    if private_key.algo == 'rsa':
+        padding_info = void_pointer(padding_info_struct)
 
+    res = bcrypt.BCryptSignHash(private_key.bcrypt_key_handle, padding_info, digest, len(digest), buffer, buffer_len, out_len, flags)
+    handle_error(res)
+    signature = bytes_from_buffer(buffer, deref(out_len))
+
+    if private_key.algo != 'rsa':
+        # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
+        # so we have to convert it here for the verification to work
+        signature = Signature.from_bcrypt(signature).dump()
+
+    return signature

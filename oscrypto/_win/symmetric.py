@@ -2,10 +2,9 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
-import math
 
-from .._ffi import new, null, is_null, buffer_from_bytes, bytes_from_buffer, deref
-from ._libcrypto import libcrypto, extract_openssl_error
+from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes
+from ._cng import bcrypt, handle_error, open_alg_handle, close_alg_handle
 from .util import rand_bytes
 
 if sys.version_info < (3,):
@@ -49,16 +48,9 @@ def aes_cbc_pkcs7_encrypt(key, data, iv, omit_padding=False):
     elif len(iv) != 16:
         raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
 
-    if len(key) == 16:
-        cipher = 'aes128'
-    elif len(key) == 24:
-        cipher = 'aes192'
-    elif len(key) == 32:
-        cipher = 'aes256'
-
     padding = not omit_padding
 
-    return (iv, _encrypt(cipher, key, data, iv, padding))
+    return (iv, _encrypt('aes', key, data, iv, padding))
 
 
 def aes_cbc_pkcs7_decrypt(key, data, iv, omit_padding=False):
@@ -89,16 +81,9 @@ def aes_cbc_pkcs7_decrypt(key, data, iv, omit_padding=False):
     if len(iv) != 16:
         raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
 
-    if len(key) == 16:
-        cipher = 'aes128'
-    elif len(key) == 24:
-        cipher = 'aes192'
-    elif len(key) == 32:
-        cipher = 'aes256'
-
     padding = not omit_padding
 
-    return _decrypt(cipher, key, data, iv, padding)
+    return _decrypt('aes', key, data, iv, padding)
 
 
 def rc4_encrypt(key, data):
@@ -243,9 +228,7 @@ def tripledes_cbc_pkcs5_encrypt(key, data, iv):
         raise ValueError('iv must be 8 bytes long - %s' % len(iv))
 
     cipher = 'tripledes_3key'
-    # Expand 2-key to actual 24 byte byte string used by cipher
     if len(key) == 16:
-        key = key + key[0:8]
         cipher = 'tripledes_2key'
 
     return (iv, _encrypt(cipher, key, data, iv, True))
@@ -279,9 +262,7 @@ def tripledes_cbc_pkcs5_decrypt(key, data, iv):
         raise ValueError('iv must be 8 bytes long - is %s' % len(iv))
 
     cipher = 'tripledes_3key'
-    # Expand 2-key to actual 24 byte byte string used by cipher
     if len(key) == 16:
-        key = key + key[0:8]
         cipher = 'tripledes_2key'
 
     return _decrypt(cipher, key, data, iv, True)
@@ -350,12 +331,66 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
     return _decrypt('des', key, data, iv, True)
 
 
+def _create_key_handle(cipher, key):
+    """
+    Creates a BCRYPT_KEY_HANDLE for symmetric encryption/decryption. The
+    handle must be released by bcrypt.BCryptDestroyKey() when done.
+
+    :param cipher:
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
+
+    :param key:
+        A byte string of the symmetric key
+
+    :return:
+        A BCRYPT_KEY_HANDLE
+    """
+
+    alg_handle = None
+
+    alg_constant = {
+        'aes': bcrypt.BCRYPT_AES_ALGORITHM,
+        'des': bcrypt.BCRYPT_DES_ALGORITHM,
+        'tripledes_2key': bcrypt.BCRYPT_3DES_112_ALGORITHM,
+        'tripledes_3key': bcrypt.BCRYPT_3DES_ALGORITHM,
+        'rc2': bcrypt.BCRYPT_RC2_ALGORITHM,
+        'rc4': bcrypt.BCRYPT_RC4_ALGORITHM,
+    }[cipher]
+
+    try:
+        alg_handle = open_alg_handle(alg_constant)
+        blob_type = bcrypt.BCRYPT_KEY_DATA_BLOB
+
+        key_handle = new(bcrypt, 'BCRYPT_KEY_HANDLE')
+
+        blob_struct = struct(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER')
+        blob_struct.dwMagic = bcrypt.BCRYPT_KEY_DATA_BLOB_MAGIC
+        blob_struct.dwVersion = bcrypt.BCRYPT_KEY_DATA_BLOB_VERSION1
+        blob_struct.cbKeyData = len(key)
+
+        blob = struct_bytes(blob_struct) + key
+
+        if cipher == 'rc2':
+            buf = new(bcrypt, 'DWORD *', len(key) * 8)
+            res = bcrypt.BCryptSetProperty(alg_handle, bcrypt.BCRYPT_EFFECTIVE_KEY_LENGTH, buf, 4, 0)
+            handle_error(res)
+
+        res = bcrypt.BCryptImportKey(alg_handle, null(), blob_type, key_handle, null(), 0, blob, len(blob), 0)
+        handle_error(res)
+
+        return key_handle
+
+    finally:
+        if alg_handle:
+            close_alg_handle(alg_handle)
+
+
 def _encrypt(cipher, key, data, iv, padding):
     """
     Encrypts plaintext
 
     :param cipher:
-        A unicode string of "aes128", "aes192", "aes256", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
 
     :param key:
         The encryption key - a byte string 5-16 bytes long
@@ -389,60 +424,36 @@ def _encrypt(cipher, key, data, iv, padding):
     if cipher != 'rc4' and not padding:
         raise ValueError('padding must be specified')
 
-    evp_cipher_ctx = None
+    key_handle = None
 
     try:
-        evp_cipher_ctx = libcrypto.EVP_CIPHER_CTX_new()
-        if is_null(evp_cipher_ctx):
-            raise OSError(extract_openssl_error())
-
-        evp_cipher, buffer_size = _setup_evp_encrypt_decrypt(cipher, data)
+        key_handle = _create_key_handle(cipher, key)
 
         if iv is None:
-            iv = null()
+            iv_len = 0
+        else:
+            iv_len = len(iv)
 
-        if cipher in ('rc2', 'rc4'):
-            res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), null(), null())
-            if res != 1:
-                raise OSError(extract_openssl_error())
-            res = libcrypto.EVP_CIPHER_CTX_set_key_length(evp_cipher_ctx, len(key))
-            if res != 1:
-                raise OSError(extract_openssl_error())
-            if cipher == 'rc2':
-                res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
-                if res != 1:
-                    raise OSError(extract_openssl_error())
-            evp_cipher = null()
+        flags = 0
+        if padding is True:
+            flags = bcrypt.BCRYPT_BLOCK_PADDING
 
-        if padding is not None:
-            res = libcrypto.EVP_CIPHER_CTX_set_padding(evp_cipher_ctx, int(padding))
-            if res != 1:
-                raise OSError(extract_openssl_error())
+        out_len = new(bcrypt, 'ULONG *')
+        res = bcrypt.BCryptEncrypt(key_handle, data, len(data), null(), null(), 0, null(), 0, out_len, flags)
+        handle_error(res)
 
-        res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        buffer_len = deref(out_len)
+        buffer = buffer_from_bytes(buffer_len)
+        iv_buffer = buffer_from_bytes(iv) if iv else null()
 
-        buffer = buffer_from_bytes(buffer_size)
-        output_length = new(libcrypto, 'int *')
+        res = bcrypt.BCryptEncrypt(key_handle, data, len(data), null(), iv_buffer, iv_len, buffer, buffer_len, out_len, flags)
+        handle_error(res)
 
-        res = libcrypto.EVP_EncryptUpdate(evp_cipher_ctx, buffer, output_length, data, len(data))
-        if res != 1:
-            raise OSError(extract_openssl_error())
-
-        output = bytes_from_buffer(buffer, deref(output_length))
-
-        res = libcrypto.EVP_EncryptFinal_ex(evp_cipher_ctx, buffer, output_length)
-        if res != 1:
-            raise OSError(extract_openssl_error())
-
-        output += bytes_from_buffer(buffer, deref(output_length))
-
-        return output
+        return bytes_from_buffer(buffer, deref(out_len))
 
     finally:
-        if evp_cipher_ctx:
-            libcrypto.EVP_CIPHER_CTX_free(evp_cipher_ctx)
+        if key_handle:
+            bcrypt.BCryptDestroyKey(key_handle)
 
 
 def _decrypt(cipher, key, data, iv, padding):
@@ -450,7 +461,7 @@ def _decrypt(cipher, key, data, iv, padding):
     Decrypts AES/RC4/RC2/3DES/DES ciphertext
 
     :param cipher:
-        A unicode string of "aes128", "aes192", "aes256", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
 
     :param key:
         The encryption key - a byte string 5-16 bytes long
@@ -484,110 +495,33 @@ def _decrypt(cipher, key, data, iv, padding):
     if cipher != 'rc4' and padding is None:
         raise ValueError('padding must be specified')
 
-    evp_cipher_ctx = None
+    key_handle = None
 
     try:
-        evp_cipher_ctx = libcrypto.EVP_CIPHER_CTX_new()
-        if is_null(evp_cipher_ctx):
-            raise OSError(extract_openssl_error())
-
-        evp_cipher, buffer_size = _setup_evp_encrypt_decrypt(cipher, data)
+        key_handle = _create_key_handle(cipher, key)
 
         if iv is None:
-            iv = null()
+            iv_len = 0
+        else:
+            iv_len = len(iv)
 
-        if cipher in ('rc2', 'rc4'):
-            res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), null(), null())
-            if res != 1:
-                raise OSError(extract_openssl_error())
-            res = libcrypto.EVP_CIPHER_CTX_set_key_length(evp_cipher_ctx, len(key))
-            if res != 1:
-                raise OSError(extract_openssl_error())
-            if cipher == 'rc2':
-                res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
-                if res != 1:
-                    raise OSError(extract_openssl_error())
-            evp_cipher = null()
+        flags = 0
+        if padding is True:
+            flags = bcrypt.BCRYPT_BLOCK_PADDING
 
-        if padding is not None:
-            res = libcrypto.EVP_CIPHER_CTX_set_padding(evp_cipher_ctx, int(padding))
-            if res != 1:
-                raise OSError(extract_openssl_error())
+        out_len = new(bcrypt, 'ULONG *')
+        res = bcrypt.BCryptDecrypt(key_handle, data, len(data), null(), null(), 0, null(), 0, out_len, flags)
+        handle_error(res)
 
-        res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        buffer_len = deref(out_len)
+        buffer = buffer_from_bytes(buffer_len)
+        iv_buffer = buffer_from_bytes(iv) if iv else null()
 
-        buffer = buffer_from_bytes(buffer_size)
-        output_length = new(libcrypto, 'int *')
+        res = bcrypt.BCryptDecrypt(key_handle, data, len(data), null(), iv_buffer, iv_len, buffer, buffer_len, out_len, flags)
+        handle_error(res)
 
-        res = libcrypto.EVP_DecryptUpdate(evp_cipher_ctx, buffer, output_length, data, len(data))
-        if res != 1:
-            raise OSError(extract_openssl_error())
-
-        output = bytes_from_buffer(buffer, deref(output_length))
-
-        res = libcrypto.EVP_DecryptFinal_ex(evp_cipher_ctx, buffer, output_length)
-        if res != 1:
-            raise OSError(extract_openssl_error())
-
-        output += bytes_from_buffer(buffer, deref(output_length))
-
-        return output
+        return bytes_from_buffer(buffer, deref(out_len))
 
     finally:
-        if evp_cipher_ctx:
-            libcrypto.EVP_CIPHER_CTX_free(evp_cipher_ctx)
-
-
-def _setup_evp_encrypt_decrypt(cipher, data):
-    """
-    Creates an EVP_CIPHER pointer object and determines the buffer size
-    necessary for the parameter specified.
-
-    :param evp_cipher_ctx:
-        An EVP_CIPHER_CTX pointer
-
-    :param cipher:
-        A unicode string of "aes128", "aes192", "aes256", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
-
-    :param key:
-        The key byte string
-
-    :param data:
-        The plaintext or ciphertext as a byte string
-
-    :param padding:
-        If padding is to be used
-
-    :return:
-        A 2-element tuple with the first element being an EVP_CIPHER pointer
-        and the second being an integer that is the required buffer size
-    """
-
-    evp_cipher = {
-        'aes128': libcrypto.EVP_aes_128_cbc,
-        'aes192': libcrypto.EVP_aes_192_cbc,
-        'aes256': libcrypto.EVP_aes_256_cbc,
-        'rc2': libcrypto.EVP_rc2_cbc,
-        'rc4': libcrypto.EVP_rc4,
-        'des': libcrypto.EVP_des_cbc,
-        'tripledes_2key': libcrypto.EVP_des_ede_cbc,
-        'tripledes_3key': libcrypto.EVP_des_ede3_cbc,
-    }[cipher]()
-
-    if cipher == 'rc4':
-        buffer_size = len(data)
-    else:
-        block_size = {
-            'aes128': 16,
-            'aes192': 16,
-            'aes256': 16,
-            'rc2': 8,
-            'des': 8,
-            'tripledes_2key': 8,
-            'tripledes_3key': 8,
-        }[cipher]
-        buffer_size = block_size * int(math.ceil(len(data) / block_size))
-
-    return (evp_cipher, buffer_size)
+        if key_handle:
+            bcrypt.BCryptDestroyKey(key_handle)

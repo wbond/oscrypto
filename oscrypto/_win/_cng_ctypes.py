@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from ctypes import windll, wintypes, POINTER, Structure, GetLastError, FormatError, c_void_p, c_ulonglong
+from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p
 from ctypes.wintypes import ULONG, DWORD, LPCWSTR
 
 from .._ffi import FFIEngineError
@@ -12,9 +12,9 @@ bcrypt = windll.bcrypt
 
 BCRYPT_ALG_HANDLE = wintypes.HANDLE
 BCRYPT_KEY_HANDLE = wintypes.HANDLE
-NTSTATUS = wintypes.LONG
-PUCHAR = POINTER(wintypes.UCHAR)
-PBYTE = POINTER(wintypes.BYTE)
+NTSTATUS = wintypes.ULONG
+PUCHAR = c_char_p
+PBYTE = c_char_p
 
 try:
     bcrypt.BCryptOpenAlgorithmProvider.argtypes = [POINTER(BCRYPT_ALG_HANDLE), LPCWSTR, LPCWSTR, DWORD]
@@ -38,24 +38,42 @@ try:
     bcrypt.BCryptSignHash.argtypes = [BCRYPT_KEY_HANDLE, c_void_p, PBYTE, DWORD, PBYTE, DWORD, POINTER(DWORD), ULONG]
     bcrypt.BCryptSignHash.restype = NTSTATUS
 
-    bcrypt.BCryptEncrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, ULONG, ULONG]
+    bcrypt.BCryptSetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptSetProperty.restype = NTSTATUS
+
+    bcrypt.BCryptEncrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, POINTER(ULONG), ULONG]
     bcrypt.BCryptEncrypt.restype = NTSTATUS
 
-    bcrypt.BCryptDecrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, ULONG, ULONG]
+    bcrypt.BCryptDecrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, POINTER(ULONG), ULONG]
     bcrypt.BCryptDecrypt.restype = NTSTATUS
 
     bcrypt.BCryptDeriveKeyPBKDF2.argtypes = [BCRYPT_ALG_HANDLE, PUCHAR, ULONG, PUCHAR, ULONG, c_ulonglong, PUCHAR, ULONG, ULONG]
     bcrypt.BCryptDeriveKeyPBKDF2.restype = NTSTATUS
 
+    bcrypt.BCryptGenRandom.argtypes = [BCRYPT_ALG_HANDLE, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptGenRandom.restype = NTSTATUS
+
+    bcrypt.BCryptGenerateKeyPair.argtypes = [BCRYPT_ALG_HANDLE, POINTER(BCRYPT_KEY_HANDLE), ULONG, ULONG]
+    bcrypt.BCryptGenerateKeyPair.restype = NTSTATUS
+
+    bcrypt.BCryptFinalizeKeyPair.argtypes = [BCRYPT_KEY_HANDLE, ULONG]
+    bcrypt.BCryptFinalizeKeyPair.restype = NTSTATUS
+
+    bcrypt.BCryptExportKey.argtypes = [BCRYPT_KEY_HANDLE, BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, POINTER(ULONG), ULONG]
+    bcrypt.BCryptExportKey.restype = NTSTATUS
+
+    bcrypt.BCryptGetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, POINTER(ULONG), ULONG]
+    bcrypt.BCryptGetProperty.restype = NTSTATUS
+
+    bcrypt.BCryptSetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, c_void_p, ULONG, ULONG]
+    bcrypt.BCryptSetProperty.restype = NTSTATUS
+
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
 
-def format_error():
-    return FormatError(GetLastError())
 
-
-class BCRYOT_RSAKEY_BLOB(Structure):
+class BCRYPT_RSAKEY_BLOB(Structure):
     _fields_ = [
         ('Magic', ULONG),
         ('BitLength', ULONG),
@@ -70,9 +88,9 @@ class BCRYPT_DSA_KEY_BLOB(Structure):
     _fields_ = [
         ('dwMagic', ULONG),
         ('cbKey', ULONG),
-        ('Count', wintypes.UCHAR * 4),
-        ('Seed', wintypes.UCHAR * 20),
-        ('q', wintypes.UCHAR * 20),
+        ('Count', wintypes.CHAR * 4),
+        ('Seed', wintypes.CHAR * 20),
+        ('q', wintypes.CHAR * 20),
     ]
 
 
@@ -84,13 +102,13 @@ class BCRYPT_DSA_KEY_BLOB_V2(Structure):
         ('standardVersion', wintypes.INT),
         ('cbSeedLength', ULONG),
         ('cbGroupSize', ULONG),
-        ('Count', wintypes.UCHAR * 4),
+        ('Count', wintypes.CHAR * 4),
     ]
 
 
 class BCRYPT_ECCKEY_BLOB(Structure):
     _fields_ = [
-        ('Magic', ULONG),
+        ('dwMagic', ULONG),
         ('cbKey', ULONG),
     ]
 
@@ -118,7 +136,12 @@ class BCRYPT_KEY_DATA_BLOB_HEADER(Structure):
 setattr(bcrypt, 'BCRYPT_ALG_HANDLE', BCRYPT_ALG_HANDLE)
 setattr(bcrypt, 'BCRYPT_KEY_HANDLE', BCRYPT_KEY_HANDLE)
 
-setattr(bcrypt, 'BCRYOT_RSAKEY_BLOB', BCRYOT_RSAKEY_BLOB)
+setattr(bcrypt, 'BCRYPT_RNG_ALGORITHM', 'RNG')
+
+setattr(bcrypt, 'BCRYPT_KEY_LENGTH', 'KeyLength')
+setattr(bcrypt, 'BCRYPT_EFFECTIVE_KEY_LENGTH', 'EffectiveKeyLength')
+
+setattr(bcrypt, 'BCRYPT_RSAKEY_BLOB', BCRYPT_RSAKEY_BLOB)
 setattr(bcrypt, 'BCRYPT_DSA_KEY_BLOB', BCRYPT_DSA_KEY_BLOB)
 setattr(bcrypt, 'BCRYPT_DSA_KEY_BLOB_V2', BCRYPT_DSA_KEY_BLOB_V2)
 setattr(bcrypt, 'BCRYPT_ECCKEY_BLOB', BCRYPT_ECCKEY_BLOB)
@@ -127,6 +150,7 @@ setattr(bcrypt, 'BCRYPT_PSS_PADDING_INFO', BCRYPT_PSS_PADDING_INFO)
 setattr(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER', BCRYPT_KEY_DATA_BLOB_HEADER)
 
 setattr(bcrypt, 'BCRYPT_RSAPRIVATE_BLOB', 'RSAPRIVATEBLOB')
+setattr(bcrypt, 'BCRYPT_RSAFULLPRIVATE_BLOB', 'RSAFULLPRIVATEBLOB')
 setattr(bcrypt, 'BCRYPT_RSAPUBLIC_BLOB', 'RSAPUBLICBLOB')
 setattr(bcrypt, 'BCRYPT_DSA_PRIVATE_BLOB', 'DSAPRIVATEBLOB')
 setattr(bcrypt, 'BCRYPT_DSA_PUBLIC_BLOB', 'DSAPUBLICBLOB')
@@ -139,6 +163,8 @@ setattr(bcrypt, 'BCRYPT_RSAFULLPRIVATE_MAGIC', 0x33415352)
 
 setattr(bcrypt, 'BCRYPT_DSA_PUBLIC_MAGIC', 0x42505344)
 setattr(bcrypt, 'BCRYPT_DSA_PRIVATE_MAGIC', 0x56505344)
+setattr(bcrypt, 'BCRYPT_DSA_PUBLIC_MAGIC_V2', 0x32425044)
+setattr(bcrypt, 'BCRYPT_DSA_PRIVATE_MAGIC_V2', 0x32565044)
 
 setattr(bcrypt, 'DSA_HASH_ALGORITHM_SHA1', 0)
 setattr(bcrypt, 'DSA_HASH_ALGORITHM_SHA256', 1)
@@ -147,10 +173,12 @@ setattr(bcrypt, 'DSA_HASH_ALGORITHM_SHA512', 2)
 setattr(bcrypt, 'DSA_FIPS186_2', 0)
 setattr(bcrypt, 'DSA_FIPS186_3', 1)
 
+setattr(bcrypt, 'BCRYPT_NO_KEY_VALIDATION', 8)
+
 setattr(bcrypt, 'BCRYPT_ECDSA_PUBLIC_P256_MAGIC', 0x31534345)
 setattr(bcrypt, 'BCRYPT_ECDSA_PRIVATE_P256_MAGIC', 0x32534345)
 setattr(bcrypt, 'BCRYPT_ECDSA_PUBLIC_P384_MAGIC', 0x33534345)
-setattr(bcrypt, 'BCRYPT_ECDSA_PRIVATE_P386_MAGIC', 0x34534345)
+setattr(bcrypt, 'BCRYPT_ECDSA_PRIVATE_P384_MAGIC', 0x34534345)
 setattr(bcrypt, 'BCRYPT_ECDSA_PUBLIC_P521_MAGIC', 0x35534345)
 setattr(bcrypt, 'BCRYPT_ECDSA_PRIVATE_P521_MAGIC', 0x36534345)
 
@@ -163,6 +191,7 @@ setattr(bcrypt, 'STATUS_INVALID_SIGNATURE', 0xC000A000)
 setattr(bcrypt, 'STATUS_NOT_SUPPORTED', 0xC00000BB)
 setattr(bcrypt, 'STATUS_BUFFER_TOO_SMALL', 0xC0000023)
 setattr(bcrypt, 'STATUS_INVALID_BUFFER_SIZE', 0xC0000206)
+
 
 setattr(bcrypt, 'BCRYPT_KEY_DATA_BLOB_MAGIC', 0x4d42444b)
 setattr(bcrypt, 'BCRYPT_KEY_DATA_BLOB_VERSION1', 0x00000001)
