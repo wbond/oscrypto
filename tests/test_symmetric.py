@@ -70,6 +70,17 @@ class SymmetricTests(unittest.TestCase):
         plaintext = symmetric.rc2_cbc_pkcs5_decrypt(key, ciphertext, iv)
         self.assertEqual(data, plaintext)
 
+    def test_rc2_40_encrypt_decrypt(self):
+        key = util.rand_bytes(5)
+        data = b'This is data to encrypt'
+
+        iv, ciphertext = symmetric.rc2_cbc_pkcs5_encrypt(key, data, None)
+        self.assertNotEqual(data, ciphertext)
+        self.assertEqual(byte_cls, type(ciphertext))
+
+        plaintext = symmetric.rc2_cbc_pkcs5_decrypt(key, ciphertext, iv)
+        self.assertEqual(data, plaintext)
+
     def test_des_encrypt_decrypt(self):
         key = util.rand_bytes(8)
         data = b'This is data to encrypt'
