@@ -141,8 +141,8 @@ class KeyTests(unittest.TestCase):
         self.assertEqual([], extra_cert_infos)
 
         # Make sure we can parse the DER
-        _ = asn1crypto.keys.PrivateKeyInfo.load(key_info[0]).native
-        _ = asn1crypto.x509.Certificate.load(cert_info[0]).native
+        _ = key_info[0].native
+        _ = cert_info[0].native
 
     def test_parse_pkcs12_chain(self):
         with open(os.path.join(fixtures_dir, 'keys/test-third.p12'), 'rb') as f:
