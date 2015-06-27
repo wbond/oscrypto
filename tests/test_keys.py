@@ -144,6 +144,24 @@ class KeyTests(unittest.TestCase):
         _ = key_info[0].native
         _ = cert_info[0].native
 
+    def test_parse_pkcs12_dsa(self):
+        with open(os.path.join(fixtures_dir, 'keys/test-dsa.p12'), 'rb') as f:
+            key_info, cert_info, extra_cert_infos = keys.parse_pkcs12(f.read(), b'password123')
+
+        with open(os.path.join(fixtures_dir, 'keys/test-pkcs8-dsa-der.key'), 'rb') as f:
+            key_der = f.read()
+
+        with open(os.path.join(fixtures_dir, 'keys/test-dsa-der.crt'), 'rb') as f:
+            cert_der = f.read()
+
+        self.assertEqual(key_der, key_info[0].dump())
+        self.assertEqual(cert_der, cert_info[0].dump())
+        self.assertEqual([], extra_cert_infos)
+
+        # Make sure we can parse the DER
+        _ = key_info[0].native
+        _ = cert_info[0].native
+
     def test_parse_pkcs12_chain(self):
         with open(os.path.join(fixtures_dir, 'keys/test-third.p12'), 'rb') as f:
             key_info, cert_info, extra_cert_infos = keys.parse_pkcs12(f.read(), b'password123')
