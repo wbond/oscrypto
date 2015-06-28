@@ -2,6 +2,9 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
+import math
+
+from asn1crypto.keys import PublicKeyInfo
 
 from .._ffi import new
 from ._security import Security, handle_sec_error
@@ -163,20 +166,7 @@ def load_private_key(source, source_type, password=None):
         raise ValueError('source is not a byte string')
 
     private_object, algo = parse_private(source, password)
-
-    if private_object.algorithm == 'ecdsa':
-        curve_type, details = private_object.curve
-        if curve_type != 'named':
-            raise PrivateKeyError('OS X only supports ECDSA private keys using named curves')
-        if details not in ('secp256r1', 'secp384r1', 'secp521r1'):
-            raise PrivateKeyError('OS X only supports ECDSA private keys using the named curves secp256r1, secp384r1 and secp521r1')
-
-    elif private_object.algorithm == 'dsa':
-        if private_object.bit_size > 2048:
-            raise PrivateKeyError('OS X only supports DSA private keys of 2048 bits or less, this key is %s bits' % private_object.bit_size)
-
-    source = private_object.unwrap().dump()
-    return _load_key(source, algo, Security.kSecAttrKeyClassPrivate)
+    return _load_key(private_object, algo)
 
 
 def load_public_key(source, source_type):
@@ -208,25 +198,40 @@ def load_public_key(source, source_type):
         raise ValueError('source is not a byte string')
 
     public_key, algo = parse_public(source)
-    return _load_key(public_key.dump(), algo, Security.kSecAttrKeyClassPublic)
+    return _load_key(public_key, algo)
 
 
-def _load_key(source, algo, key_class):
+def _load_key(key_object, algo):
     """
     Loads a private or public key into a format usable with various functions
 
-    :param source:
-        A byte string of the DER-encoded key
+    :param key_object:
+        An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
+        object
 
     :param algo:
         A unicode string of "rsa", "dsa" or "ecdsa"
 
-    :param key_class:
-        Security.kSecAttrKeyClassPrivate or Security.kSecAttrKeyClassPublic
-
     :return:
         A PrivateKey or PublicKey object
     """
+
+    if key_object.algorithm == 'ecdsa':
+        curve_type, details = key_object.curve
+        if curve_type != 'named':
+            raise PrivateKeyError('OS X only supports ECDSA keys using named curves')
+        if details not in ('secp256r1', 'secp384r1', 'secp521r1'):
+            raise PrivateKeyError('OS X only supports ECDSA keys using the named curves secp256r1, secp384r1 and secp521r1')
+
+    elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
+        raise PrivateKeyError('OS X only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % key_object.bit_size)
+
+    if isinstance(key_object, PublicKeyInfo):
+        source = key_object.dump()
+        key_class = Security.kSecAttrKeyClassPublic
+    else:
+        source = key_object.unwrap().dump()
+        key_class = Security.kSecAttrKeyClassPrivate
 
     cf_source = None
     cf_dict = None
@@ -307,7 +312,7 @@ def load_pkcs12(source, source_type, password=None):
     cert = None
 
     if key_info:
-        key = _load_key(key_info[0], key_info[1], Security.kSecAttrKeyClassPrivate)
+        key = _load_key(key_info[0], key_info[1])
 
     if cert_info:
         cert = _load_x509(cert_info[0], cert_info[1])

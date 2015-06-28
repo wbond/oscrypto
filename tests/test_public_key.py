@@ -7,8 +7,6 @@ import os
 
 from oscrypto import public_key, errors
 
-from .unittest_data import DataDecorator, data
-
 if sys.version_info < (3,):
     byte_cls = str
 else:
@@ -19,7 +17,11 @@ tests_root = os.path.dirname(__file__)
 fixtures_dir = os.path.join(tests_root, 'fixtures')
 
 
-@DataDecorator
+def _win_version_pair():
+    ver_info = sys.getwindowsversion()
+    return (ver_info.major, ver_info.minor)
+
+
 class PublicKeyTests(unittest.TestCase):
 
     def test_rsa_verify(self):
@@ -66,7 +68,7 @@ class PublicKeyTests(unittest.TestCase):
 
         public_key.dsa_verify(public, signature, original_data, 'sha1')
 
-    def test_dsa_2048_sign(self):
+    def test_dsa_2048_sha1_sign(self):
         original_data = b'This is data to sign'
         private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048.key'), 'file')
         public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048.crt'), 'file')
@@ -76,16 +78,56 @@ class PublicKeyTests(unittest.TestCase):
 
         public_key.dsa_verify(public, signature, original_data, 'sha1')
 
-    @unittest.skipIf(sys.platform == 'darwin', "OS X does not support DSA keys > 2048")
+    def test_dsa_2048_sha2_sign(self):
+        def do_run():
+            original_data = b'This is data to sign'
+            private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048-sha2.key'), 'file')
+            public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048-sha2.crt'), 'file')
+
+            signature = public_key.dsa_sign(private, original_data, 'sha256')
+            self.assertIsInstance(signature, byte_cls)
+
+            public_key.dsa_verify(public, signature, original_data, 'sha256')
+
+        if sys.platform in ('darwin', 'win32'):
+            with self.assertRaises(errors.PrivateKeyError):
+                do_run()
+        else:
+            do_run()
+
     def test_dsa_3072_sign(self):
-        original_data = b'This is data to sign'
-        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa.key'), 'file')
-        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa.crt'), 'file')
+        def do_run():
+            original_data = b'This is data to sign'
+            private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa.key'), 'file')
+            public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa.crt'), 'file')
 
-        signature = public_key.dsa_sign(private, original_data, 'sha1')
-        self.assertIsInstance(signature, byte_cls)
+            signature = public_key.dsa_sign(private, original_data, 'sha256')
+            self.assertIsInstance(signature, byte_cls)
 
-        public_key.dsa_verify(public, signature, original_data, 'sha1')
+            public_key.dsa_verify(public, signature, original_data, 'sha256')
+
+        if sys.platform == 'darwin' or (sys.platform == 'win32' and _win_version_pair() < (6, 2)):
+            with self.assertRaises(errors.PrivateKeyError):
+                do_run()
+        else:
+            do_run()
+
+    def test_dsa_3072_sign_sha1(self):
+        def do_run():
+            original_data = b'This is data to sign'
+            private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa.key'), 'file')
+            public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa.crt'), 'file')
+
+            signature = public_key.dsa_sign(private, original_data, 'sha1')
+            self.assertIsInstance(signature, byte_cls)
+
+            public_key.dsa_verify(public, signature, original_data, 'sha1')
+
+        if sys.platform == 'darwin' or sys.platform == 'win32':
+            with self.assertRaises(errors.PrivateKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_ecdsa_sign(self):
         original_data = b'This is data to sign'
