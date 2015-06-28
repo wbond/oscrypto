@@ -30,7 +30,7 @@ ffi.cdef("""
     typedef ... *SecTransformRef;
     typedef ... *SecRandomRef;
 
-    int SecRandomCopyBytes(SecRandomRef rnd, size_t count, uint8_t *bytes);
+    int SecRandomCopyBytes(SecRandomRef rnd, size_t count, unsigned char *bytes);
     SecKeyRef SecKeyCreateFromData(CFDictionaryRef parameters, CFDataRef keyData, CFErrorRef *error);
     SecTransformRef SecEncryptTransformCreate(SecKeyRef keyRef, CFErrorRef *error);
     SecTransformRef SecDecryptTransformCreate(SecKeyRef keyRef, CFErrorRef *error);
