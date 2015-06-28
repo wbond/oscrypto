@@ -6,3 +6,5 @@ build/
 dist/
 tests/output/
 .DS_Store
+oscrypto.sublime-project
+oscrypto.sublime-workspace
