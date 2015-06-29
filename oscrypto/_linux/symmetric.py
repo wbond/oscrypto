@@ -422,7 +422,7 @@ def _encrypt(cipher, key, data, iv, padding):
         res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
         if res != 1:
             raise OSError(extract_openssl_error())
-        
+
         buffer = buffer_from_bytes(buffer_size)
         output_length = new(libcrypto, 'int *')
 
@@ -517,7 +517,7 @@ def _decrypt(cipher, key, data, iv, padding):
         res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
         if res != 1:
             raise OSError(extract_openssl_error())
-        
+
         buffer = buffer_from_bytes(buffer_size)
         output_length = new(libcrypto, 'int *')
 
