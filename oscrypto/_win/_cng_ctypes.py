@@ -74,12 +74,6 @@ try:
     bcrypt.BCryptExportKey.argtypes = [BCRYPT_KEY_HANDLE, BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, POINTER(ULONG), ULONG]
     bcrypt.BCryptExportKey.restype = NTSTATUS
 
-    bcrypt.BCryptGetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, POINTER(ULONG), ULONG]
-    bcrypt.BCryptGetProperty.restype = NTSTATUS
-
-    bcrypt.BCryptSetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, c_void_p, ULONG, ULONG]
-    bcrypt.BCryptSetProperty.restype = NTSTATUS
-
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
