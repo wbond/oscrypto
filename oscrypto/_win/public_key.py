@@ -7,7 +7,7 @@ import hashlib
 from asn1crypto.keys import PublicKeyInfo
 from asn1crypto import core
 
-from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer
+from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer, wrap_pointer, unwrap, buffer_from_unicode
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._int_conversion import int_to_bytes, int_from_bytes, fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -321,9 +321,11 @@ def _load_key(key_object, algo, container):
             if key_type == 'private':
                 blob += private_bytes
 
-        res = bcrypt.BCryptImportKeyPair(alg_handle, null(), blob_type, key_handle, blob, len(blob), bcrypt_const.BCRYPT_NO_KEY_VALIDATION)
+        key_handle_pointer = wrap_pointer(key_handle)
+        res = bcrypt.BCryptImportKeyPair(alg_handle, null(), blob_type, key_handle_pointer, blob, len(blob), bcrypt_const.BCRYPT_NO_KEY_VALIDATION)
         handle_error(res)
 
+        key_handle = unwrap(key_handle_pointer)
         return container(key_handle, algo, curve_name, bit_size)
 
     finally:
@@ -621,9 +623,11 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     if certificate_or_public_key.algo == 'rsa':
         flags = bcrypt_const.BCRYPT_PAD_PKCS1
-        padding_info = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
-        padding_info.pszAlgId = hash_constant
-        padding_info = void_pointer(padding_info)
+        padding_info_struct = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        # This has to be assigned to a variable to prevent cffi from gc'ing it
+        hash_buffer = buffer_from_unicode(hash_constant)
+        padding_info_struct.pszAlgId = hash_buffer
+        padding_info = void_pointer(padding_info_struct)
     else:
         # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
@@ -763,7 +767,9 @@ def _sign(private_key, data, hash_algorithm):
     if private_key.algo == 'rsa':
         flags = bcrypt_const.BCRYPT_PAD_PKCS1
         padding_info_struct = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
-        padding_info_struct.pszAlgId = hash_constant
+        # This has to be assigned to a variable to prevent cffi from gc'ing it
+        hash_buffer = buffer_from_unicode(hash_constant)
+        padding_info_struct.pszAlgId = hash_buffer
         padding_info = void_pointer(padding_info_struct)
 
     if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in ('md5', 'sha1'):

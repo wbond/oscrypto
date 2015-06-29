@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p
+from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p, c_char
 from ctypes.wintypes import ULONG, DWORD, LPCWSTR
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
@@ -50,7 +50,7 @@ try:
     bcrypt.BCryptSignHash.argtypes = [BCRYPT_KEY_HANDLE, c_void_p, PBYTE, DWORD, PBYTE, DWORD, POINTER(DWORD), ULONG]
     bcrypt.BCryptSignHash.restype = NTSTATUS
 
-    bcrypt.BCryptSetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptSetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, c_void_p, ULONG, ULONG]
     bcrypt.BCryptSetProperty.restype = NTSTATUS
 
     bcrypt.BCryptEncrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, POINTER(ULONG), ULONG]
@@ -94,9 +94,9 @@ class BCRYPT_DSA_KEY_BLOB(Structure):
     _fields_ = [
         ('dwMagic', ULONG),
         ('cbKey', ULONG),
-        ('Count', wintypes.CHAR * 4),
-        ('Seed', wintypes.CHAR * 20),
-        ('q', wintypes.CHAR * 20),
+        ('Count', c_char * 4),
+        ('Seed', c_char * 20),
+        ('q', c_char * 20),
     ]
 
 
@@ -108,7 +108,7 @@ class BCRYPT_DSA_KEY_BLOB_V2(Structure):
         ('standardVersion', wintypes.INT),
         ('cbSeedLength', ULONG),
         ('cbGroupSize', ULONG),
-        ('Count', wintypes.CHAR * 4),
+        ('Count', c_char * 4),
     ]
 
 

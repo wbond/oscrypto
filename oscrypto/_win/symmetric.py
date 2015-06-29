@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes
+from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes, wrap_pointer, unwrap
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .util import rand_bytes
 
@@ -375,10 +375,11 @@ def _create_key_handle(cipher, key):
             res = bcrypt.BCryptSetProperty(alg_handle, bcrypt_const.BCRYPT_EFFECTIVE_KEY_LENGTH, buf, 4, 0)
             handle_error(res)
 
-        res = bcrypt.BCryptImportKey(alg_handle, null(), blob_type, key_handle, null(), 0, blob, len(blob), 0)
+        key_handle_pointer = wrap_pointer(key_handle)
+        res = bcrypt.BCryptImportKey(alg_handle, null(), blob_type, key_handle_pointer, null(), 0, blob, len(blob), 0)
         handle_error(res)
 
-        return key_handle
+        return unwrap(key_handle_pointer)
 
     finally:
         if alg_handle:

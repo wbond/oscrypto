@@ -9,15 +9,25 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 try:
     from cffi import FFI
 
+    _ffi_registry = {}
 
 
     ffi = FFI()
 
+    def register_ffi(library, ffi_obj):
+        _ffi_registry[library] = ffi_obj
+
     def buffer_from_bytes(initializer):
         return ffi.new('unsigned char[]', initializer)
 
+    def buffer_from_unicode(initializer):
+        return ffi.new('wchar_t []', initializer)
+
     def buffer_pointer(buffer):
         return ffi.new('unsigned char *[]', [buffer])
+
+    def wrap_pointer(p):
+        return ffi.new('void **', p)
 
     def void_pointer(buffer):
         return ffi.cast('void *', buffer)
@@ -43,17 +53,22 @@ try:
     def errno():
         return ffi.errno
 
-    def new(library, type_, value=None):  #pylint: disable=W0613
+    def new(library, type_, value=None):
+        if library in _ffi_registry:
+            ffi_obj = _ffi_registry[library]
+        else:
+            ffi_obj = ffi
+
         params = []
         if value is not None:
             params.append(value)
         # Using try/except here caused significant performance issues, almost as if
         # cffi was trying to reparse the cdef any time it ran into these types.
         if type_ in ('CFErrorRef', 'SecKeyRef'):
-            return ffi.new('void **', *params)
-        if type_ in ('BCRYPT_ALG_HANDLE', 'BCRYPT_KEY_HANDLE'):
-            return ffi.new('void *', *params)
-        return ffi.new(type_, *params)
+            return ffi_obj.new('void **', *params)
+        if type_ in ('BCRYPT_KEY_HANDLE', 'BCRYPT_ALG_HANDLE'):
+            return ffi_obj.cast(type_, 0)
+        return ffi_obj.new(type_, *params)
 
     def cast(value, type_):
         return ffi.cast(type_, value)
@@ -61,26 +76,45 @@ try:
     def deref(point):
         return point[0]
 
-    def struct(library, name):  #pylint: disable=W0613
-        return ffi.new('struct %s *' % name)
+    def unwrap(point):
+        return point[0]
+
+    def get_ffi(library):
+        if library in _ffi_registry:
+            return _ffi_registry[library]
+        else:
+            return ffi
+
+    def struct(library, name):
+        if library in _ffi_registry:
+            ffi_obj = _ffi_registry[library]
+        else:
+            ffi_obj = ffi
+        return ffi_obj.new('struct %s *' % name)
 
     def struct_bytes(struct_):
-        return ffi.buffer(struct_, ffi.sizeof(struct_))[:]
+        return ffi.buffer(struct_)[:]
 
     engine = 'cffi'
 
 except (ImportError):
 
     import ctypes
-    from ctypes import create_string_buffer, get_errno, pointer, c_int, c_char_p, c_uint, string_at, sizeof, addressof, c_void_p
+    from ctypes import pointer, c_int, c_char_p, c_uint, string_at, sizeof, addressof, c_void_p
 
 
 
     def buffer_from_bytes(initializer):
-        return create_string_buffer(initializer)
+        return ctypes.create_string_buffer(initializer)
+
+    def buffer_from_unicode(initializer):
+        return ctypes.create_unicode_buffer(initializer)
 
     def buffer_pointer(buffer):
         return pointer(ctypes.cast(buffer, c_char_p))
+
+    def wrap_pointer(p):
+        return pointer(p)
 
     def void_pointer(buffer):
         return c_void_p(addressof(buffer))
@@ -100,21 +134,32 @@ except (ImportError):
         return not bool(point)
 
     def errno():
-        return get_errno()
+        return ctypes.get_errno()
 
     def new(library, type_, value=None):
         params = []
         if value is not None:
             params.append(value)
-        if type_ == 'int *':
-            return pointer(c_int(*params))
-        if type_ == 'unsigned int *':
-            return pointer(c_uint(*params))
-        if type_ == 'ULONG *':
-            return pointer(ctypes.wintypes.ULONG(*params))
-        if type_ == 'DWORD *':
-            return pointer(ctypes.wintypes.DWORD(*params))
-        return getattr(library, type_)(*params)
+
+        is_pointer = type_[-2:] == ' *'
+        if is_pointer:
+            type_ = type_[:-2]
+
+        if type_ == 'int':
+            output = c_int(*params)
+        elif type_ == 'unsigned int':
+            output = c_uint(*params)
+        elif type_ == 'ULONG':
+            output = ctypes.wintypes.ULONG(*params)
+        elif type_ == 'DWORD':
+            output = ctypes.wintypes.DWORD(*params)
+        else:
+            output = getattr(library, type_)(*params)
+
+        if is_pointer:
+            output = pointer(output)
+
+        return output
 
     def cast(value, type_):
         if type_ == 'char *':
@@ -123,6 +168,9 @@ except (ImportError):
 
     def deref(point):
         return point[0]
+
+    def unwrap(point):
+        return point.contents
 
     def struct(library, name):
         return getattr(library, name)()

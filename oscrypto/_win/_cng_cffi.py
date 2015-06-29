@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
     from cffi import FFI
@@ -24,62 +24,63 @@ ffi = FFI()
 # without having to redefine the structs in our code. This is kind of a hack,
 # but it should cause problems since we treat these as opaque.
 ffi.cdef("""
-    typedef BCRYPT_ALG_HANDLE HANDLE;
-    typedef BCRYPT_KEY_HANDLE HANDLE;
+    typedef HANDLE BCRYPT_ALG_HANDLE;
+    typedef HANDLE BCRYPT_KEY_HANDLE;
     typedef ULONG NTSTATUS;
     typedef unsigned char *PUCHAR;
     typedef unsigned char *PBYTE;
 
+
     struct BCRYPT_RSAKEY_BLOB {
-        Magic ULONG;
-        BitLength ULONG;
-        cbPublicExp ULONG;
-        cbModulus ULONG;
-        cbPrime1 ULONG;
-        cbPrime2 ULONG;
+        ULONG Magic;
+        ULONG BitLength;
+        ULONG cbPublicExp;
+        ULONG cbModulus;
+        ULONG cbPrime1;
+        ULONG cbPrime2;
     };
 
     struct BCRYPT_DSA_KEY_BLOB {
-        dwMagic ULONG;
-        cbKey ULONG;
-        Count UCHAR[4];
-        Seed UCHAR[20];
-        q UCHAR[20];
+        ULONG dwMagic;
+        ULONG cbKey;
+        UCHAR Count[4];
+        UCHAR Seed[20];
+        UCHAR q[20];
     };
 
     struct BCRYPT_DSA_KEY_BLOB_V2 {
-        dwMagic ULONG;
-        cbKey ULONG;
-        hashAlgorithm INT;
-        standardVersion INT;
-        cbSeedLength ULONG;
-        cbGroupSize ULONG;
-        Count UCHAR[4];
+        ULONG dwMagic;
+        ULONG cbKey;
+        INT hashAlgorithm;
+        INT standardVersion;
+        ULONG cbSeedLength;
+        ULONG cbGroupSize;
+        UCHAR Count[4];
     };
 
     struct BCRYPT_ECCKEY_BLOB {
-        dwMagic ULONG;
-        cbKey ULONG;
+        ULONG dwMagic;
+        ULONG cbKey;
     };
 
     struct BCRYPT_PKCS1_PADDING_INFO {
-        pszAlgId LPCWSTR;
+        LPCWSTR pszAlgId;
     };
 
     struct BCRYPT_PSS_PADDING_INFO {
-        pszAlgId LPCWSTR;
-        cbSalt ULONG;
+        LPCWSTR pszAlgId;
+        ULONG cbSalt;
     };
 
     struct BCRYPT_KEY_DATA_BLOB_HEADER {
-        dwMagic ULONG;
-        dwVersion ULONG;
-        cbKeyData ULONG;
+        ULONG dwMagic;
+        ULONG dwVersion;
+        ULONG cbKeyData;
     };
 
     NTSTATUS BCryptOpenAlgorithmProvider(BCRYPT_ALG_HANDLE *phAlgorithm, LPCWSTR pszAlgId, LPCWSTR pszImplementation, DWORD dwFlags);
     NTSTATUS BCryptCloseAlgorithmProvider(BCRYPT_ALG_HANDLE hAlgorithm, DWORD dwFlags);
-    NTSTATUS BCryptSetProperty(HANDLE hObject, LPCWSTR pszProperty, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags);
+    NTSTATUS BCryptSetProperty(HANDLE hObject, LPCWSTR pszProperty, ULONG *pbInput, ULONG cbInput, ULONG dwFlags);
 
     NTSTATUS BCryptImportKeyPair(BCRYPT_ALG_HANDLE hAlgorithm, BCRYPT_KEY_HANDLE hImportKey, LPCWSTR pszBlobType, BCRYPT_KEY_HANDLE *phKey, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags);
     NTSTATUS BCryptImportKey(BCRYPT_ALG_HANDLE hAlgorithm, BCRYPT_KEY_HANDLE hImportKey, LPCWSTR pszBlobType, BCRYPT_KEY_HANDLE *phKey, PUCHAR pbKeyObject, ULONG cbKeyObject, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags);
@@ -103,6 +104,8 @@ ffi.cdef("""
 
 try:
     bcrypt = ffi.dlopen('bcrypt.dll')
+    register_ffi(bcrypt, ffi)
+
 except (OSError) as e:
     if str_cls(e).find('cannot load library') != -1:
         raise LibraryNotFoundError('bcrypt.dll could not be found - Windows XP and Server 2003 are not supported')

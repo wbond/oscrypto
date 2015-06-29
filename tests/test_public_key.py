@@ -5,7 +5,7 @@ import unittest
 import sys
 import os
 
-from oscrypto import public_key, errors
+from oscrypto import public_key, errors, _int_conversion
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -69,14 +69,21 @@ class PublicKeyTests(unittest.TestCase):
         public_key.dsa_verify(public, signature, original_data, 'sha1')
 
     def test_dsa_2048_sha1_sign(self):
-        original_data = b'This is data to sign'
-        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048.key'), 'file')
-        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048.crt'), 'file')
+        def do_run():
+            original_data = b'This is data to sign'
+            private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048.key'), 'file')
+            public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-2048.crt'), 'file')
 
-        signature = public_key.dsa_sign(private, original_data, 'sha1')
-        self.assertIsInstance(signature, byte_cls)
+            signature = public_key.dsa_sign(private, original_data, 'sha1')
+            self.assertIsInstance(signature, byte_cls)
 
-        public_key.dsa_verify(public, signature, original_data, 'sha1')
+            public_key.dsa_verify(public, signature, original_data, 'sha1')
+
+        if sys.platform == 'win32':
+            with self.assertRaises(errors.PrivateKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_dsa_2048_sha2_sign(self):
         def do_run():
@@ -89,7 +96,7 @@ class PublicKeyTests(unittest.TestCase):
 
             public_key.dsa_verify(public, signature, original_data, 'sha256')
 
-        if sys.platform in ('darwin', 'win32'):
+        if sys.platform == 'darwin' or (sys.platform == 'win32' and _win_version_pair() < (6, 2)):
             with self.assertRaises(errors.PrivateKeyError):
                 do_run()
         else:
@@ -123,8 +130,11 @@ class PublicKeyTests(unittest.TestCase):
 
             public_key.dsa_verify(public, signature, original_data, 'sha1')
 
-        if sys.platform == 'darwin' or sys.platform == 'win32':
+        if sys.platform == 'darwin':
             with self.assertRaises(errors.PrivateKeyError):
+                do_run()
+        elif sys.platform == 'win32':
+            with self.assertRaises(ValueError):
                 do_run()
         else:
             do_run()
