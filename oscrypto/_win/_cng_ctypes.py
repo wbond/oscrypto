@@ -1,14 +1,26 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import sys
+
 from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p
 from ctypes.wintypes import ULONG, DWORD, LPCWSTR
 
-from .._ffi import FFIEngineError
+from .._ffi import FFIEngineError, LibraryNotFoundError
+
+if sys.version_info < (3,):
+    str_cls = unicode  #pylint: disable=E0602
+else:
+    str_cls = str
 
 
 
-bcrypt = windll.bcrypt
+try:
+    bcrypt = windll.bcrypt
+except (OSError) as e:
+    if str_cls(e).find('The specified module could not be found') != -1:
+        raise LibraryNotFoundError('bcrypt.dll could not be found - Windows XP and Server 2003 are not supported')
+    raise
 
 BCRYPT_ALG_HANDLE = wintypes.HANDLE
 BCRYPT_KEY_HANDLE = wintypes.HANDLE
