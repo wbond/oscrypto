@@ -72,13 +72,6 @@ ffi.cdef("""
     CFBooleanRef kCFBooleanTrue;
     CFDictionaryKeyCallBacks kCFTypeDictionaryKeyCallBacks;
     CFDictionaryValueCallBacks kCFTypeDictionaryValueCallBacks;
-
-    enum {
-        kCFNumberCFIndexType = 14
-    };
-    enum {
-        kCFStringEncodingUTF8 = 0x08000100
-    };
 """)
 
 core_foundation_path = find_library('CoreFoundation')
@@ -87,6 +80,8 @@ if not core_foundation_path:
 
 CoreFoundation = ffi.dlopen(core_foundation_path)
 
+kCFNumberCFIndexType = 14
+kCFStringEncodingUTF8 = 0x08000100
 
 
 class CFHelpers():

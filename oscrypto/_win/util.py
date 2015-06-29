@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer
-from ._cng import bcrypt, handle_error, open_alg_handle, close_alg_handle
+from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._pkcs12 import pkcs12_kdf  #pylint: disable=W0611
 
 if sys.version_info < (3,):
@@ -61,16 +61,16 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         raise ValueError('hash_algorithm must be one of "sha1", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
 
     alg_constant = {
-        'sha1': bcrypt.BCRYPT_SHA1_ALGORITHM,
-        'sha256': bcrypt.BCRYPT_SHA256_ALGORITHM,
-        'sha384': bcrypt.BCRYPT_SHA384_ALGORITHM,
-        'sha512': bcrypt.BCRYPT_SHA512_ALGORITHM
+        'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
+        'sha256': bcrypt_const.BCRYPT_SHA256_ALGORITHM,
+        'sha384': bcrypt_const.BCRYPT_SHA384_ALGORITHM,
+        'sha512': bcrypt_const.BCRYPT_SHA512_ALGORITHM
     }[hash_algorithm]
 
     alg_handle = None
 
     try:
-        alg_handle = open_alg_handle(alg_constant, bcrypt.BCRYPT_ALG_HANDLE_HMAC_FLAG)
+        alg_handle = open_alg_handle(alg_constant, bcrypt_const.BCRYPT_ALG_HANDLE_HMAC_FLAG)
 
         output_buffer = buffer_from_bytes(key_length)
         res = bcrypt.BCryptDeriveKeyPBKDF2(alg_handle, password, len(password), salt, len(salt), iterations, output_buffer, key_length, 0)
@@ -109,7 +109,7 @@ def rand_bytes(length):
     alg_handle = None
 
     try:
-        alg_handle = open_alg_handle(bcrypt.BCRYPT_RNG_ALGORITHM)
+        alg_handle = open_alg_handle(bcrypt_const.BCRYPT_RNG_ALGORITHM)
         buffer = buffer_from_bytes(length)
 
         res = bcrypt.BCryptGenRandom(alg_handle, buffer, length, 0)

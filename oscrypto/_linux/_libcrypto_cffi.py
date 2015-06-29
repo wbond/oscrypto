@@ -69,7 +69,7 @@ ffi.cdef("""
                     long length);
     EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length);
     void EVP_PKEY_free(EVP_PKEY *key);
-    
+
     X509 *d2i_X509(X509 **px, const unsigned char **in, int len);
     EVP_PKEY *X509_get_pubkey(X509 *x);
     void X509_free(X509 *a);
@@ -101,11 +101,6 @@ ffi.cdef("""
     int PKCS12_key_gen_uni(unsigned char *pass, int passlen, unsigned char *salt,
                     int saltlen, int id, int iter, int n,
                     unsigned char *out, const EVP_MD *md_type);
-
-    enum {
-        EVP_CTRL_SET_RC2_KEY_BITS = 3,
-    };
-
 """)
 
 libcrypto_path = find_library('crypto')

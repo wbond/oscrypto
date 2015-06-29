@@ -171,5 +171,3 @@ try:
 
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
-
-setattr(libcrypto, 'EVP_CTRL_SET_RC2_KEY_BITS', 3)

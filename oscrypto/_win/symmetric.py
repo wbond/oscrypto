@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes
-from ._cng import bcrypt, handle_error, open_alg_handle, close_alg_handle
+from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .util import rand_bytes
 
 if sys.version_info < (3,):
@@ -349,30 +349,30 @@ def _create_key_handle(cipher, key):
     alg_handle = None
 
     alg_constant = {
-        'aes': bcrypt.BCRYPT_AES_ALGORITHM,
-        'des': bcrypt.BCRYPT_DES_ALGORITHM,
-        'tripledes_2key': bcrypt.BCRYPT_3DES_112_ALGORITHM,
-        'tripledes_3key': bcrypt.BCRYPT_3DES_ALGORITHM,
-        'rc2': bcrypt.BCRYPT_RC2_ALGORITHM,
-        'rc4': bcrypt.BCRYPT_RC4_ALGORITHM,
+        'aes': bcrypt_const.BCRYPT_AES_ALGORITHM,
+        'des': bcrypt_const.BCRYPT_DES_ALGORITHM,
+        'tripledes_2key': bcrypt_const.BCRYPT_3DES_112_ALGORITHM,
+        'tripledes_3key': bcrypt_const.BCRYPT_3DES_ALGORITHM,
+        'rc2': bcrypt_const.BCRYPT_RC2_ALGORITHM,
+        'rc4': bcrypt_const.BCRYPT_RC4_ALGORITHM,
     }[cipher]
 
     try:
         alg_handle = open_alg_handle(alg_constant)
-        blob_type = bcrypt.BCRYPT_KEY_DATA_BLOB
+        blob_type = bcrypt_const.BCRYPT_KEY_DATA_BLOB
 
         key_handle = new(bcrypt, 'BCRYPT_KEY_HANDLE')
 
         blob_struct = struct(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER')
-        blob_struct.dwMagic = bcrypt.BCRYPT_KEY_DATA_BLOB_MAGIC
-        blob_struct.dwVersion = bcrypt.BCRYPT_KEY_DATA_BLOB_VERSION1
+        blob_struct.dwMagic = bcrypt_const.BCRYPT_KEY_DATA_BLOB_MAGIC
+        blob_struct.dwVersion = bcrypt_const.BCRYPT_KEY_DATA_BLOB_VERSION1
         blob_struct.cbKeyData = len(key)
 
         blob = struct_bytes(blob_struct) + key
 
         if cipher == 'rc2':
             buf = new(bcrypt, 'DWORD *', len(key) * 8)
-            res = bcrypt.BCryptSetProperty(alg_handle, bcrypt.BCRYPT_EFFECTIVE_KEY_LENGTH, buf, 4, 0)
+            res = bcrypt.BCryptSetProperty(alg_handle, bcrypt_const.BCRYPT_EFFECTIVE_KEY_LENGTH, buf, 4, 0)
             handle_error(res)
 
         res = bcrypt.BCryptImportKey(alg_handle, null(), blob_type, key_handle, null(), 0, blob, len(blob), 0)
@@ -436,7 +436,7 @@ def _encrypt(cipher, key, data, iv, padding):
 
         flags = 0
         if padding is True:
-            flags = bcrypt.BCRYPT_BLOCK_PADDING
+            flags = bcrypt_const.BCRYPT_BLOCK_PADDING
 
         out_len = new(bcrypt, 'ULONG *')
         res = bcrypt.BCryptEncrypt(key_handle, data, len(data), null(), null(), 0, null(), 0, out_len, flags)
@@ -507,7 +507,7 @@ def _decrypt(cipher, key, data, iv, padding):
 
         flags = 0
         if padding is True:
-            flags = bcrypt.BCRYPT_BLOCK_PADDING
+            flags = bcrypt_const.BCRYPT_BLOCK_PADDING
 
         out_len = new(bcrypt, 'ULONG *')
         res = bcrypt.BCryptDecrypt(key_handle, data, len(data), null(), null(), 0, null(), 0, out_len, flags)

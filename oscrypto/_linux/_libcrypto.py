@@ -58,3 +58,7 @@ def extract_openssl_error():
     error_string = byte_string_from_buffer(buffer)
 
     return _try_decode(error_string)
+
+
+class libcrypto_const():
+    EVP_CTRL_SET_RC2_KEY_BITS = 3

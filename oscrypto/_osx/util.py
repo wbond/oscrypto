@@ -5,7 +5,7 @@ import os
 import sys
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer, errno, byte_string_from_buffer
-from ._common_crypto import CommonCrypto
+from ._common_crypto import CommonCrypto, common_crypto_const
 from ._libcrypto import libcrypto
 from ._security import Security
 
@@ -125,15 +125,15 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
 
     algo = {
-        'sha1': CommonCrypto.kCCPRFHmacAlgSHA1,
-        'sha224': CommonCrypto.kCCPRFHmacAlgSHA224,
-        'sha256': CommonCrypto.kCCPRFHmacAlgSHA256,
-        'sha384': CommonCrypto.kCCPRFHmacAlgSHA384,
-        'sha512': CommonCrypto.kCCPRFHmacAlgSHA512
+        'sha1': common_crypto_const.kCCPRFHmacAlgSHA1,
+        'sha224': common_crypto_const.kCCPRFHmacAlgSHA224,
+        'sha256': common_crypto_const.kCCPRFHmacAlgSHA256,
+        'sha384': common_crypto_const.kCCPRFHmacAlgSHA384,
+        'sha512': common_crypto_const.kCCPRFHmacAlgSHA512
     }[hash_algorithm]
 
     output_buffer = buffer_from_bytes(key_length)
-    result = CommonCrypto.CCKeyDerivationPBKDF(CommonCrypto.kCCPBKDF2, password, len(password), salt, len(salt), algo, iterations, output_buffer, key_length)
+    result = CommonCrypto.CCKeyDerivationPBKDF(common_crypto_const.kCCPBKDF2, password, len(password), salt, len(salt), algo, iterations, output_buffer, key_length)
     if result != 0:
         raise OSError(extract_error())
 

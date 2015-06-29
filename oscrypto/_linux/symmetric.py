@@ -5,7 +5,7 @@ import sys
 import math
 
 from .._ffi import new, null, is_null, buffer_from_bytes, bytes_from_buffer, deref
-from ._libcrypto import libcrypto, extract_openssl_error
+from ._libcrypto import libcrypto, libcrypto_const, extract_openssl_error
 from .util import rand_bytes
 
 if sys.version_info < (3,):
@@ -409,7 +409,7 @@ def _encrypt(cipher, key, data, iv, padding):
             if res != 1:
                 raise OSError(extract_openssl_error())
             if cipher == 'rc2':
-                res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
+                res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto_const.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
                 if res != 1:
                     raise OSError(extract_openssl_error())
             evp_cipher = null()
@@ -504,7 +504,7 @@ def _decrypt(cipher, key, data, iv, padding):
             if res != 1:
                 raise OSError(extract_openssl_error())
             if cipher == 'rc2':
-                res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
+                res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto_const.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
                 if res != 1:
                     raise OSError(extract_openssl_error())
             evp_cipher = null()

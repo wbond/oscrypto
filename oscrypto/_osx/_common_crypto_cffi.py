@@ -13,19 +13,7 @@ except (ImportError):
 
 ffi = FFI()
 ffi.cdef("""
-    enum {
-        kCCPBKDF2 = 2,
-    };
-
     typedef uint32_t CCPBKDFAlgorithm;
-
-    enum {
-        kCCPRFHmacAlgSHA1 = 1,
-        kCCPRFHmacAlgSHA224 = 2,
-        kCCPRFHmacAlgSHA256 = 3,
-        kCCPRFHmacAlgSHA384 = 4,
-        kCCPRFHmacAlgSHA512 = 5,
-    };
 
     typedef uint32_t CCPseudoRandomAlgorithm;
     typedef unsigned int uint;
