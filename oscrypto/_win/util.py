@@ -5,7 +5,7 @@ import sys
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer
 from ._cng import bcrypt, handle_error, open_alg_handle, close_alg_handle
-from ._pkcs12 import pkcs12_kdf  #pylint: disable=W0611
+from .._pkcs12 import pkcs12_kdf  #pylint: disable=W0611
 
 if sys.version_info < (3,):
     byte_cls = str

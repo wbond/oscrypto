@@ -9,7 +9,7 @@ from asn1crypto import core
 
 from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer
 from ._cng import bcrypt, handle_error, open_alg_handle, close_alg_handle
-from ._int_conversion import int_to_bytes, int_from_bytes, fill_width
+from .._int_conversion import int_to_bytes, int_from_bytes, fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, PrivateKeyError
 
