@@ -19,3 +19,12 @@ class PrivateKeyError(Exception):
     """
 
     pass
+
+
+class CACertsError(Exception):
+
+    """
+    An exception when exporting CA certs from the OS trust store
+    """
+
+    pass

@@ -17,6 +17,11 @@ try:
     def register_ffi(library, ffi_obj):
         _ffi_registry[library] = ffi_obj
 
+    def _get_ffi(library):
+        if library in _ffi_registry:
+            return _ffi_registry[library]
+        return ffi
+
     def buffer_from_bytes(initializer):
         return ffi.new('unsigned char[]', initializer)
 
@@ -54,10 +59,7 @@ try:
         return ffi.errno
 
     def new(library, type_, value=None):
-        if library in _ffi_registry:
-            ffi_obj = _ffi_registry[library]
-        else:
-            ffi_obj = ffi
+        ffi_obj = _get_ffi(library)
 
         params = []
         if value is not None:
@@ -79,21 +81,20 @@ try:
     def unwrap(point):
         return point[0]
 
-    def get_ffi(library):
-        if library in _ffi_registry:
-            return _ffi_registry[library]
-        else:
-            return ffi
-
     def struct(library, name):
-        if library in _ffi_registry:
-            ffi_obj = _ffi_registry[library]
-        else:
-            ffi_obj = ffi
+        ffi_obj = _get_ffi(library)
         return ffi_obj.new('struct %s *' % name)
 
     def struct_bytes(struct_):
         return ffi.buffer(struct_)[:]
+
+    def struct_from_buffer(library, name, buffer):
+        ffi_obj = _get_ffi(library)
+        return ffi_obj.cast(name, buffer)
+
+    def array_from_pointer(library, name, point, size):
+        ffi_obj = _get_ffi(library)
+        return ffi_obj.cast('%s[%s]' % (name, size), point)
 
     engine = 'cffi'
 
@@ -161,11 +162,6 @@ except (ImportError):
 
         return output
 
-    def cast(value, type_):
-        if type_ == 'char *':
-            type_ = c_char_p
-        return ctypes.cast(value, type_)
-
     def deref(point):
         return point[0]
 
@@ -177,6 +173,12 @@ except (ImportError):
 
     def struct_bytes(struct_):
         return string_at(addressof(struct_), sizeof(struct_))
+
+    def struct_from_buffer(library, name, buffer):
+        return ctypes.cast(buffer, getattr(library, name))
+
+    def array_from_pointer(library, name, point, size):
+        return ctypes.cast(point, getattr(library, name) * size)
 
     engine = 'ctypes'
 

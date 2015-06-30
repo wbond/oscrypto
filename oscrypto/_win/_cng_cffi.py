@@ -19,10 +19,6 @@ else:
 
 
 ffi = FFI()
-
-# The typedef uintptr_t lines here allow us to check for a NULL pointer,
-# without having to redefine the structs in our code. This is kind of a hack,
-# but it should cause problems since we treat these as opaque.
 ffi.cdef("""
     typedef HANDLE BCRYPT_ALG_HANDLE;
     typedef HANDLE BCRYPT_KEY_HANDLE;
