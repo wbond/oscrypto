@@ -30,5 +30,6 @@ setup(
 
     keywords='crypto',
 
+    install_requires=['asn1crypto'],
     packages=find_packages(exclude=['tests*', 'dev*'])
 )
