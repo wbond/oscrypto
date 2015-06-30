@@ -5,7 +5,7 @@ import unittest
 import sys
 import os
 
-from oscrypto import public_key, errors, _int_conversion
+from oscrypto import public_key, errors
 
 if sys.version_info < (3,):
     byte_cls = str
