@@ -1,12 +1,18 @@
 # oscrypto
 
 A compilation-free, always up-to-date encryption library for Python that works
-on Windows, OS X, Linus and BSDs. Supports all actively maintained versions
+on Windows, OS X, Linux and BSD. Supports all actively maintained versions
 of Python: 2.7, 3.3, 3.4, 3.5, pypy and pypy3.
 
 The library integrates with the encryption library that is part of the operating
 system. This means that a compiler is never needed, and OS security updates take
-care of patching vulnerabilities.
+care of patching vulnerabilities. Here are the operating systems and the
+libraries utilized:
+
+ - Windows: Cryptography API Next Generation (CNG), Cryptography API
+ - OS X: Security.framework, CommonCrypto, OpenSSL
+ - Linux: OpenSSL
+ - OpenBSD: LibreSSL
 
 Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
