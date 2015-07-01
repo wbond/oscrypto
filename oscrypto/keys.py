@@ -5,7 +5,6 @@ import sys
 import hashlib
 import hmac
 import re
-import base64
 import binascii
 
 from asn1crypto import core, pkcs12, cms, keys, x509
@@ -13,6 +12,7 @@ from asn1crypto import core, pkcs12, cms, keys, x509
 from .kdf import pbkdf1, pbkdf2, pkcs12_kdf
 from .symmetric import rc2_cbc_pkcs5_decrypt, rc4_decrypt, des_cbc_pkcs5_decrypt, tripledes_cbc_pkcs5_decrypt, aes_cbc_pkcs7_decrypt
 from .util import constant_compare
+from ._pem import unarmor
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -223,58 +223,61 @@ def parse_private(data, password=None):
 
 
 def _unarmor_pem(data, password=None):
-    beginning = data[0:40].strip()
+    """
+    Removes PEM-encoding from a public key, private key or certificate. If the
+    private key is encrypted, the password will be used to decrypt it.
 
-    if beginning[0:5] != b'-----':
-        raise ValueError('data does not begin with -----')
+    :param data:
+        A byte string of the PEM-encoded data
 
-    armor_type = re.match(b'----- ?(BEGIN (DSA|EC|RSA) PRIVATE KEY|BEGIN ENCRYPTED PRIVATE KEY|BEGIN PRIVATE KEY|BEGIN PUBLIC KEY|BEGIN RSA PUBLIC KEY|BEGIN CERTIFICATE) ?-----', beginning)
+    :param password:
+        A byte string of the encryption password, or None
+
+    :return:
+        A 3-element tuple in the format: (key_type, algorithm, der_bytes). The
+        key_type will be a unicode string of "public key", "private key" or
+        "certificate". The algorithm will be a unicode string of "rsa", "dsa"
+        or "ecdsa".
+    """
+
+    type_name, headers, der_bytes = unarmor(data)
+
+    armor_type = re.match('^((DSA|EC|RSA) PRIVATE KEY|ENCRYPTED PRIVATE KEY|PRIVATE KEY|PUBLIC KEY|RSA PUBLIC KEY|CERTIFICATE)', type_name)
     if not armor_type:
         raise ValueError('data does seem to contain a PEM-encoded certificate, private key or public key')
 
-    pem_header = armor_type.group(1).decode('ascii')
+    pem_header = armor_type.group(1)
 
     data = data.strip()
 
     # RSA private keys are encrypted after being DER-encoded, but before base64
     # encoding, so they need to be hanlded specially
-    if pem_header in ('BEGIN RSA PRIVATE KEY', 'BEGIN DSA PRIVATE KEY', 'BEGIN EC PRIVATE KEY'):
-        algo = armor_type.group(2).decode('ascii').lower()
+    if pem_header in ('RSA PRIVATE KEY', 'DSA PRIVATE KEY', 'EC PRIVATE KEY'):
+        algo = armor_type.group(2).lower()
         if algo == 'ec':
             algo = 'ecdsa'
-        return ('private key', algo, _unarmor_pem_openssl_private(data, password))
+        return ('private key', algo, _unarmor_pem_openssl_private(headers, der_bytes, password))
 
-    key_type = None
+    key_type = pem_header.lower()
     algo = None
-    if pem_header in ('BEGIN PRIVATE KEY', 'BEGIN ENCRYPTED PRIVATE KEY'):
+    if key_type == 'encrypted private key':
         key_type = 'private key'
-    elif pem_header == 'BEGIN PUBLIC KEY':
-        key_type = 'public key'
-    elif pem_header == 'BEGIN RSA PUBLIC KEY':
+    elif key_type == 'rsa public key':
         key_type = 'public key'
         algo = 'rsa'
-    elif pem_header == 'BEGIN CERTIFICATE':
-        key_type = 'certificate'
 
-    base64_data = b''
-    for line in data.splitlines(False):
-        if line[0:5] == b'-----':
-            continue
-        elif line == b'':
-            continue
-        else:
-            base64_data += line
-
-    decoded_data = base64.b64decode(base64_data)
-    return (key_type, algo, decoded_data)
+    return (key_type, algo, der_bytes)
 
 
-def _unarmor_pem_openssl_private(data, password):
+def _unarmor_pem_openssl_private(headers, data, password):
     """
     Parses a PKCS#1 private key, or encrypted private key
 
+    :param headers:
+        A dict of "Name: Value" lines from right after the PEM header
+
     :param data:
-        A byte string of the PEM-encoded PKCS#1 private key
+        A byte string of the DER-encoded PKCS#1 private key
 
     :param password:
         A byte string of the password to use if the private key is encrypted
@@ -283,32 +286,23 @@ def _unarmor_pem_openssl_private(data, password):
         A byte string of the DER-encoded private key
     """
 
-    base64_data = b''
     enc_algo = None
     enc_iv_hex = None
     enc_iv = None
 
-    for line in data.splitlines(False):
-        if line[0:5] == b'-----':
-            continue
-        elif line[0:9] == b'DEK-Info:':
-            _, enc_params = line.split(b':')
-            if enc_params.find(b',') != -1:
-                enc_algo, enc_iv_hex = enc_params.strip().split(b',')
-            else:
-                enc_algo = b'RC4'
-        elif line == b'' or line[0:10] == b'Proc-Type:':
-            continue
+    if 'DEK-Info' in headers:
+        params = headers['DEK-Info']
+        if params.find(',') != -1:
+            enc_algo, enc_iv_hex = params.strip().split(',')
         else:
-            base64_data += line
+            enc_algo = 'RC4'
 
-    data = base64.b64decode(base64_data)
     if not enc_algo:
         return data
 
     if enc_iv_hex:
         enc_iv = binascii.unhexlify(enc_iv_hex)
-    enc_algo = enc_algo.decode('ascii').lower()
+    enc_algo = enc_algo.lower()
 
     enc_key_length = {
         'aes-128-cbc': 16,
