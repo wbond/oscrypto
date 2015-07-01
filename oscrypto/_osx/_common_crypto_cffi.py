@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError
+from .._ffi import FFIEngineError, register_ffi
 
 try:
     from cffi import FFI
@@ -25,3 +25,4 @@ ffi.cdef("""
 """)
 
 CommonCrypto = ffi.dlopen('/usr/lib/system/libcommonCrypto.dylib')
+register_ffi(CommonCrypto, ffi)

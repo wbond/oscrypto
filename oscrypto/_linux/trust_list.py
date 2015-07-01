@@ -3,16 +3,16 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import os
 
-from .errors import CACertsError
+from .._pem import unarmor
 
 
 
-def get_system_trusted_roots_path():
+def system_path():
     """
     Tries to find a CA certs bundle in common locations
 
     :raises:
-        pdfcrypto.errors.CACertsError - when no valid CA certs bundle was found on the filesystem
+        OSError - when no valid CA certs bundle was found on the filesystem
 
     :return:
         The full filesystem path to a CA certs bundle file
@@ -41,6 +41,25 @@ def get_system_trusted_roots_path():
             break
 
     if not ca_path:
-        raise CACertsError('Unable to find a CA certs bundle in common locations - try setting the SSL_CERT_FILE environmental variable')
+        raise OSError('Unable to find a CA certs bundle in common locations - try setting the SSL_CERT_FILE environmental variable')
 
     return ca_path
+
+
+def extract_from_system():
+    """
+    Extracts trusted CA certs from the system CA cert bundle
+
+    :return:
+        A list of byte strings - each a DER-encoded certificate
+    """
+
+    ca_path = system_path()
+
+    output = []
+    with open(ca_path, 'rb') as f:
+        for entry_info in unarmor(f.read(), multiple=True):
+            if entry_info[0] == 'CERTIFICATE':
+                output.append(entry_info[2])
+
+    return output

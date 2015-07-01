@@ -2,7 +2,6 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
-import base64
 import datetime
 import struct
 
@@ -11,26 +10,24 @@ from ._crypt32 import crypt32, crypt32_const, get_error, handle_error
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
-    from cStringIO import StringIO as BytesIO  #pylint: disable=F0401
 else:
     str_cls = str
-    from io import BytesIO
 
 
 
-def extract_trusted_roots():
+def system_path():
+    return None
+
+
+def extract_from_system():
     """
-    Returns a byte string of all trusted root certificates stored in the
-    Windows certificate store.
-
-    :raises:
-        pdfcrypto.errors.CACertsError - when an error occurs exporting certs
+    Extracts trusted CA certificates from the Windows certificate store
 
     :return:
-        A bytestring of OpenSSL-compatiable PEM-encoded certificates
+        A list of byte strings - each a DER-encoded certificate
     """
 
-    certificates = {}
+    output = []
 
     now = datetime.datetime.utcnow()
 
@@ -49,9 +46,6 @@ def extract_trusted_roots():
 
             if not skip:
                 cert_info = unwrap(context.pCertInfo)
-
-                subject_struct = cert_info.Subject
-                subject = bytes_from_buffer(subject_struct.pbData, subject_struct.cbData)
 
                 not_before = _convert_filetime_to_datetime(cert_info.NotBefore)
                 not_after = _convert_filetime_to_datetime(cert_info.NotAfter)
@@ -88,7 +82,7 @@ def extract_trusted_roots():
 
             if not skip:
                 data = bytes_from_buffer(context.pbCertEncoded, int(context.cbCertEncoded))
-                certificates[subject] = data
+                output.append(data)
 
             cert_pointer = crypt32.CertEnumCertificatesInStore(store_handle, cert_pointer)
 
@@ -96,20 +90,7 @@ def extract_trusted_roots():
         handle_error(result)
         store_handle = None
 
-    output = BytesIO()
-    for der_subject in certificates:
-        der_cert = certificates[der_subject]
-        b64_cert = base64.b64encode(der_cert)
-        b64_len = len(b64_cert)
-        output.write(b'-----BEGIN CERTIFICATE-----\n')
-        i = 0
-        while i < b64_len:
-            output.write(b64_cert[i:i+64])
-            output.write(b'\n')
-            i += 64
-        output.write(b'-----END CERTIFICATE-----\n')
-
-    return output.getvalue()
+    return output
 
 
 def _convert_filetime_to_datetime(filetime):

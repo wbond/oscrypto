@@ -361,8 +361,6 @@ def _create_key_handle(cipher, key):
         alg_handle = open_alg_handle(alg_constant)
         blob_type = bcrypt_const.BCRYPT_KEY_DATA_BLOB
 
-        key_handle = new(bcrypt, 'BCRYPT_KEY_HANDLE')
-
         blob_struct = struct(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER')
         blob_struct.dwMagic = bcrypt_const.BCRYPT_KEY_DATA_BLOB_MAGIC
         blob_struct.dwVersion = bcrypt_const.BCRYPT_KEY_DATA_BLOB_VERSION1
@@ -375,7 +373,7 @@ def _create_key_handle(cipher, key):
             res = bcrypt.BCryptSetProperty(alg_handle, bcrypt_const.BCRYPT_EFFECTIVE_KEY_LENGTH, buf, 4, 0)
             handle_error(res)
 
-        key_handle_pointer = wrap_pointer(key_handle)
+        key_handle_pointer = new(bcrypt, 'BCRYPT_KEY_HANDLE *')
         res = bcrypt.BCryptImportKey(alg_handle, null(), blob_type, key_handle_pointer, null(), 0, blob, len(blob), 0)
         handle_error(res)
 

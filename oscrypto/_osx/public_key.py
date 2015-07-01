@@ -5,7 +5,7 @@ import sys
 
 from asn1crypto.keys import PublicKeyInfo
 
-from .._ffi import new
+from .._ffi import new, unwrap
 from ._security import Security, handle_sec_error
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -53,9 +53,10 @@ class Certificate():
     @property
     def sec_key_ref(self):
         if not self._public_key and self.sec_certificate_ref:
-            sec_public_key_ref = new(Security, 'SecKeyRef')
-            res = Security.SecCertificateCopyPublicKey(self.sec_certificate_ref, sec_public_key_ref)
+            sec_public_key_ref_pointer = new(Security, 'SecKeyRef *')
+            res = Security.SecCertificateCopyPublicKey(self.sec_certificate_ref, sec_public_key_ref_pointer)
             handle_sec_error(res)
+            sec_public_key_ref = unwrap(sec_public_key_ref_pointer)
             self._public_key = PublicKey(sec_public_key_ref)
 
         return self._public_key.sec_key_ref
@@ -249,9 +250,9 @@ def _load_key(key_object, algo):
             (Security.kSecAttrCanSign, CoreFoundation.kCFBooleanTrue),
             (Security.kSecAttrCanVerify, CoreFoundation.kCFBooleanTrue),
         ])
-        error = new(CoreFoundation, 'CFErrorRef')
-        sec_key_ref = Security.SecKeyCreateFromData(cf_dict, cf_source, error)
-        handle_cf_error(error)
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
+        sec_key_ref = Security.SecKeyCreateFromData(cf_dict, cf_source, error_pointer)
+        handle_cf_error(error_pointer)
 
         if key_class == Security.kSecAttrKeyClassPublic:
             return PublicKey(sec_key_ref, algo)
@@ -445,10 +446,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     sec_transform = None
 
     try:
-        error = new(CoreFoundation, 'CFErrorRef')
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
         cf_signature = CFHelpers.cf_data_from_bytes(signature)
-        sec_transform = Security.SecVerifyTransformCreate(certificate_or_public_key.sec_key_ref, cf_signature, error)
-        handle_cf_error(error)
+        sec_transform = Security.SecVerifyTransformCreate(certificate_or_public_key.sec_key_ref, cf_signature, error_pointer)
+        handle_cf_error(error_pointer)
 
         hash_constant = {
             'md5': Security.kSecDigestMD5,
@@ -459,8 +460,8 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
             'sha512': Security.kSecDigestSHA2
         }[hash_algorithm]
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error)
-        handle_cf_error(error)
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
+        handle_cf_error(error_pointer)
 
         if hash_algorithm in ('sha224', 'sha256', 'sha384', 'sha512'):
             hash_length = {
@@ -472,19 +473,19 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
             cf_hash_length = CFHelpers.cf_number_from_integer(hash_length)
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error_pointer)
+            handle_cf_error(error_pointer)
 
         if certificate_or_public_key.algo == 'rsa':
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error_pointer)
+            handle_cf_error(error_pointer)
 
         cf_data = CFHelpers.cf_data_from_bytes(data)
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error)
-        handle_cf_error(error)
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        handle_cf_error(error_pointer)
 
-        res = Security.SecTransformExecute(sec_transform, error)
-        handle_cf_error(error)
+        res = Security.SecTransformExecute(sec_transform, error_pointer)
+        handle_cf_error(error_pointer)
 
         res = bool(CoreFoundation.CFBooleanGetValue(res))
 
@@ -619,9 +620,9 @@ def _sign(private_key, data, hash_algorithm):
     sec_transform = None
 
     try:
-        error = new(CoreFoundation, 'CFErrorRef')
-        sec_transform = Security.SecSignTransformCreate(private_key.sec_key_ref, error)
-        handle_cf_error(error)
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
+        sec_transform = Security.SecSignTransformCreate(private_key.sec_key_ref, error_pointer)
+        handle_cf_error(error_pointer)
 
         hash_constant = {
             'md5': Security.kSecDigestMD5,
@@ -632,8 +633,8 @@ def _sign(private_key, data, hash_algorithm):
             'sha512': Security.kSecDigestSHA2
         }[hash_algorithm]
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error)
-        handle_cf_error(error)
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
+        handle_cf_error(error_pointer)
 
         if hash_algorithm in ('sha224', 'sha256', 'sha384', 'sha512'):
             hash_length = {
@@ -645,19 +646,19 @@ def _sign(private_key, data, hash_algorithm):
 
             cf_hash_length = CFHelpers.cf_number_from_integer(hash_length)
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error_pointer)
+            handle_cf_error(error_pointer)
 
         if private_key.algo == 'rsa':
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error_pointer)
+            handle_cf_error(error_pointer)
 
         cf_data = CFHelpers.cf_data_from_bytes(data)
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error)
-        handle_cf_error(error)
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        handle_cf_error(error_pointer)
 
-        cf_signature = Security.SecTransformExecute(sec_transform, error)
-        handle_cf_error(error)
+        cf_signature = Security.SecTransformExecute(sec_transform, error_pointer)
+        handle_cf_error(error_pointer)
 
         return CFHelpers.cf_data_to_bytes(cf_signature)
 

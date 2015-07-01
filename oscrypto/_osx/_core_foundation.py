@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError, is_null
+from .._ffi import FFIEngineError, is_null, unwrap
 
 try:
     from ._core_foundation_cffi import CoreFoundation, CFHelpers  #pylint: disable=W0611
@@ -10,17 +10,21 @@ except (FFIEngineError):
 
 
 
-def handle_cf_error(error):
+def handle_cf_error(error_pointer):
     """
     Checks a CFErrorRef and throws an exception if there is an error to report
 
-    :param error:
+    :param error_pointer:
         A CFErrorRef
 
     :raises:
         OSError - when the CFErrorRef contains an error
     """
 
+    if is_null(error_pointer):
+        return
+
+    error = unwrap(error_pointer)
     if is_null(error):
         return
 
@@ -197,3 +201,21 @@ def handle_cf_error(error):
             output = '%s %s' % (domain, num)
 
     raise OSError(output)
+
+
+CFHelpers.register_native_mapping(
+    CoreFoundation.CFStringGetTypeID(),
+    CFHelpers.cf_string_to_unicode
+)
+CFHelpers.register_native_mapping(
+    CoreFoundation.CFNumberGetTypeID(),
+    CFHelpers.cf_number_to_number
+)
+CFHelpers.register_native_mapping(
+    CoreFoundation.CFDataGetTypeID(),
+    CFHelpers.cf_data_to_bytes
+)
+CFHelpers.register_native_mapping(
+    CoreFoundation.CFDictionaryGetTypeID(),
+    CFHelpers.cf_dictionary_to_dict
+)

@@ -7,7 +7,7 @@ import hashlib
 from asn1crypto.keys import PublicKeyInfo
 from asn1crypto import core
 
-from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer, wrap_pointer, unwrap, buffer_from_unicode
+from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer, unwrap, buffer_from_unicode
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._int_conversion import int_to_bytes, int_from_bytes, fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -175,8 +175,6 @@ def _load_key(key_object, algo, container):
         }[alg_selector]
         alg_handle = open_alg_handle(alg_constant)
 
-        key_handle = new(bcrypt, 'BCRYPT_KEY_HANDLE')
-
         if algo == 'rsa':
             if key_type == 'public':
                 blob_type = bcrypt_const.BCRYPT_RSAPUBLIC_BLOB
@@ -321,7 +319,7 @@ def _load_key(key_object, algo, container):
             if key_type == 'private':
                 blob += private_bytes
 
-        key_handle_pointer = wrap_pointer(key_handle)
+        key_handle_pointer = new(bcrypt, 'BCRYPT_KEY_HANDLE *')
         res = bcrypt.BCryptImportKeyPair(alg_handle, null(), blob_type, key_handle_pointer, blob, len(blob), bcrypt_const.BCRYPT_NO_KEY_VALIDATION)
         handle_error(res)
 

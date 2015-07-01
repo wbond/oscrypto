@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import FFIEngineError, new, null, wrap_pointer, unwrap
+from .._ffi import FFIEngineError, new, null, unwrap
 
 try:
     from ._cng_cffi import bcrypt
@@ -17,8 +17,7 @@ else:
 
 
 def open_alg_handle(constant, flags=0):
-    handle = new(bcrypt, 'BCRYPT_ALG_HANDLE')
-    handle_pointer = wrap_pointer(handle)
+    handle_pointer = new(bcrypt, 'BCRYPT_ALG_HANDLE *')
     res = bcrypt.BCryptOpenAlgorithmProvider(handle_pointer, constant, null(), flags)
     handle_error(res)
 

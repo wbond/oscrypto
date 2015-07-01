@@ -33,3 +33,20 @@ def handle_sec_error(error):
 
     raise OSError(output)
 
+
+def _extract_policy_properties(value):
+    properties_dict = Security.SecPolicyCopyProperties(value)
+    return CFHelpers.cf_dictionary_to_dict(properties_dict)
+
+CFHelpers.register_native_mapping(
+    Security.SecPolicyGetTypeID(),
+    _extract_policy_properties
+)
+
+
+class security_const():
+    kSecTrustSettingsDomainUser = 0
+    kSecTrustSettingsDomainAdmin = 1
+    kSecTrustSettingsDomainSystem = 2
+
+    errSecNoTrustSettings = -25263

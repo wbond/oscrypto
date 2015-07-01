@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from ctypes.util import find_library
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import LibraryNotFoundError, FFIEngineError, deref, new, register_ffi
 
 try:
     from cffi import FFI
@@ -22,6 +22,7 @@ ffi.cdef("""
     typedef unsigned long CFTypeID;
 
     typedef void *CFTypeRef;
+    typedef CFTypeRef CFArrayRef;
     typedef CFTypeRef CFDataRef;
     typedef CFTypeRef CFStringRef;
     typedef CFTypeRef CFNumberRef;
@@ -68,6 +69,18 @@ ffi.cdef("""
 
     Boolean CFBooleanGetValue(CFBooleanRef boolean);
 
+    CFTypeID CFDictionaryGetTypeID(void);
+    CFTypeID CFNumberGetTypeID(void);
+    CFTypeID CFStringGetTypeID(void);
+    CFTypeID CFDataGetTypeID(void);
+
+    CFIndex CFArrayGetCount(CFArrayRef theArray);
+    CFTypeRef CFArrayGetValueAtIndex(CFArrayRef theArray, CFIndex idx);
+    CFNumberType CFNumberGetType(CFNumberRef number);
+    Boolean CFNumberGetValue(CFNumberRef number, CFNumberType theType, void *valuePtr);
+    CFIndex CFDictionaryGetKeysAndValues(CFDictionaryRef theDict, const void **keys, const void **values);
+    CFTypeID CFGetTypeID(CFTypeRef cf);
+
     CFAllocatorRef kCFAllocatorDefault;
     CFBooleanRef kCFBooleanTrue;
     CFDictionaryKeyCallBacks kCFTypeDictionaryKeyCallBacks;
@@ -79,6 +92,7 @@ if not core_foundation_path:
     raise LibraryNotFoundError('The library CoreFoundation could not be found')
 
 CoreFoundation = ffi.dlopen(core_foundation_path)
+register_ffi(CoreFoundation, ffi)
 
 kCFNumberCFIndexType = 14
 kCFStringEncodingUTF8 = 0x08000100
@@ -88,6 +102,104 @@ class CFHelpers():
     """
     Namespace for core foundation helpers
     """
+
+    _native_map = {}
+
+    @classmethod
+    def register_native_mapping(cls, type_id, callback):
+        """
+        Register a function to convert a core foundation data type into its
+        equivalent in python
+
+        :param type_id:
+            The CFTypeId for the type
+
+        :param callback:
+            A callback to pass the CFType object to
+        """
+
+        cls._native_map[int(type_id)] = callback
+
+    @staticmethod
+    def cf_number_to_number(value):
+        """
+        Converts a CFNumber object to a python float or integer
+
+        :param value:
+            The CFNumber object
+
+        :return:
+            A python number (float or integer)
+        """
+
+        type_ = CoreFoundation.CFNumberGetType(value)
+        type_name = {
+            1: 'int8_t',     # kCFNumberSInt8Type
+            2: 'in16_t',     # kCFNumberSInt16Type
+            3: 'int32_t',    # kCFNumberSInt32Type
+            4: 'int64_t',    # kCFNumberSInt64Type
+            5: 'float',      # kCFNumberFloat32Type
+            6: 'double',     # kCFNumberFloat64Type
+            7: 'char',       # kCFNumberCharType
+            8: 'short',      # kCFNumberShortType
+            9: 'int',        # kCFNumberIntType
+            10: 'long',      # kCFNumberLongType
+            11: 'long long', # kCFNumberLongLongType
+            12: 'float',     # kCFNumberFloatType
+            13: 'double',    # kCFNumberDoubleType
+            14: 'long',      # kCFNumberCFIndexType
+            15: 'int',       # kCFNumberNSIntegerType
+            16: 'double',    # kCFNumberCGFloatType
+        }[type_]
+        output = new(CoreFoundation, type_name + ' *')
+        CoreFoundation.CFNumberGetValue(value, type_, output)
+        return deref(output)
+
+    @staticmethod
+    def cf_dictionary_to_dict(dictionary):
+        """
+        Converts a CFDictionary object into a python dictionary
+
+        :param dictionary:
+            The CFDictionary to convert
+
+        :return:
+            A python dict
+        """
+
+        dict_length = CoreFoundation.CFDictionaryGetCount(dictionary)
+
+        keys = new(CoreFoundation, 'CFTypeRef[%s]' % dict_length)
+        values = new(CoreFoundation, 'CFTypeRef[%s]' % dict_length)
+        CoreFoundation.CFDictionaryGetKeysAndValues(
+            dictionary,
+            keys,
+            values
+        )
+
+        output = {}
+        for index in range(0, dict_length):
+            output[CFHelpers.native(keys[index])] = CFHelpers.native(values[index])
+
+        return output
+
+    @classmethod
+    def native(cls, value):
+        """
+        Converts a CF* object into its python equivalent
+
+        :param value:
+            The CF* object to convert
+
+        :return:
+            The native python object
+        """
+
+        type_id = CoreFoundation.CFGetTypeID(value)
+        if type_id in cls._native_map:
+            return cls._native_map[type_id](value)
+        else:
+            return value
 
     @staticmethod
     def cf_string_to_unicode(value):
@@ -103,7 +215,7 @@ class CFHelpers():
 
         string_ptr = CoreFoundation.CFStringGetCStringPtr(
             value,
-            CoreFoundation.kCFStringEncodingUTF8
+            kCFStringEncodingUTF8
         )
         string = ffi.string(string_ptr)
         if string is not None:

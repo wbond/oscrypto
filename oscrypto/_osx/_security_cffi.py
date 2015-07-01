@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from ctypes.util import find_library
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
     from cffi import FFI
@@ -17,8 +17,11 @@ ffi = FFI()
 ffi.cdef("""
     typedef bool Boolean;
     typedef signed long OSStatus;
+    typedef unsigned long CFTypeID;
+    typedef uint32_t SecTrustSettingsDomain;
 
     typedef void *CFTypeRef;
+    typedef CFTypeRef CFArrayRef;
     typedef CFTypeRef CFDataRef;
     typedef CFTypeRef CFStringRef;
     typedef CFTypeRef CFDictionaryRef;
@@ -29,6 +32,7 @@ ffi.cdef("""
     typedef ... *SecCertificateRef;
     typedef ... *SecTransformRef;
     typedef ... *SecRandomRef;
+    typedef ... *SecPolicyRef;
 
     int SecRandomCopyBytes(SecRandomRef rnd, size_t count, unsigned char *bytes);
     SecKeyRef SecKeyCreateFromData(CFDictionaryRef parameters, CFDataRef keyData, CFErrorRef *error);
@@ -41,6 +45,13 @@ ffi.cdef("""
     SecCertificateRef SecCertificateCreateWithData(CFAllocatorRef allocator, CFDataRef data);
     OSStatus SecCertificateCopyPublicKey(SecCertificateRef certificate, SecKeyRef *key);
     CFStringRef SecCopyErrorMessageString(OSStatus status, void *reserved);
+    OSStatus SecTrustCopyAnchorCertificates(CFArrayRef *anchors);
+    CFDataRef SecCertificateCopyData(SecCertificateRef certificate);
+    OSStatus SecTrustSettingsCopyCertificates(SecTrustSettingsDomain domain, CFArrayRef *certArray);
+    CFDataRef SecCertificateCopyNormalizedSubjectContent(SecCertificateRef certificate, CFErrorRef *error);
+    OSStatus SecTrustSettingsCopyTrustSettings(SecCertificateRef certRef, SecTrustSettingsDomain domain, CFArrayRef *trustSettings);
+    CFDictionaryRef SecPolicyCopyProperties(SecPolicyRef policyRef);
+    CFTypeID SecPolicyGetTypeID(void);
 
     SecRandomRef kSecRandomDefault;
 
@@ -84,3 +95,4 @@ if not security_path:
     raise LibraryNotFoundError('The library Security could not be found')
 
 Security = ffi.dlopen(security_path)
+register_ffi(Security, ffi)

@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from ctypes.util import find_library
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
     from cffi import FFI
@@ -42,3 +42,4 @@ if not libcrypto_path:
     raise LibraryNotFoundError('The library libcrypto could not be found')
 
 libcrypto = ffi.dlopen(libcrypto_path)
+register_ffi(libcrypto, ffi)

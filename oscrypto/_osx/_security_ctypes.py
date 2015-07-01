@@ -2,7 +2,7 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 from ctypes.util import find_library
-from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int
+from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_ulong
 from ctypes import CDLL, POINTER
 
 
@@ -18,9 +18,11 @@ Security = CDLL(security_path, use_errno=True)
 
 CFData = c_void_p
 CFString = c_void_p
+CFArray = c_void_p
 CFDictionary = c_void_p
 CFError = c_void_p
 CFType = c_void_p
+CFTypeID = c_ulong
 
 CFTypeRef = POINTER(CFType)
 CFAllocatorRef = c_void_p
@@ -29,6 +31,7 @@ OSStatus = c_int32
 
 CFDataRef = POINTER(CFData)
 CFStringRef = POINTER(CFString)
+CFArrayRef = POINTER(CFArray)
 CFDictionaryRef = POINTER(CFDictionary)
 CFErrorRef = POINTER(CFError)
 
@@ -36,6 +39,8 @@ SecKeyRef = POINTER(c_void_p)
 SecCertificateRef = POINTER(c_void_p)
 SecTransformRef = POINTER(c_void_p)
 SecRandomRef = c_void_p
+SecTrustSettingsDomain = c_uint32
+SecPolicyRef = c_void_p
 
 try:
     Security.SecRandomCopyBytes.argtypes = [SecRandomRef, c_size_t, c_char_p]
@@ -70,6 +75,27 @@ try:
 
     Security.SecCopyErrorMessageString.argtypes = [OSStatus, c_void_p]
     Security.SecCopyErrorMessageString.restype = CFStringRef
+
+    Security.SecTrustCopyAnchorCertificates.argtypes = [POINTER(CFArrayRef)]
+    Security.SecTrustCopyAnchorCertificates.restype = OSStatus
+
+    Security.SecCertificateCopyData.argtypes = [SecCertificateRef]
+    Security.SecCertificateCopyData.restype = CFDataRef
+
+    Security.SecTrustSettingsCopyCertificates.argtypes = [SecTrustSettingsDomain, POINTER(CFArrayRef)]
+    Security.SecTrustSettingsCopyCertificates.restype = OSStatus
+
+    Security.SecCertificateCopyNormalizedSubjectContent.argtypes = [SecCertificateRef, POINTER(CFErrorRef)]
+    Security.SecCertificateCopyNormalizedSubjectContent.restype = CFDataRef
+
+    Security.SecTrustSettingsCopyTrustSettings.argtypes = [SecCertificateRef, SecTrustSettingsDomain, POINTER(CFArrayRef)]
+    Security.SecTrustSettingsCopyTrustSettings.restype = OSStatus
+
+    Security.SecPolicyCopyProperties.argtypes = [SecPolicyRef]
+    Security.SecPolicyCopyProperties.restype = CFDictionaryRef
+
+    Security.SecPolicyGetTypeID.argtypes = []
+    Security.SecPolicyGetTypeID.restype = CFTypeID
 
     setattr(Security, 'kSecRandomDefault', SecRandomRef.in_dll(Security, 'kSecRandomDefault'))
 

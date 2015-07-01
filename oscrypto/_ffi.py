@@ -31,9 +31,6 @@ try:
     def buffer_pointer(buffer):
         return ffi.new('unsigned char *[]', [buffer])
 
-    def wrap_pointer(p):
-        return ffi.new('void **', p)
-
     def void_pointer(buffer):
         return ffi.cast('void *', buffer)
 
@@ -64,16 +61,9 @@ try:
         params = []
         if value is not None:
             params.append(value)
-        # Using try/except here caused significant performance issues, almost as if
-        # cffi was trying to reparse the cdef any time it ran into these types.
-        if type_ in ('CFErrorRef', 'SecKeyRef'):
-            return ffi_obj.new('void **', *params)
         if type_ in ('BCRYPT_KEY_HANDLE', 'BCRYPT_ALG_HANDLE'):
             return ffi_obj.cast(type_, 0)
         return ffi_obj.new(type_, *params)
-
-    def cast(value, type_):
-        return ffi.cast(type_, value)
 
     def deref(point):
         return point[0]
@@ -104,6 +94,8 @@ except (ImportError):
     from ctypes import pointer, c_int, c_char_p, c_uint, string_at, sizeof, addressof, c_void_p
 
 
+    def register_ffi(library, ffi_obj):  #pylint: disable=W0613
+        pass
 
     def buffer_from_bytes(initializer):
         return ctypes.create_string_buffer(initializer)
@@ -113,9 +105,6 @@ except (ImportError):
 
     def buffer_pointer(buffer):
         return pointer(ctypes.cast(buffer, c_char_p))
-
-    def wrap_pointer(p):
-        return pointer(p)
 
     def void_pointer(buffer):
         return c_void_p(addressof(buffer))

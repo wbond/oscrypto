@@ -389,29 +389,29 @@ def _encrypt(cipher, key, data, iv, padding):
         cf_key = CFHelpers.cf_data_from_bytes(key)
         cf_data = CFHelpers.cf_data_from_bytes(data)
 
-        error = new(CoreFoundation, 'CFErrorRef')
-        sec_key = Security.SecKeyCreateFromData(cf_dict, cf_key, error)
-        handle_cf_error(error)
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
+        sec_key = Security.SecKeyCreateFromData(cf_dict, cf_key, error_pointer)
+        handle_cf_error(error_pointer)
 
-        sec_transform = Security.SecEncryptTransformCreate(sec_key, error)
-        handle_cf_error(error)
+        sec_transform = Security.SecEncryptTransformCreate(sec_key, error_pointer)
+        handle_cf_error(error_pointer)
 
         if cipher != Security.kSecAttrKeyTypeRC4:
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecModeCBCKey, null(), error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecModeCBCKey, null(), error_pointer)
+            handle_cf_error(error_pointer)
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error_pointer)
+            handle_cf_error(error_pointer)
 
             cf_iv = CFHelpers.cf_data_from_bytes(iv)
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecIVKey, cf_iv, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecIVKey, cf_iv, error_pointer)
+            handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error)
-        handle_cf_error(error)
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        handle_cf_error(error_pointer)
 
-        ciphertext = Security.SecTransformExecute(sec_transform, error)
-        handle_cf_error(error)
+        ciphertext = Security.SecTransformExecute(sec_transform, error_pointer)
+        handle_cf_error(error_pointer)
 
         return CFHelpers.cf_data_to_bytes(ciphertext)
 
@@ -481,29 +481,29 @@ def _decrypt(cipher, key, data, iv, padding):
         cf_key = CFHelpers.cf_data_from_bytes(key)
         cf_data = CFHelpers.cf_data_from_bytes(data)
 
-        error = new(CoreFoundation, 'CFErrorRef')
-        sec_key = Security.SecKeyCreateFromData(cf_dict, cf_key, error)
-        handle_cf_error(error)
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
+        sec_key = Security.SecKeyCreateFromData(cf_dict, cf_key, error_pointer)
+        handle_cf_error(error_pointer)
 
-        sec_transform = Security.SecDecryptTransformCreate(sec_key, error)
-        handle_cf_error(error)
+        sec_transform = Security.SecDecryptTransformCreate(sec_key, error_pointer)
+        handle_cf_error(error_pointer)
 
         if cipher != Security.kSecAttrKeyTypeRC4:
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecModeCBCKey, null(), error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecModeCBCKey, null(), error_pointer)
+            handle_cf_error(error_pointer)
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error_pointer)
+            handle_cf_error(error_pointer)
 
             cf_iv = CFHelpers.cf_data_from_bytes(iv)
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecIVKey, cf_iv, error)
-            handle_cf_error(error)
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecIVKey, cf_iv, error_pointer)
+            handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error)
-        handle_cf_error(error)
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        handle_cf_error(error_pointer)
 
-        plaintext = Security.SecTransformExecute(sec_transform, error)
-        handle_cf_error(error)
+        plaintext = Security.SecTransformExecute(sec_transform, error_pointer)
+        handle_cf_error(error_pointer)
 
         return CFHelpers.cf_data_to_bytes(plaintext)
 
