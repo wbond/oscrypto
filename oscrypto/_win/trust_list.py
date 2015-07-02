@@ -5,7 +5,7 @@ import sys
 import datetime
 import struct
 
-from .._ffi import buffer_from_bytes, bytes_from_buffer, deref, struct_from_buffer, new, null, unwrap, array_from_pointer
+from .._ffi import buffer_from_bytes, bytes_from_buffer, deref, struct_from_buffer, new, null, is_null, unwrap, cast
 from ._crypt32 import crypt32, crypt32_const, get_error, handle_error
 
 if sys.version_info < (3,):

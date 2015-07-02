@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes, wrap_pointer, unwrap
+from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes, unwrap
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .util import rand_bytes
 
@@ -361,12 +361,13 @@ def _create_key_handle(cipher, key):
         alg_handle = open_alg_handle(alg_constant)
         blob_type = bcrypt_const.BCRYPT_KEY_DATA_BLOB
 
-        blob_struct = struct(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER')
+        blob_struct_pointer = struct(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER')
+        blob_struct = unwrap(blob_struct_pointer)
         blob_struct.dwMagic = bcrypt_const.BCRYPT_KEY_DATA_BLOB_MAGIC
         blob_struct.dwVersion = bcrypt_const.BCRYPT_KEY_DATA_BLOB_VERSION1
         blob_struct.cbKeyData = len(key)
 
-        blob = struct_bytes(blob_struct) + key
+        blob = struct_bytes(blob_struct_pointer) + key
 
         if cipher == 'rc2':
             buf = new(bcrypt, 'DWORD *', len(key) * 8)

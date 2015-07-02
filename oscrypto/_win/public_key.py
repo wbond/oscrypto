@@ -7,7 +7,7 @@ import hashlib
 from asn1crypto.keys import PublicKeyInfo
 from asn1crypto import core
 
-from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, void_pointer, unwrap, buffer_from_unicode
+from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._int_conversion import int_to_bytes, int_from_bytes, fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -198,7 +198,8 @@ def _load_key(key_object, algo, container):
             public_exponent = int_to_bytes(parsed_key['public_exponent'].native)
             modulus = int_to_bytes(parsed_key['modulus'].native)
 
-            blob_struct = struct(bcrypt, 'BCRYPT_RSAKEY_BLOB')
+            blob_struct_pointer = struct(bcrypt, 'BCRYPT_RSAKEY_BLOB')
+            blob_struct = unwrap(blob_struct_pointer)
             blob_struct.Magic = magic
             blob_struct.BitLength = key_object.bit_size
             blob_struct.cbPublicExp = len(public_exponent)
@@ -206,7 +207,7 @@ def _load_key(key_object, algo, container):
             blob_struct.cbPrime1 = prime1_size
             blob_struct.cbPrime2 = prime2_size
 
-            blob = struct_bytes(blob_struct) + public_exponent + modulus
+            blob = struct_bytes(blob_struct_pointer) + public_exponent + modulus
             if key_type == 'private':
                 blob += prime1 + prime2
                 blob += fill_width(exponent1, prime1_size)
@@ -248,7 +249,8 @@ def _load_key(key_object, algo, container):
                 else:
                     magic = bcrypt_const.BCRYPT_DSA_PRIVATE_MAGIC_V2
 
-                blob_struct = struct(bcrypt, 'BCRYPT_DSA_KEY_BLOB_V2')
+                blob_struct_pointer = struct(bcrypt, 'BCRYPT_DSA_KEY_BLOB_V2')
+                blob_struct = unwrap(blob_struct_pointer)
                 blob_struct.dwMagic = magic
                 blob_struct.cbKey = key_width
                 # We don't know if SHA256 was used here, but the output is long
@@ -260,7 +262,7 @@ def _load_key(key_object, algo, container):
                 blob_struct.cbGroupSize = q_len
                 blob_struct.Count = count
 
-                blob = struct_bytes(blob_struct)
+                blob = struct_bytes(blob_struct_pointer)
                 blob += seed + q + p + g + public_bytes
                 if key_type == 'private':
                     blob += private_bytes
@@ -271,14 +273,15 @@ def _load_key(key_object, algo, container):
                 else:
                     magic = bcrypt_const.BCRYPT_DSA_PRIVATE_MAGIC
 
-                blob_struct = struct(bcrypt, 'BCRYPT_DSA_KEY_BLOB')
+                blob_struct_pointer = struct(bcrypt, 'BCRYPT_DSA_KEY_BLOB')
+                blob_struct = unwrap(blob_struct_pointer)
                 blob_struct.dwMagic = magic
                 blob_struct.cbKey = key_width
                 blob_struct.Count = count
                 blob_struct.Seed = seed
                 blob_struct.q = q
 
-                blob = struct_bytes(blob_struct) + p + g + public_bytes
+                blob = struct_bytes(blob_struct_pointer) + p + g + public_bytes
                 if key_type == 'private':
                     blob += private_bytes
 
@@ -291,7 +294,8 @@ def _load_key(key_object, algo, container):
                 public_key = key_object.public_key
                 private_bytes = int_to_bytes(key_object['private_key'].parsed['private_key'].native)
 
-            blob_struct = struct(bcrypt, 'BCRYPT_ECCKEY_BLOB')
+            blob_struct_pointer = struct(bcrypt, 'BCRYPT_ECCKEY_BLOB')
+            blob_struct = unwrap(blob_struct_pointer)
 
             magic = {
                 ('public', 'secp256r1'): bcrypt_const.BCRYPT_ECDSA_PUBLIC_P256_MAGIC,
@@ -315,7 +319,7 @@ def _load_key(key_object, algo, container):
             blob_struct.dwMagic = magic
             blob_struct.cbKey = key_width
 
-            blob = struct_bytes(blob_struct) + x_bytes + y_bytes
+            blob = struct_bytes(blob_struct_pointer) + x_bytes + y_bytes
             if key_type == 'private':
                 blob += private_bytes
 
@@ -621,11 +625,12 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     if certificate_or_public_key.algo == 'rsa':
         flags = bcrypt_const.BCRYPT_PAD_PKCS1
-        padding_info_struct = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        padding_info_struct = unwrap(padding_info_struct_pointer)
         # This has to be assigned to a variable to prevent cffi from gc'ing it
         hash_buffer = buffer_from_unicode(hash_constant)
-        padding_info_struct.pszAlgId = hash_buffer
-        padding_info = void_pointer(padding_info_struct)
+        padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+        padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
     else:
         # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
@@ -764,11 +769,12 @@ def _sign(private_key, data, hash_algorithm):
 
     if private_key.algo == 'rsa':
         flags = bcrypt_const.BCRYPT_PAD_PKCS1
-        padding_info_struct = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+        padding_info_struct = unwrap(padding_info_struct_pointer)
         # This has to be assigned to a variable to prevent cffi from gc'ing it
         hash_buffer = buffer_from_unicode(hash_constant)
-        padding_info_struct.pszAlgId = hash_buffer
-        padding_info = void_pointer(padding_info_struct)
+        padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+        padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
     if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in ('md5', 'sha1'):
         raise ValueError('Windows does not support sha1 signatures with DSA keys based on sha224, sha256 or sha512')
@@ -781,7 +787,7 @@ def _sign(private_key, data, hash_algorithm):
     buffer = buffer_from_bytes(buffer_len)
 
     if private_key.algo == 'rsa':
-        padding_info = void_pointer(padding_info_struct)
+        padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
     res = bcrypt.BCryptSignHash(private_key.bcrypt_key_handle, padding_info, digest, len(digest), buffer, buffer_len, out_len, flags)
     handle_error(res)
