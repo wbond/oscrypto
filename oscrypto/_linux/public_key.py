@@ -105,7 +105,7 @@ def _load_x509(source, algo):
         A byte string of the DER-encoded certificate
 
     :param algo:
-        A unicode string of "rsa", "dsa" or "ecdsa"
+        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A Certificate object
@@ -205,7 +205,7 @@ def _load_key(source, algo):
         A byte string of the DER-encoded key
 
     :param algo:
-        A unicode string of "rsa", "dsa" or "ecdsa"
+        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A PrivateKey object
@@ -349,8 +349,8 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'ecdsa':
-        raise ValueError('The key specified is not an ECDSA public key')
+    if certificate_or_public_key.algo != 'ec':
+        raise ValueError('The key specified is not an EC public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
@@ -498,8 +498,8 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'ecdsa':
-        raise ValueError('The key specified is not an ECDSA private key')
+    if private_key.algo != 'ec':
+        raise ValueError('The key specified is not an EC private key')
 
     return _sign(private_key, data, hash_algorithm)
 

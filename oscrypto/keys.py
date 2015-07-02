@@ -33,7 +33,7 @@ crypto_funcs = {
 def parse_public(data):
     """
     Loads a public key from a DER or PEM-formatted file. Supports RSA, DSA and
-    ECDSA public keys. For RSA keys, both the old RSAPublicKey and
+    EC public keys. For RSA keys, both the old RSAPublicKey and
     SubjectPublicKeyInfo structures are supported. Also allows extracting a
     public key from an X509 certificate.
 
@@ -43,7 +43,7 @@ def parse_public(data):
     :return:
         A two-element tuple with (byte string, unicode string) where the byte
         string is a DER-encoded SubjectPublicKeyInfo structure and the unicode
-        string is the key type: "rsa", "dsa" or "ecdsa".
+        string is the key type: "rsa", "dsa" or "ec".
     """
 
     if not isinstance(data, byte_cls):
@@ -101,7 +101,7 @@ def parse_certificate(data):
 
     :return:
         A two-element tuple with (Certificate object, unicode string) where the
-        unicode string is the public key type: "rsa", "dsa" or "ecdsa".
+        unicode string is the public key type: "rsa", "dsa" or "ec".
     """
 
     if not isinstance(data, byte_cls):
@@ -134,13 +134,13 @@ def parse_certificate(data):
 def parse_private(data, password=None):
     """
     Loads a private key from a DER or PEM-formatted file. Supports RSA, DSA and
-    ECDSA private keys. Works with the follow formats:
+    EC private keys. Works with the follow formats:
 
      - RSAPrivateKey (PKCS#1)
      - ECPrivateKey (SECG SEC1 V2)
      - DSAPrivateKey (OpenSSL)
-     - PrivateKeyInfo (RSA/DSA/ECDSA - PKCS#8)
-     - EncryptedPrivateKeyInfo (RSA/DSA/ECDSA - PKCS#8)
+     - PrivateKeyInfo (RSA/DSA/EC - PKCS#8)
+     - EncryptedPrivateKeyInfo (RSA/DSA/EC - PKCS#8)
      - Encrypted RSAPrivateKey (PEM only, OpenSSL)
      - Encrypted DSAPrivateKey (PEM only, OpenSSL)
      - Encrypted ECPrivateKey (PEM only, OpenSSL)
@@ -153,7 +153,7 @@ def parse_private(data, password=None):
 
     :return:
         A two-element tuple with (PrivateKeyInfo object, unicode string) where
-        the unicode string is the key type: "rsa", "dsa" or "ecdsa". If the
+        the unicode string is the key type: "rsa", "dsa" or "ec". If the
         unwrapped parameter is True, the first element is an RSAPrivateKey,
         DSAPrivateKey, or ECPrivateKey object instead of PrivateKeyInfo.
     """
@@ -215,7 +215,7 @@ def parse_private(data, password=None):
         parsed = keys.ECPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         _ = parsed.native
-        return (keys.PrivateKeyInfo.wrap(parsed, 'ecdsa'), 'ecdsa')
+        return (keys.PrivateKeyInfo.wrap(parsed, 'ec'), 'ec')
     except (ValueError):  #pylint: disable=W0704
         pass  # Data was not an ECPrivateKey
 
@@ -237,7 +237,7 @@ def _unarmor_pem(data, password=None):
         A 3-element tuple in the format: (key_type, algorithm, der_bytes). The
         key_type will be a unicode string of "public key", "private key" or
         "certificate". The algorithm will be a unicode string of "rsa", "dsa"
-        or "ecdsa".
+        or "ec".
     """
 
     type_name, headers, der_bytes = unarmor(data)
@@ -254,8 +254,6 @@ def _unarmor_pem(data, password=None):
     # encoding, so they need to be hanlded specially
     if pem_header in ('RSA PRIVATE KEY', 'DSA PRIVATE KEY', 'EC PRIVATE KEY'):
         algo = armor_type.group(2).lower()
-        if algo == 'ec':
-            algo = 'ecdsa'
         return ('private key', algo, _unarmor_pem_openssl_private(headers, der_bytes, password))
 
     key_type = pem_header.lower()
@@ -378,16 +376,16 @@ def parse_pkcs12(data, password=None):
         A three-element tuple of:
          1. A two-element tuple with (byte string, unicode string) where the
             byte string is a DER-encoded PrivateKeyInfo structure and the
-            unicode string is the key type: "rsa", "dsa" or "ecdsa"
+            unicode string is the key type: "rsa", "dsa" or "ec"
          2. A two-element tuple with (byte string, unicode string) where the
             byte string is a DER-encoded Certificate structure that is related
             to the private key and the unicode string is the key type: "rsa",
-            "dsa", "ecdsa"
+            "dsa", "ec"
          3. A list of zero or more two-element tuples, each (byte string,
             unicode string) where the byte string is a DER-encoded Certificate
             structure that is an extra certificate (possibly in the cert chain)
             and the unicode string is the key type of that certificate: "rsa",
-            "dsa" or "ecdsa"
+            "dsa" or "ec"
     """
 
     if not isinstance(data, byte_cls):

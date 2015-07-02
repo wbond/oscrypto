@@ -111,7 +111,7 @@ def _load_x509(source, algo):
         A byte string of the DER-encoded certificate
 
     :param algo:
-        A unicode string of "rsa", "dsa" or "ecdsa"
+        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A Certificate object
@@ -210,18 +210,18 @@ def _load_key(key_object, algo):
         object
 
     :param algo:
-        A unicode string of "rsa", "dsa" or "ecdsa"
+        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A PrivateKey or PublicKey object
     """
 
-    if key_object.algorithm == 'ecdsa':
+    if key_object.algorithm == 'ec':
         curve_type, details = key_object.curve
         if curve_type != 'named':
-            raise PrivateKeyError('OS X only supports ECDSA keys using named curves')
+            raise PrivateKeyError('OS X only supports EC keys using named curves')
         if details not in ('secp256r1', 'secp384r1', 'secp521r1'):
-            raise PrivateKeyError('OS X only supports ECDSA keys using the named curves secp256r1, secp384r1 and secp521r1')
+            raise PrivateKeyError('OS X only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
     elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
         raise PrivateKeyError('OS X only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % key_object.bit_size)
@@ -241,7 +241,7 @@ def _load_key(key_object, algo):
         cf_source = CFHelpers.cf_data_from_bytes(source)
         key_type = {
             'dsa': Security.kSecAttrKeyTypeDSA,
-            'ecdsa': Security.kSecAttrKeyTypeECDSA,
+            'ec': Security.kSecAttrKeyTypeECDSA,
             'rsa': Security.kSecAttrKeyTypeRSA,
         }[algo]
         cf_dict = CFHelpers.cf_dictionary_from_pairs([
@@ -400,8 +400,8 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'ecdsa':
-        raise ValueError('The key specified is not an ECDSA public key')
+    if certificate_or_public_key.algo != 'ec':
+        raise ValueError('The key specified is not an EC public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
@@ -578,8 +578,8 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'ecdsa':
-        raise ValueError('The key specified is not an ECDSA private key')
+    if private_key.algo != 'ec':
+        raise ValueError('The key specified is not an EC private key')
 
     return _sign(private_key, data, hash_algorithm)
 

@@ -33,7 +33,7 @@ should, or should not use, please see Learning.
    - RSA PKCSv1.5
    - RSA PSS
    - DSA
-   - ECDSA
+   - EC
  - Loading and normalizing DER and PEM formatted:
    - RSA, DSA and EC Public keys
    - RSA, DSA and EC Private keys
