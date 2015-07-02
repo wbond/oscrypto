@@ -19,6 +19,7 @@ class TrustListTests(unittest.TestCase):
     def test_extract_from_system(self):
         certs = trust_list.extract_from_system()
         self.assertIsInstance(certs, list)
+        self.assertLess(10, len(certs))
         for cert in certs:
             self.assertIsInstance(cert, byte_cls)
             _ = Certificate.load(cert).native
