@@ -89,11 +89,8 @@ def _unarmor(pem_bytes):
 
     beginning = pem_bytes[0:10].lstrip()
 
-    if beginning[0:5] != b'-----':
-        raise ValueError('pem_bytes does not begin with -----')
-
-    # Valid states include: None, "headers", "body"
-    state = None
+    # Valid states include: "trash", "headers", "body"
+    state = 'trash'
     headers = {}
     base64_data = b''
     type_name = None
@@ -105,13 +102,12 @@ def _unarmor(pem_bytes):
         if line == b'':
             continue
 
-        if state is None:
-            if line[0:5] != b'-----':
-                raise ValueError('pem_bytes does not being with -----')
-
+        if state == "trash":
+            # Look for a starting line since some CA cert bundle show the cert
+            # into in a parsed format above each PEM block
             type_name_match = re.match(b'^----- ?BEGIN ([A-Z0-9 ]+) ?-----', line)
             if not type_name_match:
-                raise ValueError('Line %s of pem_bytes does not contain a header in the format "-----BEGIN (TYPE_NAME)-----"' % line_num)
+                continue
             type_name = type_name_match.group(1).decode('ascii')
 
             state = 'headers'
@@ -132,7 +128,7 @@ def _unarmor(pem_bytes):
 
                 yield (type_name, headers, der_bytes)
 
-                state = None
+                state = 'trash'
                 headers = {}
                 base64_data = b''
                 type_name = None
