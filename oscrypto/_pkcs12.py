@@ -5,7 +5,7 @@ import sys
 import hashlib
 import math
 
-from ._int_conversion import int_to_bytes, int_from_bytes
+from ._int import int_to_bytes, int_from_bytes
 
 
 if sys.version_info < (3,):
