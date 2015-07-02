@@ -28,28 +28,37 @@ ffi.cdef("""
     struct CRYPTOAPI_BLOB {
         DWORD cbData;
         PBYTE pbData;
-    } CRYPT_INTEGER_BLOB, CERT_NAME_BLOB, CRYPT_BIT_BLOB, CRYPT_OBJID_BLOB;
+    };
+    typedef struct CRYPTOAPI_BLOB CRYPT_INTEGER_BLOB;
+    typedef struct CRYPTOAPI_BLOB CERT_NAME_BLOB;
+    typedef struct CRYPTOAPI_BLOB CRYPT_BIT_BLOB;
+    typedef struct CRYPTOAPI_BLOB CRYPT_OBJID_BLOB;
 
     struct CRYPT_ALGORITHM_IDENTIFIER {
         LPSTR pszObjId;
         CRYPT_OBJID_BLOB Parameters;
     };
+    typedef struct CRYPT_ALGORITHM_IDENTIFIER CRYPT_ALGORITHM_IDENTIFIER;
 
     struct FILETIME {
         DWORD dwLowDateTime;
         DWORD dwHighDateTime;
     };
+    typedef struct FILETIME FILETIME;
 
     struct CERT_PUBLIC_KEY_INFO {
         CRYPT_ALGORITHM_IDENTIFIER Algorithm;
         CRYPT_BIT_BLOB PublicKey;
     };
+    typedef struct CERT_PUBLIC_KEY_INFO CERT_PUBLIC_KEY_INFO;
 
     struct CERT_EXTENSION {
         LPSTR pszObjId;
         BOOL fCritical;
         CRYPT_OBJID_BLOB Value;
-    } *PCERT_EXTENSION;
+    };
+    typedef struct CERT_EXTENSION CERT_EXTENSION;
+    typedef CERT_EXTENSION *PCERT_EXTENSION;
 
     struct CERT_INFO {
         DWORD dwVersion;
@@ -64,7 +73,9 @@ ffi.cdef("""
         CRYPT_BIT_BLOB SubjectUniqueId;
         DWORD cExtension;
         PCERT_EXTENSION *rgExtension;
-    } *PCERT_INFO;
+    };
+    typedef struct CERT_INFO CERT_INFO;
+    typedef CERT_INFO *PCERT_INFO;
 
     struct CERT_CONTEXT {
         DWORD dwCertEncodingType;
@@ -72,14 +83,18 @@ ffi.cdef("""
         DWORD cbCertEncoded;
         PCERT_INFO pCertInfo;
         HCERTSTORE hCertStore;
-    } *PCERT_CONTEXT;
+    };
+    typedef struct CERT_CONTEXT CERT_CONTEXT;
+    typedef CERT_CONTEXT *PCERT_CONTEXT;
 
     struct CERT_ENHKEY_USAGE {
         DWORD cUsageIdentifier;
         LPSTR *rgpszUsageIdentifier;
-    } *PCERT_ENHKEY_USAGE;
+    };
+    typedef struct CERT_ENHKEY_USAGE CERT_ENHKEY_USAGE;
+    typedef CERT_ENHKEY_USAGE *PCERT_ENHKEY_USAGE;
 
-    HCERTSTORE CertOpenSystemStore(HANDLE hprov, LPTCSTR szSubsystemProtocol);
+    HCERTSTORE CertOpenSystemStoreW(HANDLE hprov, LPCWSTR szSubsystemProtocol);
     PCERT_CONTEXT CertEnumCertificatesInStore(HCERTSTORE hCertStore, PCERT_CONTEXT pPrevCertContext);
     BOOL CertCloseStore(HCERTSTORE hCertStore, DWORD dwFlags);
     BOOL CertGetEnhancedKeyUsage(PCERT_CONTEXT pCertContext, DWORD dwFlags, PCERT_ENHKEY_USAGE pUsage, DWORD *pcbUsage);

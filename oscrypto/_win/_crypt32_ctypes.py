@@ -30,7 +30,7 @@ try:
     class CRYPTOAPI_BLOB(Structure):
         _fields_ = [
             ("cbData", DWORD),
-            ("pbData", PBYTE),
+            ("pbData", c_void_p),
         ]
     CRYPT_INTEGER_BLOB = CRYPTOAPI_BLOB
     CERT_NAME_BLOB = CRYPTOAPI_BLOB
@@ -89,7 +89,7 @@ try:
     class CERT_CONTEXT(Structure):
         _fields_ = [
             ("dwCertEncodingType", DWORD),
-            ("pbCertEncoded", PBYTE),
+            ("pbCertEncoded", c_void_p),
             ("cbCertEncoded", DWORD),
             ("pCertInfo", PCERT_INFO),
             ("hCertStore", HCERTSTORE)
@@ -107,9 +107,8 @@ try:
 
     PCERT_ENHKEY_USAGE = POINTER(CERT_ENHKEY_USAGE)
 
-    crypt32.CertOpenSystemStore = crypt32.CertOpenSystemStoreW
-    crypt32.CertOpenSystemStore.argtypes = [wintypes.HANDLE, wintypes.LPCWSTR]
-    crypt32.CertOpenSystemStore.restype = HCERTSTORE
+    crypt32.CertOpenSystemStoreW.argtypes = [wintypes.HANDLE, wintypes.LPCWSTR]
+    crypt32.CertOpenSystemStoreW.restype = HCERTSTORE
 
     crypt32.CertEnumCertificatesInStore.argtypes = [HCERTSTORE, PCERT_CONTEXT]
     crypt32.CertEnumCertificatesInStore.restype = PCERT_CONTEXT

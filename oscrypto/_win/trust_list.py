@@ -32,12 +32,12 @@ def extract_from_system():
     now = datetime.datetime.utcnow()
 
     for store in ["ROOT", "CA"]:
-        store_handle = crypt32.CertOpenSystemStore(None, store)
+        store_handle = crypt32.CertOpenSystemStoreW(null(), store)
         handle_error(store_handle)
 
-        cert_pointer = crypt32.CertEnumCertificatesInStore(store_handle, None)
-        while bool(cert_pointer):
-            context = unwrap(cert_pointer)
+        context_pointer = crypt32.CertEnumCertificatesInStore(store_handle, null())
+        while not is_null(context_pointer):
+            context = unwrap(context_pointer)
 
             skip = False
 
@@ -60,7 +60,7 @@ def extract_from_system():
                 has_enhanced_usage = True
 
                 to_read = new(crypt32, 'DWORD *', 0)
-                res = crypt32.CertGetEnhancedKeyUsage(context, 0, null(), to_read)
+                res = crypt32.CertGetEnhancedKeyUsage(context_pointer, 0, null(), to_read)
                 if res == 0:
                     error_code, _ = get_error()
                     if error_code == crypt32_const.CRYPT_E_NOT_FOUND:
@@ -69,12 +69,11 @@ def extract_from_system():
                         handle_error(res)
                 else:
                     usage_buffer = buffer_from_bytes(deref(to_read))
-                    res = crypt32.CertGetEnhancedKeyUsage(context, 0, usage_buffer, to_read)
+                    res = crypt32.CertGetEnhancedKeyUsage(context_pointer, 0, cast(crypt32, 'CERT_ENHKEY_USAGE *', usage_buffer), to_read)
                     handle_error(res)
 
-                    key_usage = struct_from_buffer(crypt32, 'CERT_ENHKEY_USAGE', usage_buffer)
-                    if key_usage.cUsageIdentifier > 0:
-                        print(array_from_pointer(crypt32, 'LPSTR', key_usage.rgpszUsageIdentifier, int(key_usage.cUsageIdentifier)))
+                    key_usage_pointer = struct_from_buffer(crypt32, 'CERT_ENHKEY_USAGE', usage_buffer)
+                    key_usage = unwrap(key_usage_pointer)
 
                 # Having no enhanced usage properties means a cert is distrusted
                 if has_enhanced_usage and key_usage.cUsageIdentifier == 0:
@@ -84,7 +83,7 @@ def extract_from_system():
                 data = bytes_from_buffer(context.pbCertEncoded, int(context.cbCertEncoded))
                 output.append(data)
 
-            cert_pointer = crypt32.CertEnumCertificatesInStore(store_handle, cert_pointer)
+            context_pointer = crypt32.CertEnumCertificatesInStore(store_handle, context_pointer)
 
         result = crypt32.CertCloseStore(store_handle, 0)
         handle_error(result)
