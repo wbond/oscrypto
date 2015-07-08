@@ -68,6 +68,12 @@ ffi.cdef("""
         ULONG cbSalt;
     };
 
+    struct BCRYPT_OAEP_PADDING_INFO {
+        LPCWSTR pszAlgId;
+        PUCHAR pbLabel;
+        ULONG cbLabel;
+    };
+
     struct BCRYPT_KEY_DATA_BLOB_HEADER {
         ULONG dwMagic;
         ULONG dwVersion;

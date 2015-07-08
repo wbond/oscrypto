@@ -132,6 +132,14 @@ class BCRYPT_PSS_PADDING_INFO(Structure):
     ]
 
 
+class BCRYPT_OAEP_PADDING_INFO(Structure):
+    _fields_ = [
+        ('pszAlgId', LPCWSTR),
+        ('pbLabel', PUCHAR),
+        ('cbLabel', ULONG),
+    ]
+
+
 class BCRYPT_KEY_DATA_BLOB_HEADER(Structure):
     _fields_ = [
         ('dwMagic', ULONG),
@@ -148,4 +156,5 @@ setattr(bcrypt, 'BCRYPT_DSA_KEY_BLOB_V2', BCRYPT_DSA_KEY_BLOB_V2)
 setattr(bcrypt, 'BCRYPT_ECCKEY_BLOB', BCRYPT_ECCKEY_BLOB)
 setattr(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO', BCRYPT_PKCS1_PADDING_INFO)
 setattr(bcrypt, 'BCRYPT_PSS_PADDING_INFO', BCRYPT_PSS_PADDING_INFO)
+setattr(bcrypt, 'BCRYPT_OAEP_PADDING_INFO', BCRYPT_OAEP_PADDING_INFO)
 setattr(bcrypt, 'BCRYPT_KEY_DATA_BLOB_HEADER', BCRYPT_KEY_DATA_BLOB_HEADER)

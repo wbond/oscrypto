@@ -526,6 +526,34 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
 
+def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
+    """
+    Verifies an RSA, specifically RSASSA-PSS-padded, signature
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to verify the signature with
+
+    :param signature:
+        A byte string of the signature to verify
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the Windows CNG library
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+    """
+
+    if certificate_or_public_key.algo != 'rsa':
+        raise ValueError('The key specified is not an RSA public key')
+
+    return _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=True)
+
+
 def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Generates a DSA signature
@@ -582,7 +610,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
 
-def _verify(certificate_or_public_key, signature, data, hash_algorithm):
+def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=False):
     """
     Verifies an RSA, DSA or ECDSA signature
 
@@ -597,6 +625,9 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     :param hash_algorithm:
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+
+    :param rsa_pss_padding:
+        If PSS padding should be used for RSA keys
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -616,6 +647,9 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     if hash_algorithm not in ('md5', 'sha1', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
+    if certificate_or_public_key.algo != 'rsa' and rsa_pss_padding != False:
+        raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % certificate_or_public_key.algo.upper())
+
     hash_constant = {
         'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
         'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
@@ -630,12 +664,29 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     flags = 0
 
     if certificate_or_public_key.algo == 'rsa':
-        flags = bcrypt_const.BCRYPT_PAD_PKCS1
-        padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
-        padding_info_struct = unwrap(padding_info_struct_pointer)
-        # This has to be assigned to a variable to prevent cffi from gc'ing it
-        hash_buffer = buffer_from_unicode(hash_constant)
-        padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+        if rsa_pss_padding:
+            hash_length = {
+                'md5': 16,
+                'sha1': 20,
+                'sha256': 32,
+                'sha384': 48,
+                'sha512': 64
+            }[hash_algorithm]
+
+            flags = bcrypt_const.BCRYPT_PAD_PSS
+            padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PSS_PADDING_INFO')
+            padding_info_struct = unwrap(padding_info_struct_pointer)
+            # This has to be assigned to a variable to prevent cffi from gc'ing it
+            hash_buffer = buffer_from_unicode(hash_constant)
+            padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+            padding_info_struct.cbSalt = hash_length
+        else:
+            flags = bcrypt_const.BCRYPT_PAD_PKCS1
+            padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+            padding_info_struct = unwrap(padding_info_struct_pointer)
+            # This has to be assigned to a variable to prevent cffi from gc'ing it
+            hash_buffer = buffer_from_unicode(hash_constant)
+            padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
     else:
         # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
@@ -674,6 +725,33 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm)
+
+
+def rsa_pss_sign(private_key, data, hash_algorithm):
+    """
+    Generates an RSA, specifically RSASSA-PSS-padded, signature
+
+    :param private_key:
+        The PrivateKey to generate the signature with
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the Windows CNG library
+
+    :return:
+        A byte string of the signature
+    """
+
+    if private_key.algo != 'rsa':
+        raise ValueError('The key specified is not an RSA private key')
+
+    return _sign(private_key, data, hash_algorithm, rsa_pss_padding=True)
 
 
 def dsa_sign(private_key, data, hash_algorithm):
@@ -730,7 +808,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
     return _sign(private_key, data, hash_algorithm)
 
 
-def _sign(private_key, data, hash_algorithm):
+def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     """
     Generates an RSA, DSA or ECDSA signature
 
@@ -742,6 +820,9 @@ def _sign(private_key, data, hash_algorithm):
 
     :param hash_algorithm:
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+
+    :param rsa_pss_padding:
+        If PSS padding should be used for RSA keys
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -760,6 +841,9 @@ def _sign(private_key, data, hash_algorithm):
     if hash_algorithm not in ('md5', 'sha1', 'sha256', 'sha384', 'sha512'):
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
+    if private_key.algo != 'rsa' and rsa_pss_padding != False:
+        raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % private_key.algo.upper())
+
     hash_constant = {
         'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
         'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
@@ -774,12 +858,29 @@ def _sign(private_key, data, hash_algorithm):
     flags = 0
 
     if private_key.algo == 'rsa':
-        flags = bcrypt_const.BCRYPT_PAD_PKCS1
-        padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
-        padding_info_struct = unwrap(padding_info_struct_pointer)
-        # This has to be assigned to a variable to prevent cffi from gc'ing it
-        hash_buffer = buffer_from_unicode(hash_constant)
-        padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+        if rsa_pss_padding:
+            hash_length = {
+                'md5': 16,
+                'sha1': 20,
+                'sha256': 32,
+                'sha384': 48,
+                'sha512': 64
+            }[hash_algorithm]
+
+            flags = bcrypt_const.BCRYPT_PAD_PSS
+            padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PSS_PADDING_INFO')
+            padding_info_struct = unwrap(padding_info_struct_pointer)
+            # This has to be assigned to a variable to prevent cffi from gc'ing it
+            hash_buffer = buffer_from_unicode(hash_constant)
+            padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+            padding_info_struct.cbSalt = hash_length
+        else:
+            flags = bcrypt_const.BCRYPT_PAD_PKCS1
+            padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
+            padding_info_struct = unwrap(padding_info_struct_pointer)
+            # This has to be assigned to a variable to prevent cffi from gc'ing it
+            hash_buffer = buffer_from_unicode(hash_constant)
+            padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
     if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in ('md5', 'sha1'):
@@ -805,3 +906,191 @@ def _sign(private_key, data, hash_algorithm):
         signature = Signature.from_bcrypt(signature).dump()
 
     return signature
+
+
+def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
+    """
+    Encrypts a value using an RSA public key
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to encrypt with
+
+    :param data:
+        A byte string of the data to encrypt
+
+    :param rsa_oaep_padding:
+        If OAEP padding should be used instead of PKCS#1 v1.5
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the Windows CNG library
+
+    :return:
+        A byte string of the ciphertext
+    """
+
+    if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
+        raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+
+    if not isinstance(data, byte_cls):
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+
+    if not isinstance(rsa_oaep_padding, bool):
+        raise ValueError('rsa_oaep_padding must be a bool, not %s' % rsa_oaep_padding.__class__.__name__)
+
+    flags = bcrypt_const.BCRYPT_PAD_PKCS1
+    if rsa_oaep_padding is True:
+        flags = bcrypt_const.BCRYPT_PAD_OAEP
+
+        padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_OAEP_PADDING_INFO')
+        padding_info_struct = unwrap(padding_info_struct_pointer)
+        # This has to be assigned to a variable to prevent cffi from gc'ing it
+        hash_buffer = buffer_from_unicode(bcrypt_const.BCRYPT_SHA1_ALGORITHM)
+        padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+        padding_info_struct.pbLabel = null()
+        padding_info_struct.cbLabel = 0
+        padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
+    else:
+        padding_info = null()
+
+    out_len = new(bcrypt, 'ULONG *')
+    res = bcrypt.BCryptEncrypt(certificate_or_public_key.bcrypt_key_handle, data, len(data), padding_info, null(), 0, null(), 0, out_len, flags)
+    handle_error(res)
+
+    buffer_len = deref(out_len)
+    buffer = buffer_from_bytes(buffer_len)
+
+    res = bcrypt.BCryptEncrypt(certificate_or_public_key.bcrypt_key_handle, data, len(data), padding_info, null(), 0, buffer, buffer_len, out_len, flags)
+    handle_error(res)
+
+    return bytes_from_buffer(buffer, deref(out_len))
+
+
+def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
+    """
+    Encrypts a value using an RSA private key
+
+    :param private_key:
+        A PrivateKey instance to decrypt with
+
+    :param ciphertext:
+        A byte string of the data to decrypt
+
+    :param rsa_oaep_padding:
+        If OAEP padding should be used instead of PKCS#1 v1.5
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the Windows CNG library
+
+    :return:
+        A byte string of the plaintext
+    """
+
+    if not isinstance(private_key, PrivateKey):
+        raise ValueError('private_key is not an instance of the PrivateKey class')
+
+    if not isinstance(ciphertext, byte_cls):
+        raise ValueError('ciphertext must be a byte string, not %s' % ciphertext.__class__.__name__)
+
+    if not isinstance(rsa_oaep_padding, bool):
+        raise ValueError('rsa_oaep_padding must be a bool, not %s' % rsa_oaep_padding.__class__.__name__)
+
+    flags = bcrypt_const.BCRYPT_PAD_PKCS1
+    if rsa_oaep_padding is True:
+        flags = bcrypt_const.BCRYPT_PAD_OAEP
+
+        padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_OAEP_PADDING_INFO')
+        padding_info_struct = unwrap(padding_info_struct_pointer)
+        # This has to be assigned to a variable to prevent cffi from gc'ing it
+        hash_buffer = buffer_from_unicode(bcrypt_const.BCRYPT_SHA1_ALGORITHM)
+        padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+        padding_info_struct.pbLabel = null()
+        padding_info_struct.cbLabel = 0
+        padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
+    else:
+        padding_info = null()
+
+    out_len = new(bcrypt, 'ULONG *')
+    res = bcrypt.BCryptDecrypt(private_key.bcrypt_key_handle, ciphertext, len(ciphertext), padding_info, null(), 0, null(), 0, out_len, flags)
+    handle_error(res)
+
+    buffer_len = deref(out_len)
+    buffer = buffer_from_bytes(buffer_len)
+
+    res = bcrypt.BCryptDecrypt(private_key.bcrypt_key_handle, ciphertext, len(ciphertext), padding_info, null(), 0, buffer, buffer_len, out_len, flags)
+    handle_error(res)
+
+    return bytes_from_buffer(buffer, deref(out_len))
+
+
+def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
+    """
+    Encrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 v1.5 padding.
+
+    :param certificate_or_public_key:
+        A PublicKey or Certificate object
+
+    :param data:
+        A byte string, with a maximum length 11 bytes less than the key length (in bytes)
+
+    :return:
+        A byte string of the encrypted data
+    """
+
+    return _encrypt(certificate_or_public_key, data)
+
+
+def rsa_pkcs1v15_decrypt(private_key, ciphertext):
+    """
+    Decrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 v1.5 padding.
+
+    :param private_key:
+        A PrivateKey object
+
+    :param ciphertext:
+        A byte string of the encrypted data
+
+    :return:
+        A byte string of the original plaintext
+    """
+
+    return _decrypt(private_key, ciphertext)
+
+
+def rsa_oaep_encrypt(certificate_or_public_key, data):
+    """
+    Encrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 OAEP padding with SHA1.
+
+    :param certificate_or_public_key:
+        A PublicKey or Certificate object
+
+    :param data:
+        A byte string, with a maximum length 41 bytes (or more) less than the key length (in bytes)
+
+    :return:
+        A byte string of the encrypted data
+    """
+
+    return _encrypt(certificate_or_public_key, data, rsa_oaep_padding=True)
+
+
+def rsa_oaep_decrypt(private_key, ciphertext):
+    """
+    Decrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 OAEP padding with SHA1.
+
+    :param private_key:
+        A PrivateKey object
+
+    :param ciphertext:
+        A byte string of the encrypted data
+
+    :return:
+        A byte string of the original plaintext
+    """
+
+    return _decrypt(private_key, ciphertext, rsa_oaep_padding=True)
