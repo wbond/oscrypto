@@ -19,6 +19,7 @@ ffi.cdef("""
     typedef signed long OSStatus;
     typedef unsigned long CFTypeID;
     typedef uint32_t SecTrustSettingsDomain;
+    typedef uint32_t SecPadding;
 
     typedef void *CFTypeRef;
     typedef CFTypeRef CFArrayRef;
@@ -52,6 +53,8 @@ ffi.cdef("""
     OSStatus SecTrustSettingsCopyTrustSettings(SecCertificateRef certRef, SecTrustSettingsDomain domain, CFArrayRef *trustSettings);
     CFDictionaryRef SecPolicyCopyProperties(SecPolicyRef policyRef);
     CFTypeID SecPolicyGetTypeID(void);
+    OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const unsigned char *plainText, size_t plainTextLen, unsigned char *cipherText, size_t *cipherTextLen);
+    OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const unsigned char *cipherText, size_t cipherTextLen, unsigned char *plainText, size_t *plainTextLen);
 
     SecRandomRef kSecRandomDefault;
 
@@ -59,6 +62,7 @@ ffi.cdef("""
     CFStringRef kSecPaddingPKCS7Key;
     CFStringRef kSecPaddingPKCS5Key;
     CFStringRef kSecPaddingPKCS1Key;
+    CFStringRef kSecPaddingOAEPKey;
     CFStringRef kSecPaddingNoneKey;
     CFStringRef kSecModeCBCKey;
     CFStringRef kSecTransformInputAttributeName;

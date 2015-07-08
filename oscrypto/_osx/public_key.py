@@ -5,11 +5,12 @@ import sys
 
 from asn1crypto.keys import PublicKeyInfo
 
-from .._ffi import new, unwrap
-from ._security import Security, handle_sec_error
+from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref
+from ._security import Security, security_const, handle_sec_error
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, PrivateKeyError
+from .._pkcs1 import add_pss_padding, verify_pss_padding
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -23,11 +24,23 @@ else:
 class PrivateKey():
 
     sec_key_ref = None
-    algo = None
+    asn1 = None
 
-    def __init__(self, sec_key_ref, algo):
+    def __init__(self, sec_key_ref, asn1):
         self.sec_key_ref = sec_key_ref
-        self.algo = algo
+        self.asn1 = asn1
+
+    @property
+    def algo(self):
+        return self.asn1.algorithm
+
+    @property
+    def bit_size(self):
+        return self.asn1.bit_size
+
+    @property
+    def byte_size(self):
+        return self.asn1.byte_size
 
     def __del__(self):
         if self.sec_key_ref:
@@ -43,23 +56,39 @@ class PublicKey(PrivateKey):
 class Certificate():
 
     sec_certificate_ref = None
-    algo = None
+    asn1 = None
     _public_key = None
 
-    def __init__(self, sec_certificate_ref, algo):
+    def __init__(self, sec_certificate_ref, asn1):
         self.sec_certificate_ref = sec_certificate_ref
-        self.algo = algo
+        self.asn1 = asn1
+
+    @property
+    def algo(self):
+        return self.asn1.algorithm
+
+    @property
+    def bit_size(self):
+        return self.asn1.bit_size
+
+    @property
+    def byte_size(self):
+        return self.asn1.byte_size
 
     @property
     def sec_key_ref(self):
+        return self.public_key.sec_key_ref
+
+    @property
+    def public_key(self):
         if not self._public_key and self.sec_certificate_ref:
             sec_public_key_ref_pointer = new(Security, 'SecKeyRef *')
             res = Security.SecCertificateCopyPublicKey(self.sec_certificate_ref, sec_public_key_ref_pointer)
             handle_sec_error(res)
             sec_public_key_ref = unwrap(sec_public_key_ref_pointer)
-            self._public_key = PublicKey(sec_public_key_ref)
+            self._public_key = PublicKey(sec_public_key_ref, self.asn1['tbs_certificate']['subject_public_key_info'])
 
-        return self._public_key.sec_key_ref
+        return self._public_key
 
     def __del__(self):
         if self._public_key:
@@ -99,29 +128,28 @@ def load_certificate(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    certificate, algo = parse_certificate(source)
-    return _load_x509(certificate.dump(), algo)
+    certificate, _ = parse_certificate(source)
+    return _load_x509(certificate)
 
 
-def _load_x509(source, algo):
+def _load_x509(certificate):
     """
     Loads a certificate into a format usable with various functions
 
-    :param source:
-        A byte string of the DER-encoded certificate
-
-    :param algo:
-        A unicode string of "rsa", "dsa" or "ec"
+    :param certificate:
+        An asn1crypto.x509.Certificate object
 
     :return:
         A Certificate object
     """
 
+    source = certificate.dump()
+
     cf_source = None
     try:
         cf_source = CFHelpers.cf_data_from_bytes(source)
         sec_key_ref = Security.SecCertificateCreateWithData(CoreFoundation.kCFAllocatorDefault, cf_source)
-        return Certificate(sec_key_ref, algo)
+        return Certificate(sec_key_ref, certificate)
 
     finally:
         if cf_source:
@@ -165,8 +193,8 @@ def load_private_key(source, source_type, password=None):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    private_object, algo = parse_private(source, password)
-    return _load_key(private_object, algo)
+    private_object, _ = parse_private(source, password)
+    return _load_key(private_object)
 
 
 def load_public_key(source, source_type):
@@ -197,20 +225,17 @@ def load_public_key(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    public_key, algo = parse_public(source)
-    return _load_key(public_key, algo)
+    public_key, _ = parse_public(source)
+    return _load_key(public_key)
 
 
-def _load_key(key_object, algo):
+def _load_key(key_object):
     """
     Loads a private or public key into a format usable with various functions
 
     :param key_object:
         An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
         object
-
-    :param algo:
-        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A PrivateKey or PublicKey object
@@ -243,7 +268,7 @@ def _load_key(key_object, algo):
             'dsa': Security.kSecAttrKeyTypeDSA,
             'ec': Security.kSecAttrKeyTypeECDSA,
             'rsa': Security.kSecAttrKeyTypeRSA,
-        }[algo]
+        }[key_object.algorithm]
         cf_dict = CFHelpers.cf_dictionary_from_pairs([
             (Security.kSecAttrKeyType, key_type),
             (Security.kSecAttrKeyClass, key_class),
@@ -255,10 +280,10 @@ def _load_key(key_object, algo):
         handle_cf_error(error_pointer)
 
         if key_class == Security.kSecAttrKeyClassPublic:
-            return PublicKey(sec_key_ref, algo)
+            return PublicKey(sec_key_ref, key_object)
 
         if key_class == Security.kSecAttrKeyClassPrivate:
-            return PrivateKey(sec_key_ref, algo)
+            return PrivateKey(sec_key_ref, key_object)
 
     finally:
         if cf_source:
@@ -312,14 +337,241 @@ def load_pkcs12(source, source_type, password=None):
     cert = None
 
     if key_info:
-        key = _load_key(key_info[0], key_info[1])
+        key = _load_key(key_info[0])
 
     if cert_info:
-        cert = _load_x509(cert_info[0], cert_info[1])
+        cert = _load_x509(cert_info[0])
 
-    extra_certs = [_load_x509(info[0], info[1]) for info in extra_certs_info]
+    extra_certs = [_load_x509(info[0]) for info in extra_certs_info]
 
     return (key, cert, extra_certs)
+
+
+def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
+    """
+    Encrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 v1.5 padding.
+
+    :param certificate_or_public_key:
+        A PublicKey or Certificate object
+
+    :param data:
+        A byte string, with a maximum length 11 bytes less than the key length (in bytes)
+
+    :return:
+        A byte string of the encrypted data
+    """
+
+    if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
+        raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+
+    if not isinstance(data, byte_cls):
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+
+    key_length = certificate_or_public_key.byte_size
+    buffer = buffer_from_bytes(key_length)
+    output_length = new(Security, 'size_t *', key_length)
+    result = Security.SecKeyEncrypt(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), buffer, output_length)
+    handle_sec_error(result)
+
+    return bytes_from_buffer(buffer, deref(output_length))
+
+
+def rsa_pkcs1v15_decrypt(private_key, ciphertext):
+    """
+    Decrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 v1.5 padding.
+
+    :param private_key:
+        A PrivateKey object
+
+    :param ciphertext:
+        A byte string of the encrypted data
+
+    :return:
+        A byte string of the original plaintext
+    """
+
+    if not isinstance(private_key, PrivateKey):
+        raise ValueError('private_key is not an instance of the PrivateKey class')
+
+    if not isinstance(ciphertext, byte_cls):
+        raise ValueError('data must be a byte string, not %s' % ciphertext.__class__.__name__)
+
+    key_length = private_key.byte_size
+    buffer = buffer_from_bytes(key_length)
+    output_length = new(Security, 'size_t *', key_length)
+    result = Security.SecKeyDecrypt(private_key.sec_key_ref, security_const.kSecPaddingPKCS1, ciphertext, len(ciphertext), buffer, output_length)
+    handle_sec_error(result)
+
+    return bytes_from_buffer(buffer, deref(output_length))
+
+
+def rsa_oaep_encrypt(certificate_or_public_key, data):
+    """
+    Encrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 OAEP padding with SHA1.
+
+    :param certificate_or_public_key:
+        A PublicKey or Certificate object
+
+    :param data:
+        A byte string, with a maximum length 41 bytes (or more) less than the key length (in bytes)
+
+    :return:
+        A byte string of the encrypted data
+    """
+
+    return _encrypt(certificate_or_public_key, data, Security.kSecPaddingOAEPKey)
+
+
+def rsa_oaep_decrypt(private_key, ciphertext):
+    """
+    Decrypts a byte string using a public key, certificate or private key. Uses
+    PKCS#1 OAEP padding with SHA1.
+
+    :param private_key:
+        A PrivateKey object
+
+    :param ciphertext:
+        A byte string of the encrypted data
+
+    :return:
+        A byte string of the original plaintext
+    """
+
+    return _decrypt(private_key, ciphertext, Security.kSecPaddingOAEPKey)
+
+
+def _encrypt(certificate_or_public_key, data, padding, as_signing=False):
+    """
+    Encrypts plaintext using an RSA public key
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey object
+
+    :param data:
+        The plaintext - a byte string
+
+    :param padding:
+        The padding mode to use, specified as a kSecPadding*Key value
+
+    :param as_signing:
+        If a PrivateKey should be allowed for use of this during a signing operation
+
+    :raises:
+        ValueError - when the key or data parameter is incorrect
+        OSError - when an error is returned by the OS X Security Framework
+
+    :return:
+        A byte string of the ciphertext
+    """
+
+    if as_signing:
+        if not isinstance(certificate_or_public_key, PrivateKey):
+            raise ValueError('private_key is not an instance of the PrivateKey class')
+    else:
+        if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
+            raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+
+    if not isinstance(data, byte_cls):
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+
+    if not padding:
+        raise ValueError('padding must be specified')
+
+    cf_data = None
+    sec_transform = None
+
+    try:
+        cf_data = CFHelpers.cf_data_from_bytes(data)
+
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
+        sec_transform = Security.SecEncryptTransformCreate(certificate_or_public_key.sec_key_ref, error_pointer)
+        handle_cf_error(error_pointer)
+
+        if padding:
+            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error_pointer)
+            handle_cf_error(error_pointer)
+
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        handle_cf_error(error_pointer)
+
+        ciphertext = Security.SecTransformExecute(sec_transform, error_pointer)
+        handle_cf_error(error_pointer)
+
+        return CFHelpers.cf_data_to_bytes(ciphertext)
+
+    finally:
+        if cf_data:
+            CoreFoundation.CFRelease(cf_data)
+        if sec_transform:
+            CoreFoundation.CFRelease(sec_transform)
+
+
+def _decrypt(private_key, ciphertext, padding, as_verify=False):
+    """
+    Decrypts RSA ciphertext using the private key
+
+    :param private_key:
+        A PrivateKey object
+
+    :param ciphertext:
+        The ciphertext - a byte string
+
+    :param padding:
+        The padding mode to use, specified as a kSecPadding*Key value
+
+    :param as_verify:
+        If a Certificate or PublicKey should be allowed for use of this during a verify operation
+
+    :raises:
+        ValueError - when the key or data parameter is incorrect
+        OSError - when an error is returned by the OS X Security Framework
+
+    :return:
+        A byte string of the plaintext
+    """
+
+    if as_verify:
+        if not isinstance(private_key, (Certificate, PublicKey)):
+            raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+    else:
+        if not isinstance(private_key, PrivateKey):
+            raise ValueError('private_key is not an instance of the PrivateKey class')
+
+    if not isinstance(ciphertext, byte_cls):
+        raise ValueError('ciphertext must be a byte string, not %s' % ciphertext.__class__.__name__)
+
+    if not padding:
+        raise ValueError('padding must be specified')
+
+    cf_data = None
+    sec_transform = None
+
+    try:
+        cf_data = CFHelpers.cf_data_from_bytes(ciphertext)
+
+        error_pointer = new(CoreFoundation, 'CFErrorRef *')
+        sec_transform = Security.SecDecryptTransformCreate(private_key.sec_key_ref, error_pointer)
+        handle_cf_error(error_pointer)
+
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error_pointer)
+        handle_cf_error(error_pointer)
+
+        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        handle_cf_error(error_pointer)
+
+        plaintext = Security.SecTransformExecute(sec_transform, error_pointer)
+        handle_cf_error(error_pointer)
+
+        return CFHelpers.cf_data_to_bytes(plaintext)
+
+    finally:
+        if cf_data:
+            CoreFoundation.CFRelease(cf_data)
+        if sec_transform:
+            CoreFoundation.CFRelease(sec_transform)
 
 
 def rsa_pkcsv15_verify(certificate_or_public_key, signature, data, hash_algorithm):
@@ -348,6 +600,53 @@ def rsa_pkcsv15_verify(certificate_or_public_key, signature, data, hash_algorith
         raise ValueError('The key specified is not an RSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
+
+
+def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
+    """
+    Verifies an RSA PSS, specifically RSASSA-PSS, signature. For the PSS padding
+    the mask gen algorithm will be mgf1 using the same hash algorithm as the
+    signature. The salt length with be the length of the hash algorithm, and
+    the trailer field with be the standard 0xBC byte.
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to verify the signature with
+
+    :param signature:
+        A byte string of the signature to verify
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the OS X Security Framework
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+    """
+
+    if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
+        raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+
+    if not isinstance(data, byte_cls):
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+
+    if certificate_or_public_key.algo != 'rsa':
+        raise ValueError('The key specified is not an RSA public key')
+
+    hash_length = {
+        'sha1': 20,
+        'sha224': 28,
+        'sha256': 32,
+        'sha384': 48,
+        'sha512': 64
+    }.get(hash_algorithm, 0)
+
+    plaintext = _encrypt(certificate_or_public_key, signature, Security.kSecPaddingNoneKey)
+    if not verify_pss_padding(hash_algorithm, hash_length, data, plaintext):
+        raise SignatureError('Signature is invalid')
 
 
 def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
@@ -528,6 +827,51 @@ def rsa_pkcsv15_sign(private_key, data, hash_algorithm):
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm)
+
+
+def rsa_pss_sign(private_key, data, hash_algorithm):
+    """
+    Generates an RSA PSS, specifically RSASSA-PSS, signature. For the PSS
+    padding the mask gen algorithm will be mgf1 using the same hash algorithm
+    as the signature. The salt length with be the length of the hash algorithm,
+    and the trailer field with be the standard 0xBC byte.
+
+    :param private_key:
+        The PrivateKey to generate the signature with
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the OS X Security Framework
+
+    :return:
+        A byte string of the signature
+    """
+
+    if not isinstance(private_key, PrivateKey):
+        raise ValueError('private_key is not an instance of the PrivateKey class')
+
+    if not isinstance(data, byte_cls):
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+
+    if private_key.algo != 'rsa':
+        raise ValueError('The key specified is not an RSA private key')
+
+    hash_length = {
+        'sha1': 20,
+        'sha224': 28,
+        'sha256': 32,
+        'sha384': 48,
+        'sha512': 64
+    }.get(hash_algorithm, 0)
+
+    encoded_data = add_pss_padding(hash_algorithm, hash_length, private_key.bit_size, data)
+    return _decrypt(private_key, encoded_data, Security.kSecPaddingNoneKey)
 
 
 def dsa_sign(private_key, data, hash_algorithm):

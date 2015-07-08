@@ -50,3 +50,6 @@ class security_const():
     kSecTrustSettingsDomainSystem = 2
 
     errSecNoTrustSettings = -25263
+
+    kSecPaddingNone = 0
+    kSecPaddingPKCS1 = 1

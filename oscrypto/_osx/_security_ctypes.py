@@ -40,6 +40,7 @@ SecCertificateRef = POINTER(c_void_p)
 SecTransformRef = POINTER(c_void_p)
 SecRandomRef = c_void_p
 SecTrustSettingsDomain = c_uint32
+SecPadding = c_uint32
 SecPolicyRef = c_void_p
 
 try:
@@ -97,12 +98,20 @@ try:
     Security.SecPolicyGetTypeID.argtypes = []
     Security.SecPolicyGetTypeID.restype = CFTypeID
 
+    Security.SecKeyEncrypt.argtypes = [SecKeyRef, SecPadding, c_char_p, c_size_t, c_char_p, POINTER(c_size_t)]
+    Security.SecKeyEncrypt.restype = OSStatus
+
+    Security.SecKeyDecrypt.argtypes = [SecKeyRef, SecPadding, c_char_p, c_size_t, c_char_p, POINTER(c_size_t)]
+    Security.SecKeyDecrypt.restype = OSStatus
+
+    setattr(Security, 'SecKeyRef', SecKeyRef)
     setattr(Security, 'kSecRandomDefault', SecRandomRef.in_dll(Security, 'kSecRandomDefault'))
 
     setattr(Security, 'kSecPaddingKey', CFStringRef.in_dll(Security, 'kSecPaddingKey'))
     setattr(Security, 'kSecPaddingPKCS7Key', CFStringRef.in_dll(Security, 'kSecPaddingPKCS7Key'))
     setattr(Security, 'kSecPaddingPKCS5Key', CFStringRef.in_dll(Security, 'kSecPaddingPKCS5Key'))
     setattr(Security, 'kSecPaddingPKCS1Key', CFStringRef.in_dll(Security, 'kSecPaddingPKCS1Key'))
+    setattr(Security, 'kSecPaddingOAEPKey', CFStringRef.in_dll(Security, 'kSecPaddingOAEPKey'))
     setattr(Security, 'kSecPaddingNoneKey', CFStringRef.in_dll(Security, 'kSecPaddingNoneKey'))
     setattr(Security, 'kSecModeCBCKey', CFStringRef.in_dll(Security, 'kSecModeCBCKey'))
     setattr(Security, 'kSecTransformInputAttributeName', CFStringRef.in_dll(Security, 'kSecTransformInputAttributeName'))
