@@ -32,6 +32,14 @@ class PublicKeyTests(unittest.TestCase):
         public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
         public_key.rsa_pkcsv15_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_pss_verify(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_pss_signature'), 'rb') as f:
+            signature = f.read()
+        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
+        public_key.rsa_pss_verify(public, signature, original_data, 'sha1')
+
     def test_dsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -48,6 +56,44 @@ class PublicKeyTests(unittest.TestCase):
         public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'), 'file')
         public_key.ecdsa_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_pkcs1v15_encrypt(self):
+        original_data = b'This is data to encrypt'
+        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
+        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
+
+        ciphertext = public_key.rsa_pkcs1v15_encrypt(public, original_data)
+        self.assertIsInstance(ciphertext, byte_cls)
+
+        plaintext = public_key.rsa_pkcs1v15_decrypt(private, ciphertext)
+        self.assertEqual(original_data, plaintext)
+
+    def test_rsa_oaep_encrypt(self):
+        original_data = b'This is data to encrypt'
+        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
+        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
+
+        ciphertext = public_key.rsa_oaep_encrypt(public, original_data)
+        self.assertIsInstance(ciphertext, byte_cls)
+
+        plaintext = public_key.rsa_oaep_decrypt(private, ciphertext)
+        self.assertEqual(original_data, plaintext)
+
+    def test_rsa_private_pkcs1v15_decrypt(self):
+        original_data = b'This is the message to sign'
+        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
+
+        with open(os.path.join(fixtures_dir, 'rsa_public_encrypted'), 'rb') as f:
+            plaintext = public_key.rsa_pkcs1v15_decrypt(private, f.read())
+            self.assertEqual(original_data, plaintext)
+
+    def test_rsa_private_oaep_decrypt(self):
+        original_data = b'This is the message to sign'
+        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
+
+        with open(os.path.join(fixtures_dir, 'rsa_public_encrypted_oaep'), 'rb') as f:
+            plaintext = public_key.rsa_oaep_decrypt(private, f.read())
+            self.assertEqual(original_data, plaintext)
+
     def test_rsa_sign(self):
         original_data = b'This is data to sign'
         private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
@@ -57,6 +103,26 @@ class PublicKeyTests(unittest.TestCase):
         self.assertIsInstance(signature, byte_cls)
 
         public_key.rsa_pkcsv15_verify(public, signature, original_data, 'sha1')
+
+    def test_rsa_pss_sign(self):
+        original_data = b'This is data to sign'
+        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
+        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
+
+        signature = public_key.rsa_pss_sign(private, original_data, 'sha1')
+        self.assertIsInstance(signature, byte_cls)
+
+        public_key.rsa_pss_verify(public, signature, original_data, 'sha1')
+
+    def test_rsa_pss_sha256_sign(self):
+        original_data = b'This is data to sign'
+        private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
+        public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
+
+        signature = public_key.rsa_pss_sign(private, original_data, 'sha256')
+        self.assertIsInstance(signature, byte_cls)
+
+        public_key.rsa_pss_verify(public, signature, original_data, 'sha256')
 
     def test_dsa_sign(self):
         original_data = b'This is data to sign'

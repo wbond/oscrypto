@@ -5,7 +5,7 @@ import sys
 import math
 
 from .._ffi import new, null, is_null, buffer_from_bytes, bytes_from_buffer, deref
-from ._libcrypto import libcrypto, libcrypto_const, extract_openssl_error
+from ._libcrypto import libcrypto, libcrypto_const, handle_openssl_error
 from .util import rand_bytes
 
 if sys.version_info < (3,):
@@ -394,7 +394,7 @@ def _encrypt(cipher, key, data, iv, padding):
     try:
         evp_cipher_ctx = libcrypto.EVP_CIPHER_CTX_new()
         if is_null(evp_cipher_ctx):
-            raise OSError(extract_openssl_error())
+            handle_openssl_error(0)
 
         evp_cipher, buffer_size = _setup_evp_encrypt_decrypt(cipher, data)
 
@@ -403,38 +403,31 @@ def _encrypt(cipher, key, data, iv, padding):
 
         if cipher in ('rc2', 'rc4'):
             res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), null(), null())
-            if res != 1:
-                raise OSError(extract_openssl_error())
+            handle_openssl_error(res)
             res = libcrypto.EVP_CIPHER_CTX_set_key_length(evp_cipher_ctx, len(key))
-            if res != 1:
-                raise OSError(extract_openssl_error())
+            handle_openssl_error(res)
             if cipher == 'rc2':
                 res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto_const.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
-                if res != 1:
-                    raise OSError(extract_openssl_error())
+                handle_openssl_error(res)
             evp_cipher = null()
 
         if padding is not None:
             res = libcrypto.EVP_CIPHER_CTX_set_padding(evp_cipher_ctx, int(padding))
-            if res != 1:
-                raise OSError(extract_openssl_error())
+            handle_openssl_error(res)
 
         res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        handle_openssl_error(res)
 
         buffer = buffer_from_bytes(buffer_size)
         output_length = new(libcrypto, 'int *')
 
         res = libcrypto.EVP_EncryptUpdate(evp_cipher_ctx, buffer, output_length, data, len(data))
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        handle_openssl_error(res)
 
         output = bytes_from_buffer(buffer, deref(output_length))
 
         res = libcrypto.EVP_EncryptFinal_ex(evp_cipher_ctx, buffer, output_length)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        handle_openssl_error(res)
 
         output += bytes_from_buffer(buffer, deref(output_length))
 
@@ -489,7 +482,7 @@ def _decrypt(cipher, key, data, iv, padding):
     try:
         evp_cipher_ctx = libcrypto.EVP_CIPHER_CTX_new()
         if is_null(evp_cipher_ctx):
-            raise OSError(extract_openssl_error())
+            handle_openssl_error(0)
 
         evp_cipher, buffer_size = _setup_evp_encrypt_decrypt(cipher, data)
 
@@ -498,38 +491,31 @@ def _decrypt(cipher, key, data, iv, padding):
 
         if cipher in ('rc2', 'rc4'):
             res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), null(), null())
-            if res != 1:
-                raise OSError(extract_openssl_error())
+            handle_openssl_error(res)
             res = libcrypto.EVP_CIPHER_CTX_set_key_length(evp_cipher_ctx, len(key))
-            if res != 1:
-                raise OSError(extract_openssl_error())
+            handle_openssl_error(res)
             if cipher == 'rc2':
                 res = libcrypto.EVP_CIPHER_CTX_ctrl(evp_cipher_ctx, libcrypto_const.EVP_CTRL_SET_RC2_KEY_BITS, len(key) * 8, null())
-                if res != 1:
-                    raise OSError(extract_openssl_error())
+                handle_openssl_error(res)
             evp_cipher = null()
 
         if padding is not None:
             res = libcrypto.EVP_CIPHER_CTX_set_padding(evp_cipher_ctx, int(padding))
-            if res != 1:
-                raise OSError(extract_openssl_error())
+            handle_openssl_error(res)
 
         res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        handle_openssl_error(res)
 
         buffer = buffer_from_bytes(buffer_size)
         output_length = new(libcrypto, 'int *')
 
         res = libcrypto.EVP_DecryptUpdate(evp_cipher_ctx, buffer, output_length, data, len(data))
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        handle_openssl_error(res)
 
         output = bytes_from_buffer(buffer, deref(output_length))
 
         res = libcrypto.EVP_DecryptFinal_ex(evp_cipher_ctx, buffer, output_length)
-        if res != 1:
-            raise OSError(extract_openssl_error())
+        handle_openssl_error(res)
 
         output += bytes_from_buffer(buffer, deref(output_length))
 

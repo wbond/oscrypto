@@ -6,9 +6,18 @@ import sys
 from .._ffi import FFIEngineError, buffer_from_bytes, byte_string_from_buffer
 
 try:
-    from ._libcrypto_cffi import libcrypto
+    #pylint: disable=W0611
+    from ._libcrypto_cffi import (
+        libcrypto,
+        version as libcrypto_version,
+        version_info as libcrypto_version_info
+    )
 except (FFIEngineError):
-    from ._libcrypto_ctypes import libcrypto
+    from ._libcrypto_ctypes import (
+        libcrypto,
+        version as libcrypto_version,
+        version_info as libcrypto_version_info
+    )
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -42,13 +51,20 @@ def _try_decode(value):
     return str_cls(value, errors='replace')
 
 
-def extract_openssl_error():
+def handle_openssl_error(result):
     """
-    Extracts the last OpenSSL error message into a python unicode string
+    Checks if an error occured, and if so throws an OSError containing the
+    last OpenSSL error message
 
-    :return:
-        A unicode string error message
+    :param result:
+        An integer result code - 1 or greater indicates success
+
+    :raises:
+        OSError - when an OpenSSL error occurs
     """
+
+    if result > 0:
+        return
 
     error_num = libcrypto.ERR_get_error()
     buffer = buffer_from_bytes(120)
@@ -57,8 +73,25 @@ def extract_openssl_error():
     # Since we are dealing with a string, it is NULL terminated
     error_string = byte_string_from_buffer(buffer)
 
-    return _try_decode(error_string)
+    raise OSError(_try_decode(error_string))
 
 
 class libcrypto_const():
     EVP_CTRL_SET_RC2_KEY_BITS = 3
+
+    SSLEAY_VERSION = 0
+
+    RSA_PKCS1_PADDING = 1
+    RSA_NO_PADDING = 3
+    RSA_PKCS1_OAEP_PADDING = 4
+
+    # OpenSSL 0.9.x
+    EVP_MD_CTX_FLAG_PSS_MDLEN = -1
+
+    # OpenSSL 1.x.x
+    EVP_PKEY_CTRL_RSA_PADDING = 0x1001
+    RSA_PKCS1_PSS_PADDING = 6
+    EVP_PKEY_CTRL_RSA_PSS_SALTLEN = 0x1002
+    EVP_PKEY_RSA = 6
+    EVP_PKEY_OP_SIGN = 1<<3
+    EVP_PKEY_OP_VERIFY = 1<<4

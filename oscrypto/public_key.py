@@ -53,4 +53,10 @@ else:
         PublicKey,
         rsa_pkcsv15_sign,
         rsa_pkcsv15_verify,
+        rsa_pss_sign,
+        rsa_pss_verify,
+        rsa_pkcs1v15_encrypt,
+        rsa_pkcs1v15_decrypt,
+        rsa_oaep_encrypt,
+        rsa_oaep_decrypt,
     )

@@ -156,7 +156,7 @@ def rand_bytes(length):
 # If in a future version of OS X they remove OpenSSL, this try/except block
 # will fall back to the pure Python implementation, which is just slower
 try:
-    from ._libcrypto import libcrypto
+    from .._linux._libcrypto import libcrypto
 
     def _extract_openssl_error():
         """

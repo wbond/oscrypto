@@ -130,6 +130,7 @@ except (ImportError):
         'unsigned char *': c_char_p,
         'int': c_int,
         'unsigned int': c_uint,
+        'size_t': ctypes.c_size_t,
     }
     if sys.platform == 'win32':
         from ctypes import wintypes
@@ -149,6 +150,9 @@ except (ImportError):
         })
 
     def _is_pointer_type(library, type_):
+        is_double_pointer = type_[-3:] == ' **'
+        if is_double_pointer:
+            type_ = type_[:-1]
         is_pointer = type_[-2:] == ' *' and type_ not in _pointer_types
         if is_pointer:
             type_ = type_[:-2]
@@ -157,6 +161,9 @@ except (ImportError):
             type_ = _type_map[type_]
         else:
             type_ = getattr(library, type_)
+
+        if is_double_pointer:
+            type_ = ctypes.POINTER(type_)
 
         return (is_pointer, type_)
 
@@ -181,7 +188,7 @@ except (ImportError):
         return ctypes.cast(value, type_)
 
     def bytes_from_buffer(buffer, maxlen=None):  #pylint: disable=W0613
-        if isinstance(buffer, int):
+        if isinstance(buffer, (int, c_char_p)):
             return ctypes.string_at(buffer, maxlen)
         if maxlen is not None:
             return buffer.raw[0:maxlen]

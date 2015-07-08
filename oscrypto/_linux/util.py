@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer
-from ._libcrypto import libcrypto, extract_openssl_error
+from ._libcrypto import libcrypto, handle_openssl_error
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -69,8 +69,7 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
 
     output_buffer = buffer_from_bytes(key_length)
     result = libcrypto.PKCS5_PBKDF2_HMAC(password, len(password), salt, len(salt), iterations, evp_md, key_length, output_buffer)
-    if result != 1:
-        raise OSError(extract_openssl_error())
+    handle_openssl_error(result)
 
     return bytes_from_buffer(output_buffer)
 
@@ -148,8 +147,7 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
         output_buffer,
         digest_type
     )
-    if result != 1:
-        raise OSError(extract_openssl_error())
+    handle_openssl_error(result)
 
     return bytes_from_buffer(output_buffer)
 
@@ -179,7 +177,6 @@ def rand_bytes(length):
 
     buffer = buffer_from_bytes(length)
     result = libcrypto.RAND_bytes(buffer, length)
-    if result != 1:
-        raise OSError(extract_openssl_error())
+    handle_openssl_error(result)
 
     return bytes_from_buffer(buffer)

@@ -1,8 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import re
 from ctypes.util import find_library
-from ctypes import CDLL, c_void_p, c_char_p, c_int, c_ulong, c_uint, POINTER
+from ctypes import CDLL, c_void_p, c_char_p, c_int, c_ulong, c_uint, c_long, c_size_t, POINTER
 
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
@@ -14,6 +15,23 @@ if not libcrypto_path:
 
 libcrypto = CDLL(libcrypto_path, use_errno=True)
 
+try:
+    libcrypto.SSLeay_version.argtypes = [c_int]
+    libcrypto.SSLeay_version.restype = c_char_p
+except (AttributeError):
+    raise FFIEngineError('Error accessing libcrypto.SSLeay_version')
+
+version_string = libcrypto.SSLeay_version(0).decode('utf-8')
+version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
+if not version_match:
+    raise LibraryNotFoundError('Error detecting the version of libcrypto')
+version = version_match.group(1)
+version_parts = re.sub('(\\d)([a-z]+)', '\\1.\\2', version).split('.')
+version_info = tuple(int(part) if part.isdigit() else part for part in version_parts)
+
+if version_info < (0, 9, 8):
+    raise LibraryNotFoundError('OpenSSL versions older than 0.9.8 are not supported - found version %s' % version)
+
 P_EVP_CIPHER_CTX = c_void_p
 P_EVP_CIPHER = c_void_p
 
@@ -23,7 +41,10 @@ P_EVP_MD = c_void_p
 P_ENGINE = c_void_p
 
 P_EVP_PKEY = c_void_p
+EVP_PKEY_CTX = c_void_p
+P_EVP_PKEY_CTX = POINTER(c_void_p)
 P_X509 = c_void_p
+P_RSA = c_void_p
 
 p_int = POINTER(c_int)
 p_uint = POINTER(c_uint)
@@ -148,26 +169,120 @@ try:
     libcrypto.EVP_PKEY_size.argtypes = [P_EVP_PKEY]
     libcrypto.EVP_PKEY_size.restype = c_int
 
-    libcrypto.EVP_DigestInit_ex.argtypes = [P_EVP_MD_CTX, P_EVP_MD, P_ENGINE]
-    libcrypto.EVP_DigestInit_ex.restype = c_int
+    libcrypto.EVP_PKEY_get1_RSA.argtypes = [P_EVP_PKEY]
+    libcrypto.EVP_PKEY_get1_RSA.restype = P_RSA
+
+    libcrypto.RSA_free.argtypes = [P_RSA]
+    libcrypto.RSA_free.restype = None
+
+    libcrypto.RSA_public_encrypt.argtypes = [c_int, c_char_p, c_char_p, P_RSA, c_int]
+    libcrypto.RSA_public_encrypt.restype = c_int
+
+    libcrypto.RSA_private_encrypt.argtypes = [c_int, c_char_p, c_char_p, P_RSA, c_int]
+    libcrypto.RSA_private_encrypt.restype = c_int
+
+    libcrypto.RSA_public_decrypt.argtypes = [c_int, c_char_p, c_char_p, P_RSA, c_int]
+    libcrypto.RSA_public_decrypt.restype = c_int
+
+    libcrypto.RSA_private_decrypt.argtypes = [c_int, c_char_p, c_char_p, P_RSA, c_int]
+    libcrypto.RSA_private_decrypt.restype = c_int
 
     libcrypto.EVP_DigestUpdate.argtypes = [P_EVP_MD_CTX, c_char_p, c_uint]
     libcrypto.EVP_DigestUpdate.restype = c_int
 
-    libcrypto.EVP_SignFinal.argtypes = [P_EVP_MD_CTX, c_char_p, p_uint, P_EVP_PKEY]
-    libcrypto.EVP_SignFinal.restype = c_int
-
-    libcrypto.EVP_VerifyFinal.argtypes = [P_EVP_MD_CTX, c_char_p, c_uint, P_EVP_PKEY]
-    libcrypto.EVP_VerifyFinal.restype = c_int
-
     libcrypto.RAND_bytes.argtypes = [c_char_p, c_int]
     libcrypto.RAND_bytes.restype = c_int
-
-    libcrypto.PKCS5_PBKDF2_HMAC.argtypes = [c_char_p, c_int, c_char_p, c_int, c_int, P_EVP_MD, c_int, c_char_p]
-    libcrypto.PKCS5_PBKDF2_HMAC.restype = c_int
 
     libcrypto.PKCS12_key_gen_uni.argtypes = [c_char_p, c_int, c_char_p, c_int, c_int, c_int, c_int, c_char_p, c_void_p]
     libcrypto.PKCS12_key_gen_uni.restype = c_int
 
+    if version_info < (1,):
+        P_DSA = c_void_p
+        P_EC_KEY = c_void_p
+        P_DSA_SIG = c_void_p
+        P_ECDSA_SIG = c_void_p
+
+        libcrypto.DSA_do_sign.argtypes = [c_char_p, c_int, P_DSA]
+        libcrypto.DSA_do_sign.restype = P_DSA_SIG
+
+        libcrypto.ECDSA_do_sign.argtypes = [c_char_p, c_int, P_EC_KEY]
+        libcrypto.ECDSA_do_sign.restype = P_ECDSA_SIG
+
+        libcrypto.d2i_DSA_SIG.argtypes = [POINTER(P_DSA_SIG), POINTER(c_char_p), c_long]
+        libcrypto.d2i_DSA_SIG.restype = P_DSA_SIG
+
+        libcrypto.d2i_ECDSA_SIG.argtypes = [POINTER(P_ECDSA_SIG), POINTER(c_char_p), c_long]
+        libcrypto.d2i_ECDSA_SIG.restype = P_ECDSA_SIG
+
+        libcrypto.i2d_DSA_SIG.argtypes = [P_DSA_SIG, POINTER(c_char_p)]
+        libcrypto.i2d_DSA_SIG.restype = c_int
+
+        libcrypto.i2d_ECDSA_SIG.argtypes = [P_ECDSA_SIG, POINTER(c_char_p)]
+        libcrypto.i2d_ECDSA_SIG.restype = c_int
+
+        libcrypto.DSA_do_verify.argtypes = [c_char_p, c_int, P_DSA_SIG, P_DSA]
+        libcrypto.DSA_do_verify.restype = c_int
+
+        libcrypto.ECDSA_do_verify.argtypes = [c_char_p, c_int, P_ECDSA_SIG, P_EC_KEY]
+        libcrypto.ECDSA_do_verify.restype = c_int
+
+        libcrypto.DSA_SIG_free.argtypes = [P_DSA_SIG]
+        libcrypto.DSA_SIG_free.restype = None
+
+        libcrypto.ECDSA_SIG_free.argtypes = [P_ECDSA_SIG]
+        libcrypto.ECDSA_SIG_free.restype = None
+
+        libcrypto.DSA_free.argtypes = [P_DSA]
+        libcrypto.DSA_free.restype = None
+
+        libcrypto.EC_KEY_free.argtypes = [P_EC_KEY]
+        libcrypto.EC_KEY_free.restype = None
+
+        libcrypto.EVP_PKEY_get1_DSA.argtypes = [P_EVP_PKEY]
+        libcrypto.EVP_PKEY_get1_DSA.restype = P_DSA
+
+        libcrypto.EVP_PKEY_get1_EC_KEY.argtypes = [P_EVP_PKEY]
+        libcrypto.EVP_PKEY_get1_EC_KEY.restype = P_EC_KEY
+
+        libcrypto.RSA_verify_PKCS1_PSS.argtypes = [P_RSA, c_char_p, P_EVP_MD, c_char_p, c_int]
+        libcrypto.RSA_verify_PKCS1_PSS.restype = c_int
+
+        libcrypto.RSA_padding_add_PKCS1_PSS.argtypes = [P_RSA, c_char_p, c_char_p, P_EVP_MD, c_int]
+        libcrypto.RSA_padding_add_PKCS1_PSS.restype = c_int
+
+        libcrypto.EVP_DigestInit_ex.argtypes = [P_EVP_MD_CTX, P_EVP_MD, P_ENGINE]
+        libcrypto.EVP_DigestInit_ex.restype = c_int
+
+        libcrypto.EVP_SignFinal.argtypes = [P_EVP_MD_CTX, c_char_p, p_uint, P_EVP_PKEY]
+        libcrypto.EVP_SignFinal.restype = c_int
+
+        libcrypto.EVP_VerifyFinal.argtypes = [P_EVP_MD_CTX, c_char_p, c_uint, P_EVP_PKEY]
+        libcrypto.EVP_VerifyFinal.restype = c_int
+
+        libcrypto.EVP_MD_CTX_set_flags.argtypes = [P_EVP_MD_CTX, c_int]
+        libcrypto.EVP_MD_CTX_set_flags.restype = None
+
+    else:
+        libcrypto.PKCS5_PBKDF2_HMAC.argtypes = [c_char_p, c_int, c_char_p, c_int, c_int, P_EVP_MD, c_int, c_char_p]
+        libcrypto.PKCS5_PBKDF2_HMAC.restype = c_int
+
+        libcrypto.EVP_DigestSignInit.argtypes = [P_EVP_MD_CTX, POINTER(P_EVP_PKEY_CTX), P_EVP_MD, P_ENGINE, P_EVP_PKEY]
+        libcrypto.EVP_DigestSignInit.restype = c_int
+
+        libcrypto.EVP_DigestSignFinal.argtypes = [P_EVP_MD_CTX, c_char_p, POINTER(c_size_t)]
+        libcrypto.EVP_DigestSignFinal.restype = c_int
+
+        libcrypto.EVP_DigestVerifyInit.argtypes = [P_EVP_MD_CTX, POINTER(P_EVP_PKEY_CTX), P_EVP_MD, P_ENGINE, P_EVP_PKEY]
+        libcrypto.EVP_DigestVerifyInit.restype = c_int
+
+        libcrypto.EVP_DigestVerifyFinal.argtypes = [P_EVP_MD_CTX, c_char_p, c_size_t]
+        libcrypto.EVP_DigestVerifyFinal.restype = c_int
+
+        libcrypto.EVP_PKEY_CTX_ctrl.argtypes = [P_EVP_PKEY_CTX, c_int, c_int, c_int, c_int, c_void_p]
+        libcrypto.EVP_PKEY_CTX_ctrl.restype = c_int
+
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
+
+
+setattr(libcrypto, 'EVP_PKEY_CTX', EVP_PKEY_CTX)
