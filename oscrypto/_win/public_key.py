@@ -107,7 +107,7 @@ def load_certificate(source, source_type):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A Certificate object
@@ -385,7 +385,7 @@ def load_private_key(source, source_type, password=None):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A PrivateKey object
@@ -424,7 +424,7 @@ def load_public_key(source, source_type):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A PublicKey object
@@ -460,7 +460,7 @@ def load_pkcs12(source, source_type, password=None):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
@@ -512,11 +512,11 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -540,11 +540,11 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -568,11 +568,11 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -600,7 +600,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -660,11 +660,11 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the signature
@@ -687,11 +687,11 @@ def dsa_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the signature
@@ -714,11 +714,11 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the signature
@@ -745,7 +745,7 @@ def _sign(private_key, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the signature

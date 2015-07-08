@@ -34,7 +34,7 @@ def aes_cbc_pkcs7_encrypt(key, data, iv, omit_padding=False):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -69,7 +69,7 @@ def aes_cbc_pkcs7_decrypt(key, data, iv, omit_padding=False):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the plaintext
@@ -98,7 +98,7 @@ def rc4_encrypt(key, data):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the ciphertext
@@ -122,7 +122,7 @@ def rc4_decrypt(key, data):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the plaintext
@@ -150,7 +150,7 @@ def rc2_cbc_pkcs5_encrypt(key, data, iv):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -182,7 +182,7 @@ def rc2_cbc_pkcs5_decrypt(key, data, iv):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the plaintext
@@ -213,7 +213,7 @@ def tripledes_cbc_pkcs5_encrypt(key, data, iv):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -249,7 +249,7 @@ def tripledes_cbc_pkcs5_decrypt(key, data, iv):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the plaintext
@@ -284,7 +284,7 @@ def des_cbc_pkcs5_encrypt(key, data, iv):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -316,7 +316,7 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the plaintext
@@ -406,7 +406,7 @@ def _encrypt(cipher, key, data, iv, padding):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the ciphertext
@@ -477,7 +477,7 @@ def _decrypt(cipher, key, data, iv, padding):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the Windows CNG library
 
     :return:
         A byte string of the plaintext
