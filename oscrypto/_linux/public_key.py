@@ -431,7 +431,7 @@ def _decrypt(private_key, ciphertext, padding):
             libcrypto.RSA_free(rsa)
 
 
-def rsa_pkcsv15_verify(certificate_or_public_key, signature, data, hash_algorithm):
+def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Verifies an RSA, specifically RSASSA-PKCS-v1.5, signature
 
@@ -710,7 +710,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             libcrypto.ECDSA_SIG_free(ecdsa_sig)
 
 
-def rsa_pkcsv15_sign(private_key, data, hash_algorithm):
+def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     """
     Generates an RSA, specifically RSASSA-PKCS-v1.5, signature
 

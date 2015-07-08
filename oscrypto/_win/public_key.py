@@ -491,7 +491,7 @@ def load_pkcs12(source, source_type, password=None):
     return (key, cert, extra_certs)
 
 
-def rsa_pkcsv15_verify(certificate_or_public_key, signature, data, hash_algorithm):
+def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Verifies an RSA, specifically RSASSA-PKCS-v1.5, signature
 
@@ -642,7 +642,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     handle_error(res)
 
 
-def rsa_pkcsv15_sign(private_key, data, hash_algorithm):
+def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     """
     Generates an RSA, specifically RSASSA-PKCS-v1.5, signature
 

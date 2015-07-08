@@ -30,7 +30,7 @@ class PublicKeyTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'rsa_signature'), 'rb') as f:
             signature = f.read()
         public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
-        public_key.rsa_pkcsv15_verify(public, signature, original_data, 'sha1')
+        public_key.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
 
     def test_rsa_pss_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
@@ -99,10 +99,10 @@ class PublicKeyTests(unittest.TestCase):
         private = public_key.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'), 'file')
         public = public_key.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'), 'file')
 
-        signature = public_key.rsa_pkcsv15_sign(private, original_data, 'sha1')
+        signature = public_key.rsa_pkcs1v15_sign(private, original_data, 'sha1')
         self.assertIsInstance(signature, byte_cls)
 
-        public_key.rsa_pkcsv15_verify(public, signature, original_data, 'sha1')
+        public_key.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
 
     def test_rsa_pss_sign(self):
         original_data = b'This is data to sign'

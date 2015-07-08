@@ -17,8 +17,8 @@ if sys.platform == 'darwin':
         load_public_key,
         PrivateKey,
         PublicKey,
-        rsa_pkcsv15_sign,
-        rsa_pkcsv15_verify,
+        rsa_pkcs1v15_sign,
+        rsa_pkcs1v15_verify,
         rsa_pss_sign,
         rsa_pss_verify,
         rsa_pkcs1v15_encrypt,
@@ -40,8 +40,8 @@ elif sys.platform == 'win32':
         load_public_key,
         PrivateKey,
         PublicKey,
-        rsa_pkcsv15_sign,
-        rsa_pkcsv15_verify,
+        rsa_pkcs1v15_sign,
+        rsa_pkcs1v15_verify,
     )
 
 else:
@@ -57,8 +57,8 @@ else:
         load_public_key,
         PrivateKey,
         PublicKey,
-        rsa_pkcsv15_sign,
-        rsa_pkcsv15_verify,
+        rsa_pkcs1v15_sign,
+        rsa_pkcs1v15_verify,
         rsa_pss_sign,
         rsa_pss_verify,
         rsa_pkcs1v15_encrypt,
