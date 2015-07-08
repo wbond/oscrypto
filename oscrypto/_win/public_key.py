@@ -84,7 +84,14 @@ class Signature(core.Sequence):
             A byte string compatible with BCryptVerifySignature()
         """
 
-        return int_to_bytes(self['r'].native) + int_to_bytes(self['s'].native)
+        r_bytes = int_to_bytes(self['r'].native)
+        s_bytes = int_to_bytes(self['s'].native)
+
+        int_byte_length = max(len(r_bytes), len(s_bytes))
+        r_bytes = fill_width(r_bytes, int_byte_length)
+        s_bytes = fill_width(s_bytes, int_byte_length)
+
+        return r_bytes + s_bytes
 
 
 
