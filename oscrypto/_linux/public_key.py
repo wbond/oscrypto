@@ -21,11 +21,19 @@ else:
 class PrivateKey():
 
     evp_pkey = None
-    algo = None
+    asn1 = None
 
-    def __init__(self, evp_pkey, algo):
+    def __init__(self, evp_pkey, asn1):
         self.evp_pkey = evp_pkey
-        self.algo = algo
+        self.asn1 = asn1
+
+    @property
+    def algo(self):
+        return self.asn1.algorithm
+
+    @property
+    def bit_size(self):
+        return self.asn1.bit_size
 
     def __del__(self):
         if self.evp_pkey:
@@ -41,20 +49,28 @@ class PublicKey(PrivateKey):
 class Certificate():
 
     x509 = None
-    algo = None
+    asn1 = None
     _public_key = None
 
-    def __init__(self, x509, algo):
+    def __init__(self, x509, asn1):
         self.x509 = x509
-        self.algo = algo
+        self.asn1 = asn1
 
     @property
     def evp_pkey(self):
         if not self._public_key and self.x509:
             evp_pkey = libcrypto.X509_get_pubkey(self.x509)
-            self._public_key = PublicKey(evp_pkey)
+            self._public_key = PublicKey(evp_pkey, self.asn1['tbs_certificate']['subject_public_key_info'])
 
         return self._public_key.evp_pkey
+
+    @property
+    def algo(self):
+        return self.asn1.algorithm
+
+    @property
+    def bit_size(self):
+        return self.asn1.bit_size
 
     def __del__(self):
         if self._public_key:
@@ -94,29 +110,28 @@ def load_certificate(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    certificate, algo = parse_certificate(source)
-    return _load_x509(certificate.dump(), algo)
+    certificate, _ = parse_certificate(source)
+    return _load_x509(certificate)
 
 
-def _load_x509(source, algo):
+def _load_x509(certificate):
     """
     Loads a certificate into a format usable with various functions
 
-    :param source:
+    :param certificate:
         A byte string of the DER-encoded certificate
-
-    :param algo:
-        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A Certificate object
     """
 
+    source = certificate.dump()
+
     buffer = buffer_from_bytes(source)
     evp_pkey = libcrypto.d2i_X509(null(), buffer_pointer(buffer), len(source))
     if is_null(evp_pkey):
         handle_openssl_error(0)
-    return Certificate(evp_pkey, algo)
+    return Certificate(evp_pkey, certificate)
 
 
 def load_private_key(source, source_type, password=None):
@@ -156,8 +171,8 @@ def load_private_key(source, source_type, password=None):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    private_object, algo = parse_private(source, password)
-    return _load_key(private_object, algo)
+    private_object, _ = parse_private(source, password)
+    return _load_key(private_object)
 
 
 def load_public_key(source, source_type):
@@ -188,7 +203,7 @@ def load_public_key(source, source_type):
     elif not isinstance(source, byte_cls):
         raise ValueError('source is not a byte string')
 
-    public_key, algo = parse_public(source)
+    public_key, _ = parse_public(source)
 
     if libcrypto_version_info < (1,) and public_key.algorithm == 'dsa' and public_key.hash_algo == 'sha2':
         raise PrivateKeyError('OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % public_key.bit_size)
@@ -197,18 +212,15 @@ def load_public_key(source, source_type):
     evp_pkey = libcrypto.d2i_PUBKEY(null(), buffer_pointer(buffer), len(source))
     if is_null(evp_pkey):
         handle_openssl_error(0)
-    return PublicKey(evp_pkey, algo)
+    return PublicKey(evp_pkey, public_key)
 
 
-def _load_key(private_object, algo):
+def _load_key(private_object):
     """
     Loads a private key into a format usable with various functions
 
     :param private_object:
         An asn1crypto.keys.PrivateKeyInfo object
-
-    :param algo:
-        A unicode string of "rsa", "dsa" or "ec"
 
     :return:
         A PrivateKey object
@@ -223,7 +235,7 @@ def _load_key(private_object, algo):
     evp_pkey = libcrypto.d2i_AutoPrivateKey(null(), buffer_pointer(buffer), len(source))
     if is_null(evp_pkey):
         handle_openssl_error(0)
-    return PrivateKey(evp_pkey, algo)
+    return PrivateKey(evp_pkey, private_object)
 
 
 def load_pkcs12(source, source_type, password=None):
@@ -269,12 +281,12 @@ def load_pkcs12(source, source_type, password=None):
     cert = None
 
     if key_info:
-        key = _load_key(key_info[0], key_info[1])
+        key = _load_key(key_info[0])
 
     if cert_info:
-        cert = _load_x509(cert_info[0], cert_info[1])
+        cert = _load_x509(cert_info[0])
 
-    extra_certs = [_load_x509(info[0], info[1]) for info in extra_certs_info]
+    extra_certs = [_load_x509(info[0]) for info in extra_certs_info]
 
     return (key, cert, extra_certs)
 
