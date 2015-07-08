@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import re
 from ctypes.util import find_library
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
     from cffi import FFI
@@ -23,6 +23,7 @@ if not libcrypto_path:
     raise LibraryNotFoundError('The library libcrypto could not be found')
 
 libcrypto = ffi.dlopen(libcrypto_path)
+register_ffi(libcrypto, ffi)
 
 version_string = ffi.string(libcrypto.SSLeay_version(0)).decode('utf-8')
 version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
