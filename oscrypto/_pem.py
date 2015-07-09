@@ -87,18 +87,16 @@ def _unarmor(pem_bytes):
     if not isinstance(pem_bytes, byte_cls):
         raise ValueError('pem_bytes must be a byte string, not %s' % pem_bytes.__class__.__name__)
 
-    beginning = pem_bytes[0:10].lstrip()
-
     # Valid states include: "trash", "headers", "body"
     state = 'trash'
     headers = {}
     base64_data = b''
     type_name = None
 
-    line_num = 0
-    for line in pem_bytes.splitlines(False):
-        line_num += 1
+    found_start = False
+    found_end = False
 
+    for line in pem_bytes.splitlines(False):
         if line == b'':
             continue
 
@@ -110,6 +108,7 @@ def _unarmor(pem_bytes):
                 continue
             type_name = type_name_match.group(1).decode('ascii')
 
+            found_start = True
             state = 'headers'
             continue
 
@@ -132,9 +131,13 @@ def _unarmor(pem_bytes):
                 headers = {}
                 base64_data = b''
                 type_name = None
+                found_end = True
                 continue
 
             base64_data += line
+
+    if not found_start or not found_end:
+        raise ValueError('pem_bytes does not appear to contain PEM-encoded data - no BEGIN/END combination found')
 
 
 def unarmor(pem_bytes, multiple=False):
