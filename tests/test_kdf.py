@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import unittest
 import sys
 
-from oscrypto import kdf
+from oscrypto import kdf, _pkcs5
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -21,6 +21,10 @@ class KDFTests(unittest.TestCase):
 
     def test_pbkdf2(self):
         key = kdf.pbkdf2('sha1', b'password', b'\x78\x57\x8E\x5A\x5D\x63\xCB\x06', 2048, 24)
+        self.assertEqual(b'\xBF\xDE\x6B\xE9\x4D\xF7\xE1\x1D\xD4\x09\xBC\xE2\x0A\x02\x55\xEC\x32\x7C\xB9\x36\xFF\xE9\x36\x43', key)
+
+    def test_python_pbkdf2(self):
+        key = _pkcs5.pbkdf2('sha1', b'password', b'\x78\x57\x8E\x5A\x5D\x63\xCB\x06', 2048, 24)
         self.assertEqual(b'\xBF\xDE\x6B\xE9\x4D\xF7\xE1\x1D\xD4\x09\xBC\xE2\x0A\x02\x55\xEC\x32\x7C\xB9\x36\xFF\xE9\x36\x43', key)
 
     def test_pkcs12_kdf(self):
