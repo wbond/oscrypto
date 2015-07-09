@@ -237,11 +237,11 @@ def mgf1(hash_algorithm, seed, mask_length):
 
     iterations = int(math.ceil(mask_length / hash_length))
 
-    packer = struct.Struct('>I')
+    pack = struct.Struct(b'>I').pack
     hash_func = getattr(hashlib, hash_algorithm)
 
     for counter in range(0, iterations):
-        b = packer.pack(counter)
+        b = pack(counter)
         output += hash_func(seed + b).digest()
 
     return output[0:mask_length]
