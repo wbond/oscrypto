@@ -15,79 +15,151 @@ else:
 
 
 
-def aes_cbc_pkcs7_encrypt(key, data, iv, omit_padding=False):
+def aes_cbc_no_padding_encrypt(key, data, iv):
     """
-    Encrypts plaintext using AES with a 128, 192 or 256 bit key
+    Encrypts plaintext using AES in CBC mode with a 128, 192 or 256 bit key and
+    no padding. This means the ciphertext must be an exact multiple of 16 bytes
+    long.
 
     :param key:
-        The encryption key - a byte string either 16 or 32 bytes long
+        The encryption key - a byte string either 16, 24 or 32 bytes long
 
     :param data:
         The plaintext - a byte string
 
     :param iv:
-        The 16-byte initialization vector to use - a byte string - set as None
-        to generate an appropriate one
-
-    :param omit_padding:
-        By default, PKCS#7 padding is used - set this to True for no padding
-        when the data is a multiple of 16 bytes long
+        The initialization vector - either a byte string 16-bytes long or None
+        to generate an IV
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
     """
 
-    if len(key) not in [16, 24, 32]:
-        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
+    cipher = _calculate_aes_cipher(key)
 
     if not iv:
         iv = rand_bytes(16)
     elif len(iv) != 16:
         raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
 
-    if len(key) == 16:
-        cipher = 'aes128'
-    elif len(key) == 24:
-        cipher = 'aes192'
-    elif len(key) == 32:
-        cipher = 'aes256'
+    if len(data) % 16 != 0:
+        raise ValueError('data is not a multiple of 16 bytes long - is %s' % len(data))
 
-    padding = not omit_padding
-
-    return (iv, _encrypt(cipher, key, data, iv, padding))
+    return (iv, _encrypt(cipher, key, data, iv, False))
 
 
-def aes_cbc_pkcs7_decrypt(key, data, iv, omit_padding=False):
+def aes_cbc_no_padding_decrypt(key, data, iv):
     """
-    Decrypts AES ciphertext using a 128, 192 or 256 bit key
+    Decrypts AES ciphertext in CBC mode using a 128, 192 or 256 bit key and no
+    padding.
 
     :param key:
-        The encryption key - a byte string either 16 or 32 bytes long
+        The encryption key - a byte string either 16, 24 or 32 bytes long
 
     :param data:
-        The iv + ciphertext - a byte string
+        The ciphertext - a byte string
 
-    :param omit_padding:
-        By default, PKCS#7 padding is used - set this to True for no padding
-        when the data is a multiple of 16 bytes long
+    :param iv:
+        The initialization vector - a byte string 16-bytes long
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
     """
 
-    if len(key) not in [16, 24, 32]:
-        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
+    cipher = _calculate_aes_cipher(key)
 
     if len(iv) != 16:
         raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+
+    return _decrypt(cipher, key, data, iv, False)
+
+
+def aes_cbc_pkcs7_encrypt(key, data, iv):
+    """
+    Encrypts plaintext using AES in CBC mode with a 128, 192 or 256 bit key and
+    PKCS#7 padding.
+
+    :param key:
+        The encryption key - a byte string either 16, 24 or 32 bytes long
+
+    :param data:
+        The plaintext - a byte string
+
+    :param iv:
+        The initialization vector - either a byte string 16-bytes long or None
+        to generate an IV
+
+    :raises:
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
+
+    :return:
+        A tuple of two byte strings (iv, ciphertext)
+    """
+
+    cipher = _calculate_aes_cipher(key)
+
+    if not iv:
+        iv = rand_bytes(16)
+    elif len(iv) != 16:
+        raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+
+    return (iv, _encrypt(cipher, key, data, iv, True))
+
+
+def aes_cbc_pkcs7_decrypt(key, data, iv):
+    """
+    Decrypts AES ciphertext in CBC mode using a 128, 192 or 256 bit key
+
+    :param key:
+        The encryption key - a byte string either 16, 24 or 32 bytes long
+
+    :param data:
+        The ciphertext - a byte string
+
+    :param iv:
+        The initialization vector - a byte string 16-bytes long
+
+    :raises:
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
+
+    :return:
+        A byte string of the plaintext
+    """
+
+    cipher = _calculate_aes_cipher(key)
+
+    if len(iv) != 16:
+        raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+
+    return _decrypt(cipher, key, data, iv, False)
+
+
+def _calculate_aes_cipher(key):
+    """
+    Determines if the key is a valid AES 128, 192 or 256 key
+
+    :param key:
+        A byte string of the key to use
+
+    :raises:
+        ValueError - when an invalid key is provided
+
+    :return:
+        A unicode string of the AES variation - "aes128", "aes192" or "aes256"
+    """
+
+    if len(key) not in [16, 24, 32]:
+        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
 
     if len(key) == 16:
         cipher = 'aes128'
@@ -96,9 +168,7 @@ def aes_cbc_pkcs7_decrypt(key, data, iv, omit_padding=False):
     elif len(key) == 32:
         cipher = 'aes256'
 
-    padding = not omit_padding
-
-    return _decrypt(cipher, key, data, iv, padding)
+    return cipher
 
 
 def rc4_encrypt(key, data):
