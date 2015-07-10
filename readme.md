@@ -93,3 +93,12 @@ To run only some tests, pass a regular expression as a parameter to `tests`.
 ```bash
 python run.py tests aes
 ```
+
+To run tests multiple times, in order to catch edge-case bugs, pass an integer
+to `tests`. If combined with a regular expression for filtering, pass the
+repeat count after the regular expression.
+
+```bash
+python run.py tests 20
+python run.py tests aes 20
+```

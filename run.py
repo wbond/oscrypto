@@ -11,7 +11,7 @@ else:
 
 
 def show_usage():
-    print('Usage: run.py (lint | tests [regex] | coverage)', file=sys.stderr)
+    print('Usage: run.py (lint | tests [regex] [repeat_count] | coverage)', file=sys.stderr)
     sys.exit(1)
 
 
@@ -24,7 +24,7 @@ def get_arg(num):
     return arg
 
 
-if len(sys.argv) < 2 or len(sys.argv) > 3:
+if len(sys.argv) < 2 or len(sys.argv) > 4:
     show_usage()
 
 task = get_arg(1)
@@ -32,10 +32,10 @@ task = get_arg(1)
 if task not in ('lint', 'tests', 'coverage'):
     show_usage()
 
-if task != 'tests' and len(sys.argv) == 3:
+if task != 'tests' and len(sys.argv) > 2:
     show_usage()
 
-params = []
+kwargs = {}
 if task == 'lint':
     from dev.lint import run
 
@@ -43,9 +43,15 @@ elif task == 'tests':
     from dev.tests import run
     matcher = get_arg(2)
     if matcher:
-        params.append(matcher)
+        if matcher.isdigit():
+            kwargs['repeat'] = int(matcher)
+        else:
+            kwargs['matcher'] = matcher
+    repeat = get_arg(3)
+    if repeat:
+        kwargs['repeat'] = int(repeat)
 
 elif task == 'coverage':
     from dev.coverage import run
 
-run(*params)
+run(**kwargs)
