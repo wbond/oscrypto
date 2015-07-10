@@ -183,7 +183,7 @@ def rc4_encrypt(key, data):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the ciphertext
@@ -207,7 +207,7 @@ def rc4_decrypt(key, data):
 
     :raises:
         ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
@@ -221,7 +221,8 @@ def rc4_decrypt(key, data):
 
 def rc2_cbc_pkcs5_encrypt(key, data, iv):
     """
-    Encrypts plaintext using RC2 with a 64 bit key
+    Encrypts plaintext using RC2 in CBC mode with a 40-128 bit key and PKCS#5
+    padding.
 
     :param key:
         The encryption key - a byte string 8 bytes long
@@ -230,12 +231,12 @@ def rc2_cbc_pkcs5_encrypt(key, data, iv):
         The plaintext - a byte string
 
     :param iv:
-        The 8-byte initialization vector to use - a byte string - set as None
-        to generate an appropriate one
+        The initialization vector - a byte string 8-bytes long or None
+        to generate an IV
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -254,7 +255,8 @@ def rc2_cbc_pkcs5_encrypt(key, data, iv):
 
 def rc2_cbc_pkcs5_decrypt(key, data, iv):
     """
-    Decrypts RC2 ciphertext using a 64 bit key
+    Decrypts RC2 ciphertext ib CBC mode using a 40-128 bit key and PKCS#5
+    padding.
 
     :param key:
         The encryption key - a byte string 8 bytes long
@@ -263,11 +265,11 @@ def rc2_cbc_pkcs5_decrypt(key, data, iv):
         The ciphertext - a byte string
 
     :param iv:
-        The initialization vector used for encryption - a byte string
+        The initialization vector - a byte string 8 bytes long
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
@@ -284,7 +286,8 @@ def rc2_cbc_pkcs5_decrypt(key, data, iv):
 
 def tripledes_cbc_pkcs5_encrypt(key, data, iv):
     """
-    Encrypts plaintext using 3DES in either 2 or 3 key mode
+    Encrypts plaintext using 3DES in CBC mode using either the 2 or 3 key
+    variant (16 or 24 byte long key) and PKCS#5 padding.
 
     :param key:
         The encryption key - a byte string 16 or 24 bytes long (2 or 3 key mode)
@@ -293,12 +296,12 @@ def tripledes_cbc_pkcs5_encrypt(key, data, iv):
         The plaintext - a byte string
 
     :param iv:
-        The 8-byte initialization vector to use - a byte string - set as None
-        to generate an appropriate one
+        The initialization vector - a byte string 8-bytes long or None
+        to generate an IV
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -323,7 +326,8 @@ def tripledes_cbc_pkcs5_encrypt(key, data, iv):
 
 def tripledes_cbc_pkcs5_decrypt(key, data, iv):
     """
-    Decrypts 3DES ciphertext in either 2 or 3 key mode
+    Decrypts 3DES ciphertext in CBC mode using either the 2 or 3 key variant
+    (16 or 24 byte long key) and PKCS#5 padding.
 
     :param key:
         The encryption key - a byte string 16 or 24 bytes long (2 or 3 key mode)
@@ -332,11 +336,11 @@ def tripledes_cbc_pkcs5_decrypt(key, data, iv):
         The ciphertext - a byte string
 
     :param iv:
-        The initialization vector used for encryption - a byte string
+        The initialization vector - a byte string 8-bytes long
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
@@ -359,7 +363,8 @@ def tripledes_cbc_pkcs5_decrypt(key, data, iv):
 
 def des_cbc_pkcs5_encrypt(key, data, iv):
     """
-    Encrypts plaintext using DES with a 56 bit key
+    Encrypts plaintext using DES in CBC mode with a 56 bit key and PKCS#5
+    padding.
 
     :param key:
         The encryption key - a byte string 8 bytes long (includes error correction bits)
@@ -368,12 +373,12 @@ def des_cbc_pkcs5_encrypt(key, data, iv):
         The plaintext - a byte string
 
     :param iv:
-        The 8-byte initialization vector to use - a byte string - set as None
-        to generate an appropriate one
+        The initialization vector - a byte string 8-bytes long or None
+        to generate an IV
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A tuple of two byte strings (iv, ciphertext)
@@ -392,7 +397,7 @@ def des_cbc_pkcs5_encrypt(key, data, iv):
 
 def des_cbc_pkcs5_decrypt(key, data, iv):
     """
-    Decrypts DES ciphertext using a 56 bit key
+    Decrypts DES ciphertext in CBC mode using a 56 bit key and PKCS#5 padding.
 
     :param key:
         The encryption key - a byte string 8 bytes long (includes error correction bits)
@@ -401,11 +406,11 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
         The ciphertext - a byte string
 
     :param iv:
-        The initialization vector used for encryption - a byte string
+        The initialization vector - a byte string 8-bytes long
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
@@ -428,7 +433,7 @@ def _encrypt(cipher, key, data, iv, padding):
         A unicode string of "aes128", "aes192", "aes256", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
 
     :param key:
-        The encryption key - a byte string 5-16 bytes long
+        The encryption key - a byte string 5-32 bytes long
 
     :param data:
         The plaintext - a byte string
@@ -440,8 +445,8 @@ def _encrypt(cipher, key, data, iv, padding):
         Boolean, if padding should be used - unused for RC4
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the ciphertext
@@ -516,7 +521,7 @@ def _decrypt(cipher, key, data, iv, padding):
         A unicode string of "aes128", "aes192", "aes256", "des", "tripledes_2key", "tripledes_3key", "rc2", "rc4"
 
     :param key:
-        The encryption key - a byte string 5-16 bytes long
+        The encryption key - a byte string 5-32 bytes long
 
     :param data:
         The ciphertext - a byte string
@@ -528,8 +533,8 @@ def _decrypt(cipher, key, data, iv, padding):
         Boolean, if padding should be used - unused for RC4
 
     :raises:
-        ValueError - when the key or data parameter is incorrect
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when the key, data or iv parameters are incorrect
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
