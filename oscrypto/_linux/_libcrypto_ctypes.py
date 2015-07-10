@@ -190,9 +190,6 @@ try:
     libcrypto.EVP_DigestUpdate.argtypes = [P_EVP_MD_CTX, c_char_p, c_uint]
     libcrypto.EVP_DigestUpdate.restype = c_int
 
-    libcrypto.RAND_bytes.argtypes = [c_char_p, c_int]
-    libcrypto.RAND_bytes.restype = c_int
-
     libcrypto.PKCS12_key_gen_uni.argtypes = [c_char_p, c_int, c_char_p, c_int, c_int, c_int, c_int, c_char_p, c_void_p]
     libcrypto.PKCS12_key_gen_uni.restype = c_int
 

@@ -122,8 +122,6 @@ ffi.cdef("""
     const EVP_MD *EVP_sha384(void);
     const EVP_MD *EVP_sha512(void);
 
-    int RAND_bytes(unsigned char *buf, int num);
-
     int PKCS12_key_gen_uni(unsigned char *pass, int passlen, unsigned char *salt,
                     int saltlen, int id, int iter, int n,
                     unsigned char *out, const EVP_MD *md_type);

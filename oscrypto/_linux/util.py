@@ -2,6 +2,7 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
+import os
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer
 from ._libcrypto import libcrypto, libcrypto_version_info, handle_openssl_error
@@ -179,8 +180,4 @@ def rand_bytes(length):
     if length > 1024:
         raise ValueError('length must not be greater than 1024')
 
-    buffer = buffer_from_bytes(length)
-    result = libcrypto.RAND_bytes(buffer, length)
-    handle_openssl_error(result)
-
-    return bytes_from_buffer(buffer)
+    return os.urandom(length)
