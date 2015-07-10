@@ -6,7 +6,7 @@ import math
 
 from .._ffi import new, null, is_null, buffer_from_bytes, bytes_from_buffer, deref
 from ._libcrypto import libcrypto, libcrypto_const, handle_openssl_error
-from .util import rand_bytes
+from ..util import rand_bytes
 
 if sys.version_info < (3,):
     byte_cls = str

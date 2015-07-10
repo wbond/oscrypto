@@ -14,7 +14,7 @@ if sys.platform == 'win32':
 elif sys.platform == 'darwin':
     from ._osx.trust_list import extract_from_system, system_path
 else:
-    from ._linux.trust_list import extract_from_system, system_path
+    from ._linux_bsd.trust_list import extract_from_system, system_path
 
 try:
     str_cls = unicode  #pylint: disable=E0602

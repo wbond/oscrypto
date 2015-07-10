@@ -51,7 +51,7 @@ elif sys.platform == 'win32':
     )
 
 else:
-    from ._linux.public_key import (  #pylint: disable=W0611
+    from ._openssl.public_key import (  #pylint: disable=W0611
         Certificate,
         dsa_sign,
         dsa_verify,

@@ -37,7 +37,7 @@ elif sys.platform == 'win32':
     )
 
 else:
-    from ._linux.symmetric import (  #pylint: disable=W0611
+    from ._openssl.symmetric import (  #pylint: disable=W0611
         aes_cbc_no_padding_decrypt,
         aes_cbc_no_padding_encrypt,
         aes_cbc_pkcs7_decrypt,

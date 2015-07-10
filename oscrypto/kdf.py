@@ -9,7 +9,7 @@ if sys.platform == 'darwin':
 elif sys.platform == 'win32':
     from ._win.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
 else:
-    from ._linux.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
+    from ._openssl.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
 
 
 if sys.version_info < (3,):
