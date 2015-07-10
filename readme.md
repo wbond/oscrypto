@@ -10,7 +10,7 @@ care of patching vulnerabilities. Here are the operating systems and the
 libraries utilized:
 
  - Windows: Cryptography API Next Generation (CNG), Cryptography API
- - OS X: Security.framework, CommonCrypto, OpenSSL
+ - OS X: Security.framework, CommonCrypto
  - Linux: OpenSSL
  - OpenBSD: LibreSSL
 
@@ -28,7 +28,7 @@ should, or should not use, please see Learning.
    - RC2 (40-128), CBC mode, PKCS5 padding
    - RC4 (40-128)
    - RSA PKCSv1.5
-   - RSA OAEP
+   - RSA OAEP (SHA1 only)
  - Signing and verification using:
    - RSA PKCSv1.5
    - RSA PSS
@@ -39,10 +39,6 @@ should, or should not use, please see Learning.
    - RSA, DSA and EC Private keys
    - X509 Certificates
    - PKCS#12 archives (`.pfx`/`.p12`)
- - Generating public/private key pairs:
-   - RSA (1024-4096)
-   - DSA (1024 bit on OS X and Windows 7/2008, 1024-3072 on Linux and Windows 8)
-   - EC (P256, P384, P521)
  - Key derivation:
    - PBKDF2
    - PBKDF1
