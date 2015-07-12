@@ -645,7 +645,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     }.get(hash_algorithm, 0)
 
     plaintext = _encrypt(certificate_or_public_key, signature, Security.kSecPaddingNoneKey)
-    if not verify_pss_padding(hash_algorithm, hash_length, data, plaintext):
+    if not verify_pss_padding(hash_algorithm, hash_length, certificate_or_public_key.bit_size, data, plaintext):
         raise SignatureError('Signature is invalid')
 
 

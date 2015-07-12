@@ -7,7 +7,7 @@ import math
 import struct
 import os
 
-from ._int import int_from_bytes, int_to_bytes
+from ._int import int_from_bytes, int_to_bytes, fill_width
 from .util import constant_compare
 
 if sys.version_info < (3,):
@@ -94,6 +94,7 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     db_mask = mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
 
     masked_db = int_to_bytes(int_from_bytes(db) ^ int_from_bytes(db_mask))
+    masked_db = fill_width(masked_db, len(db_mask))
 
     zero_bits = (8 * em_len) - em_bits
     left_bit_mask = ('0' * zero_bits) + ('1' * (8 - zero_bits))
@@ -105,7 +106,7 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     return masked_db + m_prime_digest + b'\xBC'
 
 
-def verify_pss_padding(hash_algorithm, salt_length, message, signature):
+def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signature):
     """
     Verifies the PSS padding on an encoded message
 
@@ -115,6 +116,9 @@ def verify_pss_padding(hash_algorithm, salt_length, message, signature):
     :param salt_length:
         The length of the salt as an integer - typically the same as the length
         of the output from the hash_algorithm
+
+    :param key_length:
+        The length of the RSA key, in bits
 
     :param message:
         A byte string of the message to pad
@@ -143,7 +147,7 @@ def verify_pss_padding(hash_algorithm, salt_length, message, signature):
 
     hash_func = getattr(hashlib, hash_algorithm)
 
-    em_bits = len('{0:b}'.format(int_from_bytes(signature)))
+    em_bits = key_length - 1
     em_len = int(math.ceil(em_bits / 8))
 
     message_digest = hash_func(message).digest()
@@ -160,9 +164,9 @@ def verify_pss_padding(hash_algorithm, salt_length, message, signature):
     masked_db_length = em_len - hash_length - 1
     masked_db = signature[0:masked_db_length]
 
-    masked_db_int = int_from_bytes(masked_db)
-    masked_db_bits = '{0:b}'.format(masked_db_int)
-    if len(masked_db_bits) + zero_bits != len(masked_db) * 8:
+    first_byte = ord(masked_db[0:1])
+    bits_that_should_be_zero = first_byte >> (8 - zero_bits)
+    if bits_that_should_be_zero != 0:
         return False
 
     m_prime_digest = signature[masked_db_length:masked_db_length+hash_length]
