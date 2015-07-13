@@ -19,21 +19,51 @@ else:
 
 
 class PrivateKey():
+    """
+    Container for the OpenSSL representation of a private key
+    """
 
     evp_pkey = None
     asn1 = None
 
     def __init__(self, evp_pkey, asn1):
+        """
+        :param evp_pkey:
+            An OpenSSL EVP_PKEY value from loading/importing the key
+
+        :param asn1:
+            An asn1crypto.keys.PrivateKeyInfo object
+        """
+
         self.evp_pkey = evp_pkey
         self.asn1 = asn1
 
     @property
     def algo(self):
+        """
+        :return:
+            A unicode string of "rsa", "dsa" or "ec"
+        """
+
         return self.asn1.algorithm
 
     @property
     def bit_size(self):
+        """
+        :return:
+            The number of bits in the key, as an integer
+        """
+
         return self.asn1.bit_size
+
+    @property
+    def byte_size(self):
+        """
+        :return:
+            The number of bytes in the key, as an integer
+        """
+
+        return self.asn1.byte_size
 
     def __del__(self):
         if self.evp_pkey:
@@ -42,35 +72,91 @@ class PrivateKey():
 
 
 class PublicKey(PrivateKey):
+    """
+    Container for the OpenSSL representation of a public key
+    """
 
-    pass
+    def __init__(self, evp_pkey, asn1):
+        """
+        :param evp_pkey:
+            An OpenSSL EVP_PKEY value from loading/importing the key
+
+        :param asn1:
+            An asn1crypto.keys.PublicKeyInfo object
+        """
+
+        PrivateKey.__init__(evp_pkey, asn1)
 
 
 class Certificate():
+    """
+    Container for the OpenSSL representation of a certificate
+    """
 
     x509 = None
     asn1 = None
     _public_key = None
 
     def __init__(self, x509, asn1):
+        """
+        :param x509:
+            An OpenSSL X509 value from loading/importing the certificate
+
+        :param asn1:
+            An asn1crypto.x509.Certificate object
+        """
+
         self.x509 = x509
         self.asn1 = asn1
 
     @property
-    def evp_pkey(self):
-        if not self._public_key and self.x509:
-            evp_pkey = libcrypto.X509_get_pubkey(self.x509)
-            self._public_key = PublicKey(evp_pkey, self.asn1['tbs_certificate']['subject_public_key_info'])
-
-        return self._public_key.evp_pkey
-
-    @property
     def algo(self):
+        """
+        :return:
+            A unicode string of "rsa", "dsa" or "ec"
+        """
+
         return self.asn1.algorithm
 
     @property
     def bit_size(self):
+        """
+        :return:
+            The number of bits in the public key, as an integer
+        """
+
         return self.asn1.bit_size
+
+    @property
+    def byte_size(self):
+        """
+        :return:
+            The number of bytes in the public key, as an integer
+        """
+
+        return self.asn1.byte_size
+
+    @property
+    def evp_pkey(self):
+        """
+        :return:
+            The EVP_PKEY of the public key this certificate contains
+        """
+
+        return self.public_key.evp_pkey
+
+    @property
+    def public_key(self):
+        """
+        :return:
+            The PublicKey object for the public key this certificate contains
+        """
+
+        if not self._public_key and self.x509:
+            evp_pkey = libcrypto.X509_get_pubkey(self.x509)
+            self._public_key = PublicKey(evp_pkey, self.asn1['tbs_certificate']['subject_public_key_info'])
+
+        return self._public_key
 
     def __del__(self):
         if self._public_key:
@@ -84,7 +170,7 @@ class Certificate():
 
 def load_certificate(source, source_type):
     """
-    Loads an x509 certificate into a format usable with rsa_verify()
+    Loads an x509 certificate into a Certificate object
 
     :param source:
         A byte string of file contents or a unicode string filename
@@ -94,7 +180,7 @@ def load_certificate(source, source_type):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A Certificate object
@@ -116,10 +202,10 @@ def load_certificate(source, source_type):
 
 def _load_x509(certificate):
     """
-    Loads a certificate into a format usable with various functions
+    Loads an ASN.1 object of an x509 certificate into a Certificate object
 
     :param certificate:
-        A byte string of the DER-encoded certificate
+        An asn1crypto.x509.Certificate object
 
     :return:
         A Certificate object
@@ -136,7 +222,7 @@ def _load_x509(certificate):
 
 def load_private_key(source, source_type, password=None):
     """
-    Loads a private key into a format usable with signing functions
+    Loads a private key into a PrivateKey object
 
     :param source:
         A byte string of file contents or a unicode string filename
@@ -145,11 +231,12 @@ def load_private_key(source, source_type, password=None):
         A unicode string describing the source - "file" or "bytes"
 
     :param password:
-        A byte or unicode string to decrypt the PKCS12 file. Unicode strings will be encoded using UTF-8.
+        A byte or unicode string to decrypt the private key file. Unicode
+        strings will be encoded using UTF-8.
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A PrivateKey object
@@ -177,7 +264,7 @@ def load_private_key(source, source_type, password=None):
 
 def load_public_key(source, source_type):
     """
-    Loads a public key into a format usable with verify functions
+    Loads a public key into a PublicKey object
 
     :param source:
         A byte string of file contents or a unicode string filename
@@ -187,7 +274,7 @@ def load_public_key(source, source_type):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A PublicKey object
@@ -217,7 +304,7 @@ def load_public_key(source, source_type):
 
 def _load_key(private_object):
     """
-    Loads a private key into a format usable with various functions
+    Loads a private key into a PrivateKey object
 
     :param private_object:
         An asn1crypto.keys.PrivateKeyInfo object
@@ -240,7 +327,8 @@ def _load_key(private_object):
 
 def load_pkcs12(source, source_type, password=None):
     """
-    Loads a .p12 or .pfx file into a key and one or more certificates
+    Loads a .p12 or .pfx file into a PrivateKey object and one or more
+    Certificates objects
 
     :param source:
         A byte string of file contents or a unicode string filename
@@ -249,11 +337,12 @@ def load_pkcs12(source, source_type, password=None):
         A unicode string describing the source - "file" or "bytes"
 
     :param password:
-        A byte or unicode string to decrypt the PKCS12 file. Unicode strings will be encoded using UTF-8.
+        A byte or unicode string to decrypt the PKCS12 file. Unicode strings
+        will be encoded using UTF-8.
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
@@ -293,14 +382,19 @@ def load_pkcs12(source, source_type, password=None):
 
 def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
     """
-    Encrypts a byte string using a public key, certificate or private key. Uses
-    PKCS#1 v1.5 padding.
+    Encrypts a byte string using an RSA public key or certificate. Uses PKCS#1
+    v1.5 padding.
 
     :param certificate_or_public_key:
         A PublicKey or Certificate object
 
     :param data:
-        A byte string, with a maximum length 11 bytes less than the key length (in bytes)
+        A byte string, with a maximum length 11 bytes less than the key length
+        (in bytes)
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the encrypted data
@@ -311,14 +405,17 @@ def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
 
 def rsa_pkcs1v15_decrypt(private_key, ciphertext):
     """
-    Decrypts a byte string using a public key, certificate or private key. Uses
-    PKCS#1 v1.5 padding.
+    Decrypts a byte string using an RSA private key. Uses PKCS#1 v1.5 padding.
 
     :param private_key:
         A PrivateKey object
 
     :param ciphertext:
         A byte string of the encrypted data
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the original plaintext
@@ -329,14 +426,19 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
 
 def rsa_oaep_encrypt(certificate_or_public_key, data):
     """
-    Encrypts a byte string using a public key, certificate or private key. Uses
-    PKCS#1 OAEP padding with SHA1.
+    Encrypts a byte string using an RSA public key or certificate. Uses PKCS#1
+    OAEP padding with SHA1.
 
     :param certificate_or_public_key:
         A PublicKey or Certificate object
 
     :param data:
-        A byte string, with a maximum length 41 bytes (or more) less than the key length (in bytes)
+        A byte string, with a maximum length 41 bytes (or more) less than the
+        key length (in bytes)
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the encrypted data
@@ -347,14 +449,18 @@ def rsa_oaep_encrypt(certificate_or_public_key, data):
 
 def rsa_oaep_decrypt(private_key, ciphertext):
     """
-    Decrypts a byte string using a public key, certificate or private key. Uses
-    PKCS#1 OAEP padding with SHA1.
+    Decrypts a byte string using an RSA private key. Uses PKCS#1 OAEP padding
+    with SHA1.
 
     :param private_key:
         A PrivateKey object
 
     :param ciphertext:
         A byte string of the encrypted data
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by the OS X Security Framework
 
     :return:
         A byte string of the original plaintext
@@ -365,7 +471,7 @@ def rsa_oaep_decrypt(private_key, ciphertext):
 
 def _encrypt(certificate_or_public_key, data, padding):
     """
-    Encrypts a byte string using RSA with a public or private key
+    Encrypts plaintext using an RSA public key or certificate
 
     :param certificate_or_public_key:
         A PublicKey, Certificate or PrivateKey object
@@ -375,6 +481,10 @@ def _encrypt(certificate_or_public_key, data, padding):
 
     :param padding:
         The padding mode to use
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the encrypted data
@@ -405,16 +515,20 @@ def _encrypt(certificate_or_public_key, data, padding):
 
 def _decrypt(private_key, ciphertext, padding):
     """
-    Decrypts a byte string using RSA with a public or private key
+    Decrypts RSA ciphertext using a private key
 
     :param private_key:
         A PrivateKey object
 
     :param ciphertext:
-        The byte string to decrypt
+        The ciphertext - a byte string
 
     :param padding:
         The padding mode to use
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the plaintext
@@ -445,7 +559,7 @@ def _decrypt(private_key, ciphertext, padding):
 
 def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Verifies an RSA, specifically RSASSA-PKCS-v1.5, signature
+    Verifies an RSASSA-PKCS-v1.5 signature
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -461,7 +575,7 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -473,10 +587,10 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
 
 def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Verifies an RSA PSS, specifically RSASSA-PSS, signature. For the PSS padding
-    the mask gen algorithm will be mgf1 using the same hash algorithm as the
-    signature. The salt length with be the length of the hash algorithm, and
-    the trailer field with be the standard 0xBC byte.
+    Verifies an RSASSA-PSS signature. For the PSS padding the mask gen algorithm
+    will be mgf1 using the same hash algorithm as the signature. The salt length
+    with be the length of the hash algorithm, and the trailer field with be the
+    standard 0xBC byte.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -492,7 +606,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -504,7 +618,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
 
 def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Generates a DSA signature
+    Verifies a DSA signature
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -520,7 +634,7 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -532,7 +646,7 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
 
 def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Generates an ECDSA signature
+    Verifies an ECDSA signature
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -548,7 +662,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -579,7 +693,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
@@ -724,7 +838,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
 def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     """
-    Generates an RSA, specifically RSASSA-PKCS-v1.5, signature
+    Generates an RSASSA-PKCS-v1.5 signature
 
     :param private_key:
         The PrivateKey to generate the signature with
@@ -737,7 +851,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the signature
@@ -751,10 +865,10 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
 
 def rsa_pss_sign(private_key, data, hash_algorithm):
     """
-    Generates an RSA PSS, specifically RSASSA-PSS, signature. For the PSS
-    padding the mask gen algorithm will be mgf1 using the same hash algorithm
-    as the signature. The salt length with be the length of the hash algorithm,
-    and the trailer field with be the standard 0xBC byte.
+    Generates an RSASSA-PSS signature. For the PSS padding the mask gen
+    algorithm will be mgf1 using the same hash algorithm as the signature. The
+    salt length with be the length of the hash algorithm, and the trailer field
+    with be the standard 0xBC byte.
 
     :param private_key:
         The PrivateKey to generate the signature with
@@ -767,7 +881,7 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the signature
@@ -794,7 +908,7 @@ def dsa_sign(private_key, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the signature
@@ -821,7 +935,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the signature
@@ -851,7 +965,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by OpenSSL
 
     :return:
         A byte string of the signature
