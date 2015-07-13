@@ -28,6 +28,8 @@ register_ffi(libcrypto, ffi)
 version_string = ffi.string(libcrypto.SSLeay_version(0)).decode('utf-8')
 version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
 if not version_match:
+    version_match = re.search('(?<=LibreSSL )(\\d\\.\\d(\\.\\d)?)\\b', version_string)
+if not version_match:
     raise LibraryNotFoundError('Error detecting the version of libcrypto')
 version = version_match.group(1)
 version_parts = re.sub('(\\d)([a-z]+)', '\\1.\\2', version).split('.')
