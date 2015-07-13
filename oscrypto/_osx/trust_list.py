@@ -47,7 +47,7 @@ def extract_from_system():
 
     CoreFoundation.CFRelease(certs_pointer)
 
-    for domain in [security_const.kSecTrustSettingsDomainUser, security_const.kSecTrustSettingsDomainAdmin, security_const.kSecTrustSettingsDomainSystem]:
+    for domain in [security_const.kSecTrustSettingsDomainUser, security_const.kSecTrustSettingsDomainAdmin]:
         cert_trust_settings_pointer_pointer = new(CoreFoundation, 'CFArrayRef *')
         res = Security.SecTrustSettingsCopyCertificates(domain, cert_trust_settings_pointer_pointer)
         if res == security_const.errSecNoTrustSettings:
