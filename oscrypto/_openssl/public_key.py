@@ -85,7 +85,7 @@ class PublicKey(PrivateKey):
             An asn1crypto.keys.PublicKeyInfo object
         """
 
-        PrivateKey.__init__(evp_pkey, asn1)
+        PrivateKey.__init__(self, evp_pkey, asn1)
 
 
 class Certificate():
