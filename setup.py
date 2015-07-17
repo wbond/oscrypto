@@ -1,5 +1,27 @@
-from setuptools import setup, find_packages
+import os
+import shutil
+
+from setuptools import setup, find_packages, Command
+
 import oscrypto
+
+
+
+class CleanCommand(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        folder = os.path.dirname(os.path.abspath(__file__))
+        for sub_folder in ['build', 'dist', 'oscrypto.egg-info']:
+            full_path = os.path.join(folder, sub_folder)
+            if os.path.exists(full_path):
+                shutil.rmtree(full_path)
 
 
 setup(
@@ -31,5 +53,9 @@ setup(
     keywords='crypto',
 
     install_requires=['asn1crypto'],
-    packages=find_packages(exclude=['tests*', 'dev*'])
+    packages=find_packages(exclude=['tests*', 'dev*']),
+
+    cmdclass={
+        'clean': CleanCommand,
+    }
 )
