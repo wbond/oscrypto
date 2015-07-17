@@ -7,12 +7,11 @@ import hmac
 import re
 import binascii
 
-from asn1crypto import core, pkcs12, cms, keys, x509
+from asn1crypto import core, pkcs12, cms, keys, x509, pem
 
 from .kdf import pbkdf1, pbkdf2, pkcs12_kdf
 from .symmetric import rc2_cbc_pkcs5_decrypt, rc4_decrypt, des_cbc_pkcs5_decrypt, tripledes_cbc_pkcs5_decrypt, aes_cbc_pkcs7_decrypt
 from .util import constant_compare
-from ._pem import unarmor
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -240,7 +239,7 @@ def _unarmor_pem(data, password=None):
         or "ec".
     """
 
-    type_name, headers, der_bytes = unarmor(data)
+    type_name, headers, der_bytes = pem.unarmor(data)
 
     armor_type = re.match('^((DSA|EC|RSA) PRIVATE KEY|ENCRYPTED PRIVATE KEY|PRIVATE KEY|PUBLIC KEY|RSA PUBLIC KEY|CERTIFICATE)', type_name)
     if not armor_type:

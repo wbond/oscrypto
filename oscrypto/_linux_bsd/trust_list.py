@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import os
 
-from .._pem import unarmor
+from asn1crypto.pem import unarmor
 
 
 

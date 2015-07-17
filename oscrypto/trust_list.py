@@ -6,8 +6,9 @@ import time
 import sys
 import tempfile
 
+from asn1crypto.pem import armor
+
 from .errors import CACertsError
-from ._pem import armor
 
 if sys.platform == 'win32':
     from ._win.trust_list import extract_from_system, system_path
