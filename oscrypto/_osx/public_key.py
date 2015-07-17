@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from asn1crypto.keys import PublicKeyInfo
+from asn1crypto import keys, x509
 
 from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref
 from ._security import Security, security_const, handle_sec_error
@@ -177,15 +177,13 @@ class Certificate():
             self.sec_certificate_ref = None
 
 
-def load_certificate(source, source_type):
+def load_certificate(source):
     """
     Loads an x509 certificate into a Certificate object
 
     :param source:
-        A byte string of file contents or a unicode string filename
-
-    :param source_type:
-        A unicode string describing the source - "file" or "bytes"
+        A byte string of file contents, a unicode string filename or an
+        asn1crypto.x509.Certificate object
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -195,17 +193,19 @@ def load_certificate(source, source_type):
         A Certificate object
     """
 
-    if source_type not in ('file', 'bytes'):
-        raise ValueError('source_type is not one of "file" or "bytes"')
+    if isinstance(source, x509.Certificate):
+        certificate = source
 
-    if source_type == 'file':
+    elif isinstance(source, byte_cls):
+        certificate, _ = parse_certificate(source)
+
+    elif isinstance(source, str_cls):
         with open(source, 'rb') as f:
-            source = f.read()
+            certificate, _ = parse_certificate(f.read())
 
-    elif not isinstance(source, byte_cls):
-        raise ValueError('source is not a byte string')
+    else:
+        raise ValueError('source is not a byte string, unicode string or asn1crypto.x509.Certificate object - is %s' % source.__class__.__name__)
 
-    certificate, _ = parse_certificate(source)
     return _load_x509(certificate)
 
 
@@ -233,19 +233,18 @@ def _load_x509(certificate):
             CoreFoundation.CFRelease(cf_source)
 
 
-def load_private_key(source, source_type, password=None):
+def load_private_key(source, password=None):
     """
     Loads a private key into a PrivateKey object
 
     :param source:
-        A byte string of file contents or a unicode string filename
-
-    :param source_type:
-        A unicode string describing the source - "file" or "bytes"
+        A byte string of file contents, a unicode string filename or an
+        asn1crypto.keys.PrivateKeyInfo object
 
     :param password:
         A byte or unicode string to decrypt the private key file. Unicode
-        strings will be encoded using UTF-8.
+        strings will be encoded using UTF-8. Not used is the source is a
+        PrivateKeyInfo object.
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -255,35 +254,35 @@ def load_private_key(source, source_type, password=None):
         A PrivateKey object
     """
 
-    if source_type not in ('file', 'bytes'):
-        raise ValueError('source_type is not one of "file" or "bytes"')
+    if isinstance(source, keys.PrivateKeyInfo):
+        private_object = source
 
-    if password is not None:
-        if isinstance(password, str_cls):
-            password = password.encode('utf-8')
-        if not isinstance(password, byte_cls):
-            raise ValueError('password is not a byte string')
+    else:
+        if password is not None:
+            if isinstance(password, str_cls):
+                password = password.encode('utf-8')
+            if not isinstance(password, byte_cls):
+                raise ValueError('password is not a byte string - is %s' % password.__class__.__name__)
 
-    if source_type == 'file':
-        with open(source, 'rb') as f:
-            source = f.read()
+        if isinstance(source, str_cls):
+            with open(source, 'rb') as f:
+                source = f.read()
 
-    elif not isinstance(source, byte_cls):
-        raise ValueError('source is not a byte string')
+        elif not isinstance(source, byte_cls):
+            raise ValueError('source is not a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object - is %s' % source.__class__.__name__)
 
-    private_object, _ = parse_private(source, password)
+        private_object, _ = parse_private(source, password)
+
     return _load_key(private_object)
 
 
-def load_public_key(source, source_type):
+def load_public_key(source):
     """
     Loads a public key into a PublicKey object
 
     :param source:
-        A byte string of file contents or a unicode string filename
-
-    :param source_type:
-        A unicode string describing the source - "file" or "bytes"
+        A byte string of file contents, a unicode string filename or an
+        asn1crypto.keys.PublicKeyInfo object
 
     :raises:
         ValueError - when any of the parameters are of the wrong type or value
@@ -293,17 +292,19 @@ def load_public_key(source, source_type):
         A PublicKey object
     """
 
-    if source_type not in ('file', 'bytes'):
-        raise ValueError('source_type is not one of "file" or "bytes"')
+    if isinstance(source, keys.PublicKeyInfo):
+        public_key = source
 
-    if source_type == 'file':
+    elif isinstance(source, byte_cls):
+        public_key, _ = parse_public(source)
+
+    elif isinstance(source, str_cls):
         with open(source, 'rb') as f:
-            source = f.read()
+            public_key, _ = parse_public(f.read())
 
-    elif not isinstance(source, byte_cls):
-        raise ValueError('source is not a byte string')
+    else:
+        raise ValueError('source is not a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object - is %s' % public_key.__class__.__name__)
 
-    public_key, _ = parse_public(source)
     return _load_key(public_key)
 
 
@@ -330,7 +331,7 @@ def _load_key(key_object):
     elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
         raise PrivateKeyError('OS X only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % key_object.bit_size)
 
-    if isinstance(key_object, PublicKeyInfo):
+    if isinstance(key_object, keys.PublicKeyInfo):
         source = key_object.dump()
         key_class = Security.kSecAttrKeyClassPublic
     else:
@@ -373,16 +374,13 @@ def _load_key(key_object):
             CoreFoundation.CFRelease(cf_output)
 
 
-def load_pkcs12(source, source_type, password=None):
+def load_pkcs12(source, password=None):
     """
     Loads a .p12 or .pfx file into a PrivateKey object and one or more
     Certificates objects
 
     :param source:
         A byte string of file contents or a unicode string filename
-
-    :param source_type:
-        A unicode string describing the source - "file" or "bytes"
 
     :param password:
         A byte or unicode string to decrypt the PKCS12 file. Unicode strings
@@ -396,21 +394,18 @@ def load_pkcs12(source, source_type, password=None):
         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
     """
 
-    if source_type not in ('file', 'bytes'):
-        raise ValueError('source_type is not one of "file" or "bytes"')
-
     if password is not None:
         if isinstance(password, str_cls):
             password = password.encode('utf-8')
         if not isinstance(password, byte_cls):
-            raise ValueError('password is not a byte string')
+            raise ValueError('password is not a byte string - is %s' % password.__class__.__name__)
 
-    if source_type == 'file':
+    if isinstance(source, str_cls):
         with open(source, 'rb') as f:
             source = f.read()
 
     elif not isinstance(source, byte_cls):
-        raise ValueError('source is not a byte string')
+        raise ValueError('source is not a byte string or a unicode string - is %s' % source.__class__.__name__)
 
     key_info, cert_info, extra_certs_info = parse_pkcs12(source, password)
 
