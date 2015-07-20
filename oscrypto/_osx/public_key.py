@@ -122,7 +122,7 @@ class Certificate():
             A unicode string of "rsa", "dsa" or "ec"
         """
 
-        return self.asn1.algorithm
+        return self.public_key.algo
 
     @property
     def bit_size(self):
@@ -131,7 +131,7 @@ class Certificate():
             The number of bits in the public key, as an integer
         """
 
-        return self.asn1.bit_size
+        return self.public_key.bit_size
 
     @property
     def byte_size(self):
@@ -140,7 +140,7 @@ class Certificate():
             The number of bytes in the public key, as an integer
         """
 
-        return self.asn1.byte_size
+        return self.public_key.byte_size
 
     @property
     def sec_key_ref(self):
