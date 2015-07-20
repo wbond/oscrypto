@@ -193,7 +193,7 @@ def load_certificate(source):
             certificate, _ = parse_certificate(f.read())
 
     else:
-        raise ValueError('source is not a byte string, unicode string or asn1crypto.x509.Certificate object - is %s' % source.__class__.__name__)
+        raise ValueError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % source.__class__.__name__)
 
     return _load_key(certificate['tbs_certificate']['subject_public_key_info'], Certificate)
 
@@ -470,14 +470,14 @@ def load_private_key(source, password=None):
             if isinstance(password, str_cls):
                 password = password.encode('utf-8')
             if not isinstance(password, byte_cls):
-                raise ValueError('password is not a byte string - is %s' % password.__class__.__name__)
+                raise ValueError('password must be a byte string, not %s' % password.__class__.__name__)
 
         if isinstance(source, str_cls):
             with open(source, 'rb') as f:
                 source = f.read()
 
         elif not isinstance(source, byte_cls):
-            raise ValueError('source is not a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object - is %s' % source.__class__.__name__)
+            raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % source.__class__.__name__)
 
         private_object, _ = parse_private(source, password)
 
@@ -511,7 +511,7 @@ def load_public_key(source):
             public_key, _ = parse_public(f.read())
 
     else:
-        raise ValueError('source is not a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object - is %s' % public_key.__class__.__name__)
+        raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % public_key.__class__.__name__)
 
     return _load_key(public_key, PublicKey)
 
@@ -540,14 +540,14 @@ def load_pkcs12(source, password=None):
         if isinstance(password, str_cls):
             password = password.encode('utf-8')
         if not isinstance(password, byte_cls):
-            raise ValueError('password is not a byte string - is %s' % password.__class__.__name__)
+            raise ValueError('password must be a byte string, not %s' % password.__class__.__name__)
 
     if isinstance(source, str_cls):
         with open(source, 'rb') as f:
             source = f.read()
 
     elif not isinstance(source, byte_cls):
-        raise ValueError('source is not a byte string or a unicode string - is %s' % source.__class__.__name__)
+        raise ValueError('source must be a byte string or a unicode string, not %s' % source.__class__.__name__)
 
     key_info, cert_info, extra_certs_info = parse_pkcs12(source, password)
 

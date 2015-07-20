@@ -103,7 +103,7 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         raise ValueError('key_length must be greater than 0')
 
     if hash_algorithm not in ('sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
+        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     algo = {
         'sha1': common_crypto_const.kCCPRFHmacAlgSHA1,
@@ -220,10 +220,10 @@ try:
             raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
 
         if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
-            raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
+            raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
         if id_ not in (1, 2, 3):
-            raise ValueError('id_ must be one of 1, 2, 3 - is %s' % repr(id_))
+            raise ValueError('id_ must be one of 1, 2, 3, not %s' % repr(id_))
 
         utf16_password = password.decode('utf-8').encode('utf-16be') + b'\x00\x00'
 

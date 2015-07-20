@@ -47,7 +47,7 @@ def aes_cbc_no_padding_encrypt(key, data, iv):
         raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
 
     if len(data) % 16 != 0:
-        raise ValueError('data is not a multiple of 16 bytes long - is %s' % len(data))
+        raise ValueError('data must be a multiple of 16 bytes long - is %s' % len(data))
 
     return (iv, _encrypt(Security.kSecAttrKeyTypeAES, key, data, iv, Security.kSecPaddingNoneKey))
 

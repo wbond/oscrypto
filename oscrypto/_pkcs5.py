@@ -65,7 +65,7 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
 
     if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" - is %s' % repr(hash_algorithm))
+        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     algo = getattr(hashlib, hash_algorithm)
 
