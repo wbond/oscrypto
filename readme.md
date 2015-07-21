@@ -22,6 +22,7 @@ should, or should not use, please see Learning.
    code)
  - Encryption/decryption using:
    - AES (128|192|256), CBC mode, PKCS7 padding
+   - AES (128|192|256), CBC mode, no padding
    - TripleDES 3-key, CBC mode, PKCS5 padding
    - TripleDes 2-key, CBC mode, PKCS5 padding
    - DES, CBC mode, PKCS5 padding
@@ -50,9 +51,8 @@ generating and validating X509 certificates. The various CBC encryption schemes
 and KDFs are used to load encrypted private keys, and the various RSA padding
 schemes are part of X509 signatures.
 
-For modern cryptography not tied to an existing system, please see the Learning
-section and learn about other libraries that provide modern crytography
-facilities.
+For modern cryptography not tied to an existing system, please see the
+[Modern Cryptography](docs/readme.md#learning) section of the docs.
 
 ## License
 
@@ -61,7 +61,7 @@ facilities.
 
 ## Dependencies
 
- - *asn1crypto*
+ - [*asn1crypto*](https://github.com/wbond/asn1crypto)
  - Python 2.7, 3.3, 3.4, pypy or pypy3
 
 ## Version
@@ -76,7 +76,7 @@ pip install oscrypto
 
 ## Documentation
 
-TBD
+[*oscrypto* documentation](docs/readme.md)
 
 ## Development
 
