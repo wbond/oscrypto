@@ -5,6 +5,7 @@ import os
 import time
 import sys
 import tempfile
+import threading
 
 from asn1crypto.pem import armor
 
@@ -23,14 +24,26 @@ except (NameError):
     str_cls = str
 
 
+path_lock = threading.Lock()
+memory_lock = threading.Lock()
+_module_values = {
+    'last_update': None,
+    'certs': None
+}
+
 
 def get_path(temp_dir=None, cache_length=24):
     """
     Get the filesystem path to a file that contains OpenSSL-compatible CA certs.
-    On OS X and Windows, there are extracted from the system certificate store.
+
+    On OS X and Windows, there are extracted from the system certificate store
+    and cached in a file on the filesystem. This path should not be writable
+    by other users, otherwise they could inject CA certs into the trust list.
 
     :param temp_dir:
-        The temporary directory to cache the CA certs in on OS X and Windows
+        The temporary directory to cache the CA certs in on OS X and Windows.
+        Needs to have secure permissions so other users can not modify the
+        contents.
 
     :param cache_length:
         The number of hours to cache the CA certs on OS X and Windows
@@ -54,15 +67,74 @@ def get_path(temp_dir=None, cache_length=24):
 
         ca_path = os.path.join(temp_dir, 'oscrypto-ca-bundle.crt')
 
-        exists = os.path.exists(ca_path)
-        is_old = exists and os.stat(ca_path).st_mtime < time.time() - cache_length * 60 * 60
-
-        if not exists or is_old:
-            with open(ca_path, 'wb') as f:
-                for cert in extract_from_system():
-                    f.write(armor('CERTIFICATE', cert))
+        if _cached_path_needs_update(ca_path, cache_length):
+            with path_lock:
+                if _cached_path_needs_update(ca_path, cache_length):
+                    with open(ca_path, 'wb') as f:
+                        for cert in extract_from_system():
+                            f.write(armor('CERTIFICATE', cert))
 
     if not ca_path:
         raise CACertsError('No CA certs found')
 
     return ca_path
+
+
+def get_list(cache_length=24):
+    """
+    Retrieves (and caches in memory) the list of CA certs from the OS
+
+    :param cache_length:
+        The number of hours to cache the CA certs in memory before they are
+        refreshed
+
+    :raises:
+        oscrypto.errors.CACertsError - when an error occurs exporting/locating certs
+
+    :return:
+        A list of DER-encoded byte strings of the CA certs from the OS
+    """
+
+    if not _in_memory_up_to_date(cache_length):
+        with memory_lock:
+            if not _in_memory_up_to_date(cache_length):
+                _module_values['certs'] = extract_from_system()
+                _module_values['last_update'] = time.time()
+
+    return _module_values['certs']
+
+
+def _cached_path_needs_update(ca_path, cache_length):
+    """
+    Checks to see if a cache file needs to be refreshed
+
+    :param ca_path:
+        A unicode string of the path to the cache file
+
+    :param cache_length:
+        An integer representing the number of hours the cache is valid for
+
+    :return:
+        A boolean - True if the cache needs to be updated, False if the file
+        is up-to-date
+    """
+
+    exists = os.path.exists(ca_path)
+    is_old = exists and os.stat(ca_path).st_mtime < time.time() - cache_length * 60 * 60
+
+    return not exists or is_old
+
+
+def _in_memory_up_to_date(cache_length):
+    """
+    Checks to see if the in-memory cache of certificates is fresh
+
+    :param cache_length:
+        An integer representing the number of hours the cache is valid for
+
+    :return:
+        A boolean - True if the cache is up-to-date, False if it needs to be
+        refreshed
+    """
+
+    return _module_values['certs'] and _module_values['last_update'] and _module_values['last_update'] > time.time() - (cache_length * 60 * 60)

@@ -5,7 +5,7 @@ import unittest
 import sys
 
 from oscrypto import trust_list
-from asn1crypto.x509 import Certificate
+from asn1crypto import x509, pem
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -16,10 +16,17 @@ else:
 
 class TrustListTests(unittest.TestCase):
 
-    def test_extract_from_system(self):
-        certs = trust_list.extract_from_system()
+    def test_get_list(self):
+        certs = trust_list.get_list()
         self.assertIsInstance(certs, list)
         self.assertLess(10, len(certs))
         for cert in certs:
             self.assertIsInstance(cert, byte_cls)
-            _ = Certificate.load(cert).native
+            _ = x509.Certificate.load(cert).native
+
+    def test_get_path(self):
+        certs = trust_list.get_path()
+        with open(certs, 'rb') as f:
+            cert_data = f.read()
+            self.assertEqual(True, pem.detect(cert_data))
+            self.assertLess(10240, len(cert_data))
