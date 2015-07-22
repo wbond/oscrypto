@@ -16,13 +16,13 @@ libraries utilized:
 
 Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
-should, or should not use, please see Learning.
+should, or should not use, please see [Learning](docs/readme.md#learning).
 
  - Exporting PEM-formatted CA certs from the operating system (for OpenSSL-based
    code)
  - Encryption/decryption using:
-   - AES (128|192|256), CBC mode, PKCS7 padding
-   - AES (128|192|256), CBC mode, no padding
+   - AES (128, 192, 256), CBC mode, PKCS7 padding
+   - AES (128, 192, 256), CBC mode, no padding
    - TripleDES 3-key, CBC mode, PKCS5 padding
    - TripleDes 2-key, CBC mode, PKCS5 padding
    - DES, CBC mode, PKCS5 padding
@@ -53,6 +53,11 @@ schemes are part of X509 signatures.
 
 For modern cryptography not tied to an existing system, please see the
 [Modern Cryptography](docs/readme.md#learning) section of the docs.
+
+*Please note that this library does not provide TLS or SSL functionality.*
+Additionally, modern block modes such as CTR and GCM are not currently
+implemented. CTR mode could be added, but GCM mode does not exist in OpenSSL
+0.9.8.
 
 ## License
 

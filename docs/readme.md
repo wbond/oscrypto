@@ -19,21 +19,30 @@ please see [Modern Cryptography](#modern-cryptography).
 ## Modern Cryptography
 
 A good place to get an overview of the correct tools to use for modern
-cryptography is [(Updated) Cryptographic Right Answers](https://gist.github.com/tqbf/be58d2d39690c3b366ad).
+cryptography is [(Updated) Cryptographic Right Answers](https://gist.github.com/tqbf/be58d2d39690c3b366ad)
+by Thomas Ptacek.
 
-Here are some libraries for Python that may be useful:
+In short, you probably want to be using [NaCl](http://nacl.cr.yp.to/) by Daniel
+J. Bernstein (DJB) - he is a very accomplished cryptographer. Using
+[scrypt](http://www.tarsnap.com/scrypt.html) by Colin Percival for password
+hashing is a good idea. Here are some libraries for Python that may be useful:
 
  - https://github.com/pyca/pynacl
  - https://pypi.python.org/pypi/scrypt/
 
-## Prerequisite Knowledge
-
-Before using *oscrypto*, you should know a bit about cryptography, and how to
-safely use the primitives. If you don't, you could very likely utilize them in
-an unsafe way, resulting in expose of confidential information, including
-secret keys, encrypted data, and more.
+Thomas‘s recommendations are an alternative, slightly-updated version
+of [Cryptographic Right Answers](http://www.daemonology.net/blog/2009-06-11-cryptographic-right-answers.html)
+by Colin Percival. Colin‘s contain recommendations that may be a little more
+accessible, using things like RSA PSS for signing, RSA OAEP for encryption,
+scrypt or PBKDF2 for password hashing, and AES CTR with HMAC for symmetric
+encryption.
 
 ## Learning
+
+Before using *oscrypto*, you should know a bit about cryptography, and how to
+safely use the primitives. If you don‘t, you could very likely utilize them in
+an unsafe way, resulting in exposure of confidential information, including
+secret keys, encrypted data, and more.
 
 Here are some topics worth learning about:
 
