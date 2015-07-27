@@ -7,7 +7,9 @@ import math
 import struct
 import os
 
-from ._int import int_from_bytes, int_to_bytes, fill_width
+from asn1crypto.int import int_from_bytes, int_to_bytes
+
+from ._int import fill_width
 from .util import constant_compare
 
 if sys.version_info < (3,):

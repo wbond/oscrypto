@@ -5,10 +5,11 @@ import sys
 import hashlib
 
 from asn1crypto import core, keys, x509
+from asn1crypto.int import int_from_bytes, int_to_bytes
 
 from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
-from .._int import int_to_bytes, int_from_bytes, fill_width
+from .._int import fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, PrivateKeyError
 
