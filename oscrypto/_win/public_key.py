@@ -707,16 +707,16 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % certificate_or_public_key.__class__.__name__)
 
     if not isinstance(signature, byte_cls):
-        raise ValueError('signature is not a byte string')
+        raise ValueError('signature must be a byte string, not %s' % signature.__class__.__name__)
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data is not a byte string')
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
 
     if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
-        raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
+        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     if certificate_or_public_key.algo != 'rsa' and rsa_pss_padding != False:
         raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % certificate_or_public_key.algo.upper())
@@ -907,13 +907,13 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key is not an instance of PrivateKey')
+        raise ValueError('private_key must be an instance of PrivateKey, not %s' % private_key.__class__.__name__)
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data is not a byte string')
+        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
 
     if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
-        raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
+        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     if private_key.algo != 'rsa' and rsa_pss_padding != False:
         raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % private_key.algo.upper())
@@ -1004,7 +1004,7 @@ def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key is not an instance of the Certificate or PublicKey class')
+        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % certificate_or_public_key.__class__.__name__)
 
     if not isinstance(data, byte_cls):
         raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
@@ -1062,7 +1062,7 @@ def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key is not an instance of the PrivateKey class')
+        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % private_key.__class__.__name__)
 
     if not isinstance(ciphertext, byte_cls):
         raise ValueError('ciphertext must be a byte string, not %s' % ciphertext.__class__.__name__)
