@@ -232,7 +232,7 @@ def _load_key(key_object, container):
             curve_type, curve_name = key_object.curve
             if curve_type != 'named':
                 raise PrivateKeyError('Windows only supports EC keys using named curves')
-            if curve_name not in ('secp256r1', 'secp384r1', 'secp521r1'):
+            if curve_name not in {'secp256r1', 'secp384r1', 'secp521r1'}:
                 raise PrivateKeyError('Windows only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
         elif algo == 'dsa':
@@ -436,7 +436,7 @@ def _decompose_ec_public_key(octet_string):
         y = int_from_bytes(remaining[field_len:])
         return (x, y)
 
-    if first_byte not in (b'\x02', b'\x03'):
+    if first_byte not in {b'\x02', b'\x03'}:
         raise ValueError('Invalid EC public key - first byte is incorrect')
 
     raise ValueError('Compressed representations of EC public keys are not supported due to patent US6252960')
@@ -715,7 +715,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
     if certificate_or_public_key.algo != 'rsa' and rsa_pss_padding != False:
@@ -912,7 +912,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
     if private_key.algo != 'rsa' and rsa_pss_padding != False:
@@ -957,7 +957,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
-    if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in ('md5', 'sha1'):
+    if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in {'md5', 'sha1'}:
         raise ValueError('Windows does not support sha1 signatures with DSA keys based on sha224, sha256 or sha512')
 
     out_len = new(bcrypt, 'DWORD *')

@@ -251,7 +251,7 @@ def _unarmor_pem(data, password=None):
 
     # RSA private keys are encrypted after being DER-encoded, but before base64
     # encoding, so they need to be hanlded specially
-    if pem_header in ('RSA PRIVATE KEY', 'DSA PRIVATE KEY', 'EC PRIVATE KEY'):
+    if pem_header in {'RSA PRIVATE KEY', 'DSA PRIVATE KEY', 'EC PRIVATE KEY'}:
         algo = armor_type.group(2).lower()
         return ('private key', algo, _unarmor_pem_openssl_private(headers, der_bytes, password))
 

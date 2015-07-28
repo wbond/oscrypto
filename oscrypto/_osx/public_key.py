@@ -325,7 +325,7 @@ def _load_key(key_object):
         curve_type, details = key_object.curve
         if curve_type != 'named':
             raise PrivateKeyError('OS X only supports EC keys using named curves')
-        if details not in ('secp256r1', 'secp384r1', 'secp521r1'):
+        if details not in {'secp256r1', 'secp384r1', 'secp521r1'}:
             raise PrivateKeyError('OS X only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
     elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
@@ -815,7 +815,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512"')
 
     cf_signature = None
@@ -841,7 +841,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
         Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
         handle_cf_error(error_pointer)
 
-        if hash_algorithm in ('sha224', 'sha256', 'sha384', 'sha512'):
+        if hash_algorithm in {'sha224', 'sha256', 'sha384', 'sha512'}:
             hash_length = {
                 'sha224': 224,
                 'sha256': 256,
@@ -1034,7 +1034,7 @@ def _sign(private_key, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
     cf_signature = None
@@ -1059,7 +1059,7 @@ def _sign(private_key, data, hash_algorithm):
         Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
         handle_cf_error(error_pointer)
 
-        if hash_algorithm in ('sha224', 'sha256', 'sha384', 'sha512'):
+        if hash_algorithm in {'sha224', 'sha256', 'sha384', 'sha512'}:
             hash_length = {
                 'sha224': 224,
                 'sha256': 256,

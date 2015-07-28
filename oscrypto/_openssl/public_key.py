@@ -703,7 +703,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512"')
 
     if certificate_or_public_key.algo != 'rsa' and rsa_pss_padding:
@@ -974,7 +974,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if not isinstance(data, byte_cls):
         raise ValueError('data is not a byte string')
 
-    if hash_algorithm not in ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'):
+    if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm is not one of "md5", "sha1", "sha256", "sha384", "sha512"')
 
     if private_key.algo != 'rsa' and rsa_pss_padding:

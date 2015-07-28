@@ -64,7 +64,7 @@ try:
         params = []
         if value is not None:
             params.append(value)
-        if type_ in ('BCRYPT_KEY_HANDLE', 'BCRYPT_ALG_HANDLE'):
+        if type_ in {'BCRYPT_KEY_HANDLE', 'BCRYPT_ALG_HANDLE'}:
             return ffi_obj.cast(type_, 0)
         return ffi_obj.new(type_, *params)
 
