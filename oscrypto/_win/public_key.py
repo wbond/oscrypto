@@ -285,7 +285,7 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     public_blob = bytes_from_buffer(public_buffer, public_buffer_length)[struct_size:]
 
     if algorithm == 'rsa':
-        private_key = _interpret_rsa_key_blob('public', public_blob_struct, public_blob)
+        public_key = _interpret_rsa_key_blob('public', public_blob_struct, public_blob)
     elif algorithm == 'dsa':
         if bit_size > 1024:
             public_key = _interpret_dsa_key_blob('public', 2, public_blob_struct, public_blob)
@@ -331,7 +331,7 @@ def _interpret_rsa_key_blob(key_type, blob_struct, blob):
             'public_key': keys.RSAPublicKey({
                 'modulus': modulus,
                 'public_exponent': public_exponent,
-            }).dump(),
+            }),
         })
 
     elif key_type == 'private':
@@ -369,7 +369,7 @@ def _interpret_rsa_key_blob(key_type, blob_struct, blob):
             'private_key_algorithm': keys.PrivateKeyAlgorithm({
                 'algorithm': 'rsa',
             }),
-            'private_key': rsa_private_key.dump(),
+            'private_key': rsa_private_key,
         })
 
     else:
@@ -440,7 +440,7 @@ def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
                     'g': g,
                 })
             }),
-            'public_key': core.Integer(public).dump(),
+            'public_key': core.Integer(public),
         })
 
     elif key_type == 'private':
@@ -455,7 +455,7 @@ def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
                     'g': g,
                 })
             }),
-            'private_key': core.Integer(private).dump(),
+            'private_key': core.Integer(private),
         })
 
     else:
@@ -480,13 +480,16 @@ def _interpret_ec_key_blob(key_type, blob_struct, blob):
         object, based on the key_type param
     """
 
-    magic = native(int, blob_struct.Magic)
+    magic = native(int, blob_struct.dwMagic)
     key_byte_length = native(int, blob_struct.cbKey)
 
     curve = {
         bcrypt_const.BCRYPT_ECDSA_PRIVATE_P256_MAGIC: 'secp256r1',
         bcrypt_const.BCRYPT_ECDSA_PRIVATE_P384_MAGIC: 'secp384r1',
         bcrypt_const.BCRYPT_ECDSA_PRIVATE_P521_MAGIC: 'secp521r1',
+        bcrypt_const.BCRYPT_ECDSA_PUBLIC_P256_MAGIC: 'secp256r1',
+        bcrypt_const.BCRYPT_ECDSA_PUBLIC_P384_MAGIC: 'secp384r1',
+        bcrypt_const.BCRYPT_ECDSA_PUBLIC_P521_MAGIC: 'secp521r1',
     }[magic]
 
     public = b'\x04' + blob[0:key_byte_length*2]
@@ -518,7 +521,7 @@ def _interpret_ec_key_blob(key_type, blob_struct, blob):
                 'version': 'ecPrivkeyVer1',
                 'private_key': private,
                 'public_key': public,
-            }).dump(),
+            }),
         })
 
     else:
