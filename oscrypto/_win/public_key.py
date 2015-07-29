@@ -669,13 +669,17 @@ def _load_key(key_object, container):
             g = int_to_bytes(params['g'].native)
             q = int_to_bytes(params['q'].native)
 
-            q_len = len(q)
+            if key_object.bit_size > 1024:
+                q_len = len(q)
+            else:
+                q_len = 20
 
             key_width = max(len(public_bytes), len(g), len(p))
 
             public_bytes = fill_width(public_bytes, key_width)
             p = fill_width(p, key_width)
             g = fill_width(g, key_width)
+            q = fill_width(q, q_len)
             # We don't know the count or seed, so we set them to the max value
             # since setting them to 0 results in a parameter error
             count = b'\xff' * 4
@@ -703,7 +707,7 @@ def _load_key(key_object, container):
                 blob = struct_bytes(blob_struct_pointer)
                 blob += seed + q + p + g + public_bytes
                 if key_type == 'private':
-                    blob += private_bytes
+                    blob += fill_width(private_bytes, q_len)
 
             else:
                 if key_type == 'public':
@@ -721,7 +725,7 @@ def _load_key(key_object, container):
 
                 blob = struct_bytes(blob_struct_pointer) + p + g + public_bytes
                 if key_type == 'private':
-                    blob += private_bytes
+                    blob += fill_width(private_bytes, q_len)
 
         elif algo == 'ec':
             if key_type == 'public':
@@ -744,12 +748,16 @@ def _load_key(key_object, container):
                 ('private', 'secp521r1'): bcrypt_const.BCRYPT_ECDSA_PRIVATE_P521_MAGIC,
             }[(key_type, curve_name)]
 
+            key_width = {
+                'secp256r1': 32,
+                'secp384r1': 48,
+                'secp521r1': 66
+            }[curve_name]
+
             x, y = _decompose_ec_public_key(public_key)
 
             x_bytes = int_to_bytes(x)
             y_bytes = int_to_bytes(y)
-
-            key_width = max(len(x_bytes), len(y_bytes))
 
             x_bytes = fill_width(x_bytes, key_width)
             y_bytes = fill_width(y_bytes, key_width)
@@ -759,7 +767,7 @@ def _load_key(key_object, container):
 
             blob = struct_bytes(blob_struct_pointer) + x_bytes + y_bytes
             if key_type == 'private':
-                blob += private_bytes
+                blob += fill_width(private_bytes, key_width)
 
         key_handle_pointer = new(bcrypt, 'BCRYPT_KEY_HANDLE *')
         res = bcrypt.BCryptImportKeyPair(alg_handle, null(), blob_type, key_handle_pointer, blob, len(blob), bcrypt_const.BCRYPT_NO_KEY_VALIDATION)
