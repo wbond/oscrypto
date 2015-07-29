@@ -245,6 +245,8 @@ except (ImportError):
         return output
 
     def native(type_, value):
+        if isinstance(value, type_):
+            return value
         if type_ == byte_cls:
             return value.raw
         return type_(value.value)
