@@ -81,8 +81,10 @@ try:
         return ffi_obj.new(type_, *params)
 
     def native(type_, value):
-        if type_ == str_cls or type_ == byte_cls:
+        if type_ == str_cls:
             return ffi.string(value)
+        if type_ == byte_cls:
+            return ffi.buffer(value)[:]
         return type_(value)
 
     def deref(point):
@@ -104,7 +106,7 @@ try:
         new_struct = new_struct_pointer[0]
         struct_size = sizeof(library, new_struct)
         struct_buffer = ffi_obj.buffer(new_struct_pointer)
-        struct_buffer[:] = ffi_obj.buffer(buffer)[0:struct_size]
+        struct_buffer[:] = ffi_obj.buffer(buffer, struct_size)[:]
         return new_struct_pointer
 
     def array_from_pointer(library, name, point, size):
