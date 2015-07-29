@@ -100,7 +100,12 @@ try:
 
     def struct_from_buffer(library, name, buffer):
         ffi_obj = _get_ffi(library)
-        return ffi_obj.cast('%s *' % name, buffer)
+        new_struct_pointer = ffi_obj.new('struct %s *' % name)
+        new_struct = new_struct_pointer[0]
+        struct_size = sizeof(library, new_struct)
+        struct_buffer = ffi_obj.buffer(new_struct_pointer)
+        struct_buffer[:] = ffi_obj.buffer(buffer)[0:struct_size]
+        return new_struct_pointer
 
     def array_from_pointer(library, name, point, size):
         ffi_obj = _get_ffi(library)
@@ -257,9 +262,10 @@ except (ImportError):
         return ctypes.string_at(struct_, ctypes.sizeof(struct_.contents))
 
     def struct_from_buffer(library, type_, buffer):
-        _, type_ = _is_pointer_type(library, type_)
-        type_ = ctypes.POINTER(type_)
-        return ctypes.cast(buffer, type_)
+        class_ = getattr(library, type_)
+        value = class_()
+        ctypes.memmove(ctypes.addressof(value), buffer, ctypes.sizeof(class_))
+        return ctypes.pointer(value)
 
     def array_from_pointer(library, type_, point, size):
         _, type_ = _is_pointer_type(library, type_)

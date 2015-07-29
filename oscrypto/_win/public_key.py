@@ -256,7 +256,8 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     private_buffer = buffer_from_bytes(private_buffer_length)
     res = bcrypt.BCryptExportKey(key_handle, null(), private_blob_type, private_buffer, private_buffer_length, private_out_len, 0)
     handle_error(res)
-    private_blob_struct = struct_from_buffer(bcrypt, struct_type, private_buffer)
+    private_blob_struct_pointer = struct_from_buffer(bcrypt, struct_type, private_buffer)
+    private_blob_struct = unwrap(private_blob_struct_pointer)
     struct_size = sizeof(bcrypt, private_blob_struct)
     private_blob = bytes_from_buffer(private_buffer, private_buffer_length)[struct_size:]
 
@@ -278,7 +279,8 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     public_buffer = buffer_from_bytes(public_buffer_length)
     res = bcrypt.BCryptExportKey(key_handle, null(), public_blob_type, public_buffer, public_buffer_length, public_out_len, 0)
     handle_error(res)
-    public_blob_struct = struct_from_buffer(bcrypt, struct_type, public_buffer)
+    public_blob_struct_pointer = struct_from_buffer(bcrypt, struct_type, public_buffer)
+    public_blob_struct = unwrap(public_blob_struct_pointer)
     struct_size = sizeof(bcrypt, public_blob_struct)
     public_blob = bytes_from_buffer(public_buffer, public_buffer_length)[struct_size:]
 
