@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p, c_char
+from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p, c_byte
 from ctypes.wintypes import ULONG, DWORD, LPCWSTR
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
@@ -94,9 +94,9 @@ class BCRYPT_DSA_KEY_BLOB(Structure):
     _fields_ = [
         ('dwMagic', ULONG),
         ('cbKey', ULONG),
-        ('Count', c_char * 4),
-        ('Seed', c_char * 20),
-        ('q', c_char * 20),
+        ('Count', c_byte * 4),
+        ('Seed', c_byte * 20),
+        ('q', c_byte * 20),
     ]
 
 
@@ -108,7 +108,7 @@ class BCRYPT_DSA_KEY_BLOB_V2(Structure):
         ('standardVersion', wintypes.INT),
         ('cbSeedLength', ULONG),
         ('cbGroupSize', ULONG),
-        ('Count', c_char * 4),
+        ('Count', c_byte * 4),
     ]
 
 

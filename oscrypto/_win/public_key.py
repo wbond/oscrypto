@@ -7,7 +7,7 @@ import hashlib
 from asn1crypto import core, keys, x509
 from asn1crypto.int import int_from_bytes, int_to_bytes
 
-from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode, struct_from_buffer, sizeof, native
+from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode, struct_from_buffer, sizeof, native, byte_array
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._int import fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -702,7 +702,7 @@ def _load_key(key_object, container):
                 blob_struct.standardVersion = bcrypt_const.DSA_FIPS186_3
                 blob_struct.cbSeedLength = q_len
                 blob_struct.cbGroupSize = q_len
-                blob_struct.Count = count
+                blob_struct.Count = byte_array(count)
 
                 blob = struct_bytes(blob_struct_pointer)
                 blob += seed + q + p + g + public_bytes
@@ -719,9 +719,9 @@ def _load_key(key_object, container):
                 blob_struct = unwrap(blob_struct_pointer)
                 blob_struct.dwMagic = magic
                 blob_struct.cbKey = key_width
-                blob_struct.Count = count
-                blob_struct.Seed = seed
-                blob_struct.q = q
+                blob_struct.Count = byte_array(count)
+                blob_struct.Seed = byte_array(seed)
+                blob_struct.q = byte_array(q)
 
                 blob = struct_bytes(blob_struct_pointer) + p + g + public_bytes
                 if key_type == 'private':

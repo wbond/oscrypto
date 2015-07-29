@@ -11,9 +11,12 @@ import sys
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
     byte_cls = str
+    bytes_to_list = lambda byte_string: [ord(b) for b in byte_string]
+
 else:
     str_cls = str
     byte_cls = bytes
+    bytes_to_list = list
 
 
 try:
@@ -56,6 +59,9 @@ try:
 
     def byte_string_from_buffer(buffer):
         return ffi.string(buffer)
+
+    def byte_array(byte_string):
+        return ffi.new('unsigned char[]', byte_string)
 
     def null():
         return ffi.NULL
@@ -224,6 +230,9 @@ except (ImportError):
     def byte_string_from_buffer(buffer):
         return buffer.value
 
+    def byte_array(byte_string):
+        return (ctypes.c_byte * len(byte_string))(*bytes_to_list(byte_string))
+
     def null():
         return None
 
@@ -249,8 +258,8 @@ except (ImportError):
     def native(type_, value):
         if isinstance(value, type_):
             return value
-        if type_ == byte_cls:
-            return value.raw
+        if isinstance(value, ctypes.Array) and value._type_ == ctypes.c_byte:
+            return ctypes.string_at(ctypes.addressof(value), value._length_)
         return type_(value.value)
 
     def deref(point):
