@@ -61,7 +61,7 @@ try:
         return ffi.string(buffer)
 
     def byte_array(byte_string):
-        return ffi.new('unsigned char[]', byte_string)
+        return byte_string
 
     def null():
         return ffi.NULL
