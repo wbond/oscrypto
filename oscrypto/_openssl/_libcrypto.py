@@ -95,3 +95,7 @@ class libcrypto_const():
     EVP_PKEY_RSA = 6
     EVP_PKEY_OP_SIGN = 1<<3
     EVP_PKEY_OP_VERIFY = 1<<4
+
+    NID_X9_62_prime256v1 = 415
+    NID_secp384r1 = 715
+    NID_secp521r1 = 716

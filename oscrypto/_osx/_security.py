@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError
+from .._ffi import FFIEngineError, null
 
 try:
     from ._security_cffi import Security
@@ -27,7 +27,7 @@ def handle_sec_error(error):
     if error == 0:
         return
 
-    cf_error_string = Security.SecCopyErrorMessageString(error, None)
+    cf_error_string = Security.SecCopyErrorMessageString(error, null())
     output = CFHelpers.cf_string_to_unicode(cf_error_string)
     CoreFoundation.CFRelease(cf_error_string)
 
@@ -53,3 +53,10 @@ class security_const():
 
     kSecPaddingNone = 0
     kSecPaddingPKCS1 = 1
+
+    CSSM_KEYUSE_SIGN = 0x00000004
+    CSSM_KEYUSE_VERIFY = 0x00000008
+
+    CSSM_ALGID_DSA = 43
+    CSSM_KEYATTR_PERMANENT = 0x00000001
+    CSSM_KEYATTR_EXTRACTABLE = 0x00000020

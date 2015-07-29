@@ -48,9 +48,13 @@ ffi.cdef("""
     typedef ... ENGINE;
     typedef uintptr_t EVP_PKEY;
     typedef ... X509;
-    typedef ... RSA;
+    typedef uintptr_t RSA;
+    typedef uintptr_t DSA;
+    typedef uintptr_t EC_KEY;
     typedef ... EVP_MD_CTX;
     typedef ... EVP_PKEY_CTX;
+    typedef ... BN_GENCB;
+    typedef ... BIGNUM;
 
     void ERR_load_crypto_strings(void);
     void ERR_free_strings(void);
@@ -127,20 +131,35 @@ ffi.cdef("""
     int PKCS12_key_gen_uni(unsigned char *pass, int passlen, unsigned char *salt,
                     int saltlen, int id, int iter, int n,
                     unsigned char *out, const EVP_MD *md_type);
+
+    void BN_free(BIGNUM *a);
+    int BN_dec2bn(BIGNUM **a, const char *str);
+
+    RSA *RSA_new(void);
+    int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
+    int i2d_RSAPublicKey(RSA *a, unsigned char **pp);
+    int i2d_RSAPrivateKey(RSA *a, unsigned char **pp);
+
+    DSA *DSA_new(void);
+    int DSA_generate_parameters_ex(DSA *dsa, int bits,
+                    const unsigned char *seed, int seed_len, int *counter_ret,
+                    unsigned long *h_ret, BN_GENCB *cb);
+    int DSA_generate_key(DSA *a);
+    int i2d_DSA_PUBKEY(const DSA *a, unsigned char **pp);
+    int i2d_DSAPrivateKey(const DSA *a, unsigned char **pp);
+    void DSA_free(DSA *dsa);
+
+    EC_KEY *EC_KEY_new_by_curve_name(int nid);
+    int EC_KEY_generate_key(EC_KEY *key);
+    int i2d_ECPrivateKey(EC_KEY *key, unsigned char **out);
+    int i2o_ECPublicKey(EC_KEY *key, unsigned char **out);
+    void EC_KEY_free(EC_KEY *key);
 """)
 
 if version_info < (1,):
     ffi.cdef("""
-        typedef ... DSA;
-        typedef ... EC_KEY;
-
-        typedef struct DSA_SIG_st {
-            ...;
-        } DSA_SIG;
-
-        typedef struct ECDSA_SIG_st {
-            ...;
-        } ECDSA_SIG;
+        typedef ... *DSA_SIG;
+        typedef ... *ECDSA_SIG;
 
         DSA_SIG *DSA_do_sign(const unsigned char *dgst, int dlen, DSA *dsa);
         ECDSA_SIG *ECDSA_do_sign(const unsigned char *dgst, int dgst_len, EC_KEY *eckey);
@@ -156,9 +175,6 @@ if version_info < (1,):
 
         void DSA_SIG_free(DSA_SIG *a);
         void ECDSA_SIG_free(ECDSA_SIG *a);
-
-        void DSA_free(DSA *r);
-        void EC_KEY_free(EC_KEY *);
 
         DSA *EVP_PKEY_get1_DSA(EVP_PKEY *pkey);
         EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);

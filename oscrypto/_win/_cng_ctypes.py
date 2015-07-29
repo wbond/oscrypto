@@ -65,6 +65,15 @@ try:
     bcrypt.BCryptGenRandom.argtypes = [BCRYPT_ALG_HANDLE, PUCHAR, ULONG, ULONG]
     bcrypt.BCryptGenRandom.restype = NTSTATUS
 
+    bcrypt.BCryptGenerateKeyPair.argtypes = [BCRYPT_ALG_HANDLE, POINTER(BCRYPT_KEY_HANDLE), ULONG, ULONG]
+    bcrypt.BCryptGenerateKeyPair.restype = NTSTATUS
+
+    bcrypt.BCryptFinalizeKeyPair.argtypes = [BCRYPT_KEY_HANDLE, ULONG]
+    bcrypt.BCryptFinalizeKeyPair.restype = NTSTATUS
+
+    bcrypt.BCryptExportKey.argtypes = [BCRYPT_KEY_HANDLE, BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, POINTER(ULONG), ULONG]
+    bcrypt.BCryptExportKey.restype = NTSTATUS
+
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 

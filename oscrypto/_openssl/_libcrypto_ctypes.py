@@ -47,6 +47,11 @@ EVP_PKEY_CTX = c_void_p
 P_EVP_PKEY_CTX = POINTER(c_void_p)
 P_X509 = c_void_p
 P_RSA = c_void_p
+P_DSA = c_void_p
+P_EC_KEY = c_void_p
+P_BN_GENCB = c_void_p
+BIGNUM = c_void_p
+P_BIGNUM = POINTER(BIGNUM)
 
 p_int = POINTER(c_int)
 p_uint = POINTER(c_uint)
@@ -195,9 +200,61 @@ try:
     libcrypto.PKCS12_key_gen_uni.argtypes = [c_char_p, c_int, c_char_p, c_int, c_int, c_int, c_int, c_char_p, c_void_p]
     libcrypto.PKCS12_key_gen_uni.restype = c_int
 
+    libcrypto.BN_free.argtypes = [P_BIGNUM]
+    libcrypto.BN_free.restype = None
+
+    libcrypto.BN_dec2bn.argtypes = [POINTER(P_BIGNUM), c_char_p]
+    libcrypto.BN_dec2bn.restype = c_int
+
+    libcrypto.RSA_new.argtypes = []
+    libcrypto.RSA_new.restype = P_RSA
+
+    libcrypto.RSA_generate_key_ex.argtypes = [P_RSA, c_int, P_BIGNUM, P_BN_GENCB]
+    libcrypto.RSA_generate_key_ex.restype = c_int
+
+    libcrypto.i2d_RSAPublicKey.argtypes = [P_RSA, POINTER(c_char_p)]
+    libcrypto.i2d_RSAPublicKey.restype = c_int
+
+    libcrypto.i2d_RSAPrivateKey.argtypes = [P_RSA, POINTER(c_char_p)]
+    libcrypto.i2d_RSAPrivateKey.restype = c_int
+
+    libcrypto.RSA_free.argtypes = [P_RSA]
+    libcrypto.RSA_free.restype = None
+
+    libcrypto.DSA_new.argtypes = []
+    libcrypto.DSA_new.restype = P_DSA
+
+    libcrypto.DSA_generate_parameters_ex.argtypes = [P_DSA, c_int, c_char_p, c_int, POINTER(c_int), POINTER(c_ulong), P_BN_GENCB]
+    libcrypto.DSA_generate_parameters_ex.restype = c_int
+
+    libcrypto.DSA_generate_key.argtypes = [P_DSA]
+    libcrypto.DSA_generate_key.restype = c_int
+
+    libcrypto.i2d_DSA_PUBKEY.argtypes = [P_DSA, POINTER(c_char_p)]
+    libcrypto.i2d_DSA_PUBKEY.restype = c_int
+
+    libcrypto.i2d_DSAPrivateKey.argtypes = [P_DSA, POINTER(c_char_p)]
+    libcrypto.i2d_DSAPrivateKey.restype = c_int
+
+    libcrypto.DSA_free.argtypes = [P_DSA]
+    libcrypto.DSA_free.restype = None
+
+    libcrypto.EC_KEY_new_by_curve_name.argtypes = [c_int]
+    libcrypto.EC_KEY_new_by_curve_name.restype = P_EC_KEY
+
+    libcrypto.EC_KEY_generate_key.argtypes = [P_EC_KEY]
+    libcrypto.EC_KEY_generate_key.restype = c_int
+
+    libcrypto.i2d_ECPrivateKey.argtypes = [P_EC_KEY, POINTER(c_char_p)]
+    libcrypto.i2d_ECPrivateKey.restype = c_int
+
+    libcrypto.i2o_ECPublicKey.argtypes = [P_EC_KEY, POINTER(c_char_p)]
+    libcrypto.i2o_ECPublicKey.restype = c_int
+
+    libcrypto.EC_KEY_free.argtypes = [P_EC_KEY]
+    libcrypto.EC_KEY_free.restype = None
+
     if version_info < (1,):
-        P_DSA = c_void_p
-        P_EC_KEY = c_void_p
         P_DSA_SIG = c_void_p
         P_ECDSA_SIG = c_void_p
 
@@ -230,12 +287,6 @@ try:
 
         libcrypto.ECDSA_SIG_free.argtypes = [P_ECDSA_SIG]
         libcrypto.ECDSA_SIG_free.restype = None
-
-        libcrypto.DSA_free.argtypes = [P_DSA]
-        libcrypto.DSA_free.restype = None
-
-        libcrypto.EC_KEY_free.argtypes = [P_EC_KEY]
-        libcrypto.EC_KEY_free.restype = None
 
         libcrypto.EVP_PKEY_get1_DSA.argtypes = [P_EVP_PKEY]
         libcrypto.EVP_PKEY_get1_DSA.restype = P_DSA
@@ -285,3 +336,4 @@ except (AttributeError):
 
 
 setattr(libcrypto, 'EVP_PKEY_CTX', EVP_PKEY_CTX)
+setattr(libcrypto, 'BIGNUM', BIGNUM)

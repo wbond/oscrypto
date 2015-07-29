@@ -223,6 +223,24 @@ class CFHelpers():
         return string
 
     @staticmethod
+    def cf_string_from_unicode(string):
+        """
+        Creates a CFStringRef object from a unicode string
+
+        :param string:
+            The unicode string to create the CFString object from
+
+        :return:
+            A CFStringRef
+        """
+
+        return CoreFoundation.CFStringCreateWithCString(
+            CoreFoundation.kCFAllocatorDefault,
+            string.encode('utf-8'),
+            kCFStringEncodingUTF8
+        )
+
+    @staticmethod
     def cf_data_to_bytes(value):
         """
         Extracts a bytestring from a CFData object
@@ -299,9 +317,9 @@ class CFHelpers():
             A CFNumber
         """
 
-        integer_as_long = ffi.new('long', integer)
+        integer_as_long = ffi.new('long *', integer)
         return CoreFoundation.CFNumberCreate(
             CoreFoundation.kCFAllocatorDefault,
-            CoreFoundation.kCFNumberCFIndexType,
+            kCFNumberCFIndexType,
             integer_as_long
         )

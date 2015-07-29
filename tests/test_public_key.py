@@ -24,6 +24,39 @@ def _win_version_pair():
 
 class PublicKeyTests(unittest.TestCase):
 
+    def test_rsa_generate(self):
+        public, private = public_key.generate_pair('rsa', bit_size=2048)
+
+        self.assertEqual('rsa', public.algo)
+        self.assertEqual(2048, public.bit_size)
+
+        original_data = b'This is data to sign'
+        signature = public_key.rsa_pkcs1v15_sign(private, original_data, 'sha1')
+        self.assertIsInstance(signature, byte_cls)
+        public_key.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
+
+    def test_dsa_generate(self):
+        public, private = public_key.generate_pair('dsa', bit_size=1024)
+
+        self.assertEqual('dsa', public.algo)
+        self.assertEqual(1024, public.bit_size)
+
+        original_data = b'This is data to sign'
+        signature = public_key.dsa_sign(private, original_data, 'sha1')
+        self.assertIsInstance(signature, byte_cls)
+        public_key.dsa_verify(public, signature, original_data, 'sha1')
+
+    def test_ec_generate(self):
+        public, private = public_key.generate_pair('ec', curve='secp256r1')
+
+        self.assertEqual('ec', public.algo)
+        self.assertEqual('secp256r1', public.asn1.curve[1])
+
+        original_data = b'This is data to sign'
+        signature = public_key.ecdsa_sign(private, original_data, 'sha1')
+        self.assertIsInstance(signature, byte_cls)
+        public_key.ecdsa_verify(public, signature, original_data, 'sha1')
+
     def test_rsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()

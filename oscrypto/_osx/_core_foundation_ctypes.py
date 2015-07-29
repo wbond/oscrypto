@@ -125,6 +125,7 @@ try:
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
+setattr(CoreFoundation, 'CFDataRef', CFDataRef)
 setattr(CoreFoundation, 'CFErrorRef', CFErrorRef)
 setattr(CoreFoundation, 'CFArrayRef', CFArrayRef)
 kCFNumberCFIndexType = CFNumberType(14)
@@ -267,6 +268,24 @@ class CFHelpers():
         if string is not None:
             string = string.decode('utf-8')
         return string
+
+    @staticmethod
+    def cf_string_from_unicode(string):
+        """
+        Creates a CFStringRef object from a unicode string
+
+        :param string:
+            The unicode string to create the CFString object from
+
+        :return:
+            A CFStringRef
+        """
+
+        return CoreFoundation.CFStringCreateWithCString(
+            CoreFoundation.kCFAllocatorDefault,
+            string.encode('utf-8'),
+            kCFStringEncodingUTF8
+        )
 
     @staticmethod
     def cf_data_to_bytes(value):

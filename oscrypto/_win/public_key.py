@@ -7,7 +7,7 @@ import hashlib
 from asn1crypto import core, keys, x509
 from asn1crypto.int import int_from_bytes, int_to_bytes
 
-from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode
+from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode, struct_from_buffer, sizeof, native
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._int import fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -166,6 +166,361 @@ class Signature(core.Sequence):
 
         return r_bytes + s_bytes
 
+
+def generate_pair(algorithm, bit_size=None, curve=None):
+    """
+    Generates a public/private key pair
+
+    :param algorithm:
+        The key algorithm - "rsa", "dsa" or "ec"
+
+    :param bit_size:
+        An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
+        2048, 3072 or 4096. For "dsa" the value may be 1024, plus 2048 or 3072
+        if OpenSSL 1.0.0 or newer is available.
+
+    :param curve:
+        A unicode string - used for "ec" keys. Valid values include "secp256r1",
+        "secp384r1" and "secp521r1".
+
+    :return:
+        A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
+        may be saved by calling .asn1.dump().
+    """
+
+    if algorithm not in {'rsa', 'dsa', 'ec'}:
+        raise ValueError('algorithm must be one of "rsa", "dsa", "ec", not %s' % repr(algorithm))
+
+    if algorithm == 'rsa':
+        if bit_size not in {1024, 2048, 3072, 4096}:
+            raise ValueError('bit_size must be one of 1024, 2048, 3072, 4096, not %s' % repr(bit_size))
+
+    elif algorithm == 'dsa':
+        ver_info = sys.getwindowsversion()
+        # Windows Vista and 7 only support SHA1-based DSA keys
+        if (ver_info.major, ver_info.minor) < (6, 2):
+            if bit_size != 1024:
+                raise ValueError('bit_size must be 1024, not %s' % repr(bit_size))
+        else:
+            if bit_size not in {1024, 2048, 3072}:
+                raise ValueError('bit_size must be one of 1024, 2048, 3072, not %s' % repr(bit_size))
+
+    elif algorithm == 'ec':
+        if curve not in {'secp256r1', 'secp384r1', 'secp521r1'}:
+            raise ValueError('curve must be one of "secp256r1", "secp384r1", "secp521r1", not %s' % repr(curve))
+
+    if algorithm == 'rsa':
+        alg_constant = bcrypt_const.BCRYPT_RSA_ALGORITHM
+        struct_type = 'BCRYPT_RSAKEY_BLOB'
+        private_blob_type = bcrypt_const.BCRYPT_RSAFULLPRIVATE_BLOB
+        public_blob_type = bcrypt_const.BCRYPT_RSAPUBLIC_BLOB
+
+    elif algorithm == 'dsa':
+        alg_constant = bcrypt_const.BCRYPT_DSA_ALGORITHM
+        if bit_size > 1024:
+            struct_type = 'BCRYPT_DSA_KEY_BLOB_V2'
+        else:
+            struct_type = 'BCRYPT_DSA_KEY_BLOB'
+        private_blob_type = bcrypt_const.BCRYPT_DSA_PRIVATE_BLOB
+        public_blob_type = bcrypt_const.BCRYPT_DSA_PUBLIC_BLOB
+
+    else:
+        alg_constant = {
+            'secp256r1': bcrypt_const.BCRYPT_ECDSA_P256_ALGORITHM,
+            'secp384r1': bcrypt_const.BCRYPT_ECDSA_P384_ALGORITHM,
+            'secp521r1': bcrypt_const.BCRYPT_ECDSA_P521_ALGORITHM,
+        }[curve]
+        bit_size = {
+            'secp256r1': 256,
+            'secp384r1': 384,
+            'secp521r1': 521,
+        }[curve]
+        struct_type = 'BCRYPT_ECCKEY_BLOB'
+        private_blob_type = bcrypt_const.BCRYPT_ECCPRIVATE_BLOB
+        public_blob_type = bcrypt_const.BCRYPT_ECCPUBLIC_BLOB
+
+    alg_handle = open_alg_handle(alg_constant)
+    key_handle_pointer = new(bcrypt, 'BCRYPT_KEY_HANDLE *')
+    res = bcrypt.BCryptGenerateKeyPair(alg_handle, key_handle_pointer, bit_size, 0)
+    handle_error(res)
+    key_handle = unwrap(key_handle_pointer)
+
+    res = bcrypt.BCryptFinalizeKeyPair(key_handle, 0)
+    handle_error(res)
+
+    private_out_len = new(bcrypt, 'ULONG *')
+    res = bcrypt.BCryptExportKey(key_handle, null(), private_blob_type, null(), 0, private_out_len, 0)
+    handle_error(res)
+
+    private_buffer_length = deref(private_out_len)
+    private_buffer = buffer_from_bytes(private_buffer_length)
+    res = bcrypt.BCryptExportKey(key_handle, null(), private_blob_type, private_buffer, private_buffer_length, private_out_len, 0)
+    handle_error(res)
+    private_blob_struct = struct_from_buffer(bcrypt, struct_type, private_buffer)
+    struct_size = sizeof(bcrypt, private_blob_struct)
+    private_blob = bytes_from_buffer(private_buffer, private_buffer_length)[struct_size:]
+
+    if algorithm == 'rsa':
+        private_key = _interpret_rsa_key_blob('private', private_blob_struct, private_blob)
+    elif algorithm == 'dsa':
+        if bit_size > 1024:
+            private_key = _interpret_dsa_key_blob('private', 2, private_blob_struct, private_blob)
+        else:
+            private_key = _interpret_dsa_key_blob('private', 1, private_blob_struct, private_blob)
+    else:
+        private_key = _interpret_ec_key_blob('private', private_blob_struct, private_blob)
+
+    public_out_len = new(bcrypt, 'ULONG *')
+    res = bcrypt.BCryptExportKey(key_handle, null(), public_blob_type, null(), 0, public_out_len, 0)
+    handle_error(res)
+
+    public_buffer_length = deref(public_out_len)
+    public_buffer = buffer_from_bytes(public_buffer_length)
+    res = bcrypt.BCryptExportKey(key_handle, null(), public_blob_type, public_buffer, public_buffer_length, public_out_len, 0)
+    handle_error(res)
+    public_blob_struct = struct_from_buffer(bcrypt, struct_type, public_buffer)
+    struct_size = sizeof(bcrypt, public_blob_struct)
+    public_blob = bytes_from_buffer(public_buffer, public_buffer_length)[struct_size:]
+
+    if algorithm == 'rsa':
+        private_key = _interpret_rsa_key_blob('public', public_blob_struct, public_blob)
+    elif algorithm == 'dsa':
+        if bit_size > 1024:
+            public_key = _interpret_dsa_key_blob('public', 2, public_blob_struct, public_blob)
+        else:
+            public_key = _interpret_dsa_key_blob('public', 1, public_blob_struct, public_blob)
+    else:
+        public_key = _interpret_ec_key_blob('public', public_blob_struct, public_blob)
+
+    return (load_public_key(public_key), load_private_key(private_key))
+
+
+def _interpret_rsa_key_blob(key_type, blob_struct, blob):
+    """
+    Take a CNG BCRYPT_RSAFULLPRIVATE_BLOB and converts it into an ASN1 structure
+
+    :param key_type:
+        A unicode string of "private" or "public"
+
+    :param blob_struct:
+        An instance of BCRYPT_RSAKEY_BLOB
+
+    :param blob:
+        A byte string of the binary data contained after the struct
+
+    :return:
+        An asn1crypto.keys.PrivateKeyInfo or asn1crypto.keys.PublicKeyInfo
+        object, based on the key_type param
+    """
+
+    public_exponent_byte_length = native(int, blob_struct.cbPublicExp)
+    modulus_byte_length = native(int, blob_struct.cbModulus)
+
+    modulus_offset = public_exponent_byte_length
+
+    public_exponent = int_from_bytes(blob[0:modulus_offset])
+    modulus = int_from_bytes(blob[modulus_offset:modulus_offset+modulus_byte_length])
+
+    if key_type == 'public':
+        return keys.PublicKeyInfo({
+            'algorithm': keys.PublicKeyAlgorithm({
+                'algorithm': 'rsa',
+            }),
+            'public_key': keys.RSAPublicKey({
+                'modulus': modulus,
+                'public_exponent': public_exponent,
+            }).dump(),
+        })
+
+    elif key_type == 'private':
+        prime1_byte_length = native(int, blob_struct.cbPrime1)
+        prime2_byte_length = native(int, blob_struct.cbPrime2)
+
+        prime1_offset = modulus_offset + modulus_byte_length
+        prime2_offset = prime1_offset + prime1_byte_length
+        exponent1_offset = prime2_offset + prime2_byte_length
+        exponent2_offset = exponent1_offset + prime2_byte_length
+        coefficient_offset = exponent2_offset + prime2_byte_length
+        private_exponent_offset = coefficient_offset + prime1_byte_length
+
+        prime1 = int_from_bytes(blob[prime1_offset:prime2_offset])
+        prime2 = int_from_bytes(blob[prime2_offset:exponent1_offset])
+        exponent1 = int_from_bytes(blob[exponent1_offset:exponent2_offset])
+        exponent2 = int_from_bytes(blob[exponent2_offset:coefficient_offset])
+        coefficient = int_from_bytes(blob[coefficient_offset:private_exponent_offset])
+        private_exponent = int_from_bytes(blob[private_exponent_offset:private_exponent_offset+modulus_byte_length])
+
+        rsa_private_key = keys.RSAPrivateKey({
+            'version': 'two-prime',
+            'modulus': modulus,
+            'public_exponent': public_exponent,
+            'private_exponent': private_exponent,
+            'prime1': prime1,
+            'prime2': prime2,
+            'exponent1': exponent1,
+            'exponent2': exponent2,
+            'coefficient': coefficient,
+        })
+
+        return keys.PrivateKeyInfo({
+            'version': 0,
+            'private_key_algorithm': keys.PrivateKeyAlgorithm({
+                'algorithm': 'rsa',
+            }),
+            'private_key': rsa_private_key.dump(),
+        })
+
+    else:
+        raise ValueError('key_type must be one of "public", "private", not %s' % repr(key_type))
+
+
+def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
+    """
+    Take a CNG BCRYPT_DSA_KEY_BLOB or BCRYPT_DSA_KEY_BLOB_V2 and converts it
+    into an ASN1 structure
+
+    :param key_type:
+        A unicode string of "private" or "public"
+
+    :param version:
+        An integer - 1 or 2, indicating the blob is BCRYPT_DSA_KEY_BLOB or
+        BCRYPT_DSA_KEY_BLOB_V2
+
+    :param blob_struct:
+        An instance of BCRYPT_DSA_KEY_BLOB or BCRYPT_DSA_KEY_BLOB_V2
+
+    :param blob:
+        A byte string of the binary data contained after the struct
+
+    :return:
+        An asn1crypto.keys.PrivateKeyInfo or asn1crypto.keys.PublicKeyInfo
+        object, based on the key_type param
+    """
+
+    key_byte_length = native(int, blob_struct.cbKey)
+
+    if version == 1:
+        q = int_from_bytes(native(byte_cls, blob_struct.q))
+
+        g_offset = key_byte_length
+        public_offset = g_offset + key_byte_length
+        private_offset = public_offset + key_byte_length
+
+        p = int_from_bytes(blob[0:g_offset])
+        g = int_from_bytes(blob[g_offset:public_offset])
+
+    elif version == 2:
+        seed_byte_length = native(int, blob_struct.cbSeedLength)
+        group_byte_length = native(int, blob_struct.cbGroupSize)
+
+        q_offset = seed_byte_length
+        p_offset = q_offset + group_byte_length
+        g_offset = p_offset + key_byte_length
+        public_offset = g_offset + key_byte_length
+        private_offset = public_offset + key_byte_length
+
+        # The seed is skipped since it is not part of the ASN1 structure
+        q = int_from_bytes(blob[q_offset:p_offset])
+        p = int_from_bytes(blob[p_offset:g_offset])
+        g = int_from_bytes(blob[g_offset:public_offset])
+
+    else:
+        raise ValueError('version must be 1 or 2, not %s' % repr(version))
+
+    if key_type == 'public':
+        public = int_from_bytes(blob[public_offset:private_offset])
+        return keys.PublicKeyInfo({
+            'algorithm': keys.PublicKeyAlgorithm({
+                'algorithm': 'dsa',
+                'parameters': keys.DSAParams({
+                    'p': p,
+                    'q': q,
+                    'g': g,
+                })
+            }),
+            'public_key': core.Integer(public).dump(),
+        })
+
+    elif key_type == 'private':
+        private = int_from_bytes(blob[private_offset:private_offset+key_byte_length])
+        return keys.PrivateKeyInfo({
+            'version': 0,
+            'private_key_algorithm': keys.PrivateKeyAlgorithm({
+                'algorithm': 'dsa',
+                'parameters': keys.DSAParams({
+                    'p': p,
+                    'q': q,
+                    'g': g,
+                })
+            }),
+            'private_key': core.Integer(private).dump(),
+        })
+
+    else:
+        raise ValueError('key_type must be one of "public", "private", not %s' % repr(key_type))
+
+
+def _interpret_ec_key_blob(key_type, blob_struct, blob):
+    """
+    Take a CNG BCRYPT_ECCKEY_BLOB and converts it into an ASN1 structure
+
+    :param key_type:
+        A unicode string of "private" or "public"
+
+    :param blob_struct:
+        An instance of BCRYPT_ECCKEY_BLOB
+
+    :param blob:
+        A byte string of the binary data contained after the struct
+
+    :return:
+        An asn1crypto.keys.PrivateKeyInfo or asn1crypto.keys.PublicKeyInfo
+        object, based on the key_type param
+    """
+
+    magic = native(int, blob_struct.Magic)
+    key_byte_length = native(int, blob_struct.cbKey)
+
+    curve = {
+        bcrypt_const.BCRYPT_ECDSA_PRIVATE_P256_MAGIC: 'secp256r1',
+        bcrypt_const.BCRYPT_ECDSA_PRIVATE_P384_MAGIC: 'secp384r1',
+        bcrypt_const.BCRYPT_ECDSA_PRIVATE_P521_MAGIC: 'secp521r1',
+    }[magic]
+
+    public = b'\x04' + blob[0:key_byte_length*2]
+
+    if key_type == 'public':
+        return keys.PublicKeyInfo({
+            'algorithm': keys.PublicKeyAlgorithm({
+                'algorithm': 'ec',
+                'parameters': keys.ECDomainParameters(
+                    name='named',
+                    value=curve
+                )
+            }),
+            'public_key': public,
+        })
+
+    elif key_type == 'private':
+        private = int_from_bytes(blob[key_byte_length*2:key_byte_length*3])
+        return keys.PrivateKeyInfo({
+            'version': 0,
+            'private_key_algorithm': keys.PrivateKeyAlgorithm({
+                'algorithm': 'ec',
+                'parameters': keys.ECDomainParameters(
+                    name='named',
+                    value=curve
+                )
+            }),
+            'private_key': keys.ECPrivateKey({
+                'version': 'ecPrivkeyVer1',
+                'private_key': private,
+                'public_key': public,
+            }).dump(),
+        })
+
+    else:
+        raise ValueError('key_type must be one of "public", "private", not %s' % repr(key_type))
 
 
 def load_certificate(source):

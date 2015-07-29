@@ -2,7 +2,7 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 from ctypes.util import find_library
-from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_ulong
+from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_uint64, c_ulong
 from ctypes import CDLL, POINTER
 
 
@@ -40,8 +40,16 @@ SecCertificateRef = POINTER(c_void_p)
 SecTransformRef = POINTER(c_void_p)
 SecRandomRef = c_void_p
 SecTrustSettingsDomain = c_uint32
+SecItemImportExportFlags = c_uint32
+SecExternalFormat = c_uint32
 SecPadding = c_uint32
 SecPolicyRef = c_void_p
+CSSM_CC_HANDLE = c_uint64
+CSSM_ALGORITHMS = c_uint32
+CSSM_KEYUSE = c_uint32
+SecItemImportExportKeyParameters = c_void_p
+SecAccessRef = POINTER(c_void_p)
+SecKeychainRef = c_void_p
 
 try:
     Security.SecRandomCopyBytes.argtypes = [SecRandomRef, c_size_t, c_char_p]
@@ -104,6 +112,22 @@ try:
     Security.SecKeyDecrypt.argtypes = [SecKeyRef, SecPadding, c_char_p, c_size_t, c_char_p, POINTER(c_size_t)]
     Security.SecKeyDecrypt.restype = OSStatus
 
+    Security.SecKeyGeneratePair.argtypes = [CFDictionaryRef, POINTER(SecKeyRef), POINTER(SecKeyRef)]
+    Security.SecKeyGeneratePair.restype = OSStatus
+
+    Security.SecAccessCreate.argtypes = [CFStringRef, CFArrayRef, POINTER(SecAccessRef)]
+    Security.SecAccessCreate.restype = OSStatus
+
+    Security.SecKeyCreatePair.argtypes = [SecKeychainRef, CSSM_ALGORITHMS, c_uint32, CSSM_CC_HANDLE, CSSM_KEYUSE, c_uint32, CSSM_KEYUSE, c_uint32, SecAccessRef, POINTER(SecKeyRef), POINTER(SecKeyRef)]
+    Security.SecKeyCreatePair.restype = OSStatus
+
+    Security.SecItemExport.argtypes = [CFTypeRef, SecExternalFormat, SecItemImportExportFlags, SecItemImportExportKeyParameters, POINTER(CFDataRef)]
+    Security.SecItemExport.restype = OSStatus
+
+    Security.SecKeychainItemDelete.argtypes = [SecKeyRef]
+    Security.SecKeychainItemDelete.restype = OSStatus
+
+    setattr(Security, 'SecAccessRef', SecAccessRef)
     setattr(Security, 'SecKeyRef', SecKeyRef)
     setattr(Security, 'kSecRandomDefault', SecRandomRef.in_dll(Security, 'kSecRandomDefault'))
 
@@ -132,6 +156,9 @@ try:
     setattr(Security, 'kSecAttrKeyTypeRSA', CFTypeRef.in_dll(Security, 'kSecAttrKeyTypeRSA'))
     setattr(Security, 'kSecAttrKeyTypeDSA', CFTypeRef.in_dll(Security, 'kSecAttrKeyTypeDSA'))
     setattr(Security, 'kSecAttrKeyTypeECDSA', CFTypeRef.in_dll(Security, 'kSecAttrKeyTypeECDSA'))
+
+    setattr(Security, 'kSecAttrKeySizeInBits', CFStringRef.in_dll(Security, 'kSecAttrKeySizeInBits'))
+    setattr(Security, 'kSecAttrLabel', CFStringRef.in_dll(Security, 'kSecAttrLabel'))
 
     setattr(Security, 'kSecAttrCanSign', CFTypeRef.in_dll(Security, 'kSecAttrCanSign'))
     setattr(Security, 'kSecAttrCanVerify', CFTypeRef.in_dll(Security, 'kSecAttrCanVerify'))

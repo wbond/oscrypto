@@ -8,6 +8,14 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
+if sys.version_info < (3,):
+    str_cls = unicode  #pylint: disable=E0602
+    byte_cls = str
+else:
+    str_cls = str
+    byte_cls = bytes
+
+
 try:
     from cffi import FFI
 
@@ -36,6 +44,10 @@ try:
     def cast(library, type_, value):
         ffi_obj = _get_ffi(library)
         return ffi_obj.cast(type_, value)
+
+    def sizeof(library, value):
+        ffi_obj = _get_ffi(library)
+        return ffi_obj.sizeof(value)
 
     def bytes_from_buffer(buffer, maxlen=None):
         if maxlen is not None:
@@ -67,6 +79,11 @@ try:
         if type_ in {'BCRYPT_KEY_HANDLE', 'BCRYPT_ALG_HANDLE'}:
             return ffi_obj.cast(type_, 0)
         return ffi_obj.new(type_, *params)
+
+    def native(type_, value):
+        if type_ == str_cls or type_ == byte_cls:
+            return ffi.string(value)
+        return type_(value)
 
     def deref(point):
         return point[0]
@@ -116,7 +133,7 @@ try:
 except (ImportError):
 
     import ctypes
-    from ctypes import pointer, c_int, c_char_p, c_uint, sizeof, c_void_p, c_wchar_p
+    from ctypes import pointer, c_int, c_char_p, c_uint, c_void_p, c_wchar_p
 
     _pointer_types = {
         'void *': True,
@@ -187,7 +204,10 @@ except (ImportError):
 
         return ctypes.cast(value, type_)
 
-    def bytes_from_buffer(buffer, maxlen=None):  #pylint: disable=W0613
+    def sizeof(library, value):  #pylint: disable=W0613
+        return ctypes.sizeof(value)
+
+    def bytes_from_buffer(buffer, maxlen=None):
         if isinstance(buffer, (int, c_char_p)):
             return ctypes.string_at(buffer, maxlen)
         if maxlen is not None:
@@ -219,6 +239,11 @@ except (ImportError):
 
         return output
 
+    def native(type_, value):
+        if type_ == byte_cls:
+            return value.raw
+        return type_(value.value)
+
     def deref(point):
         return point[0]
 
@@ -229,7 +254,7 @@ except (ImportError):
         return pointer(getattr(library, name)())
 
     def struct_bytes(struct_):
-        return ctypes.string_at(struct_, sizeof(struct_.contents))
+        return ctypes.string_at(struct_, ctypes.sizeof(struct_.contents))
 
     def struct_from_buffer(library, type_, buffer):
         _, type_ = _is_pointer_type(library, type_)

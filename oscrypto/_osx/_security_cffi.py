@@ -20,6 +20,11 @@ ffi.cdef("""
     typedef unsigned long CFTypeID;
     typedef uint32_t SecTrustSettingsDomain;
     typedef uint32_t SecPadding;
+    typedef uint32_t SecItemImportExportFlags;
+    typedef uint32_t SecExternalFormat;
+    typedef uint32_t CSSM_ALGORITHMS;
+    typedef uint64_t CSSM_CC_HANDLE;
+    typedef uint32_t CSSM_KEYUSE;
 
     typedef void *CFTypeRef;
     typedef CFTypeRef CFArrayRef;
@@ -34,6 +39,9 @@ ffi.cdef("""
     typedef ... *SecTransformRef;
     typedef ... *SecRandomRef;
     typedef ... *SecPolicyRef;
+    typedef ... *SecItemImportExportKeyParameters;
+    typedef ... *SecAccessRef;
+    typedef ... *SecKeychainRef;
 
     int SecRandomCopyBytes(SecRandomRef rnd, size_t count, unsigned char *bytes);
     SecKeyRef SecKeyCreateFromData(CFDictionaryRef parameters, CFDataRef keyData, CFErrorRef *error);
@@ -55,6 +63,11 @@ ffi.cdef("""
     CFTypeID SecPolicyGetTypeID(void);
     OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const unsigned char *plainText, size_t plainTextLen, unsigned char *cipherText, size_t *cipherTextLen);
     OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const unsigned char *cipherText, size_t cipherTextLen, unsigned char *plainText, size_t *plainTextLen);
+    OSStatus SecKeyGeneratePair(CFDictionaryRef parameters, SecKeyRef *publicKey, SecKeyRef *privateKey);
+    OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags, const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
+    OSStatus SecAccessCreate(CFStringRef descriptor, CFArrayRef trustedlist, SecAccessRef *accessRef);
+    OSStatus SecKeyCreatePair(SecKeychainRef keychainRef, CSSM_ALGORITHMS algorithm, uint32_t keySizeInBits, CSSM_CC_HANDLE contextHandle, CSSM_KEYUSE publicKeyUsage, uint32_t publicKeyAttr, CSSM_KEYUSE privateKeyUsage, uint32_t privateKeyAttr, SecAccessRef initialAccess, SecKeyRef* publicKeyRef, SecKeyRef* privateKeyRef);
+    OSStatus SecKeychainItemDelete(SecKeyRef itemRef);
 
     SecRandomRef kSecRandomDefault;
 
@@ -83,6 +96,9 @@ ffi.cdef("""
     CFTypeRef kSecAttrKeyTypeRSA;
     CFTypeRef kSecAttrKeyTypeDSA;
     CFTypeRef kSecAttrKeyTypeECDSA;
+
+    CFStringRef kSecAttrKeySizeInBits;
+    CFStringRef kSecAttrLabel;
 
     CFTypeRef kSecAttrCanSign;
     CFTypeRef kSecAttrCanVerify;
