@@ -57,7 +57,7 @@ class KeyTests(unittest.TestCase):
     @data('private_keys')
     def parse_private(self, input_filename, password, algo):
         with open(os.path.join(fixtures_dir, input_filename), 'rb') as f:
-            private_object, algo = keys.parse_private(f.read(), password)
+            private_object = keys.parse_private(f.read(), password)
 
         self.assertEqual(algo, private_object['private_key_algorithm']['algorithm'].native)
 
@@ -81,7 +81,7 @@ class KeyTests(unittest.TestCase):
     @data('public_keys')
     def parse_public(self, input_filename, algo):
         with open(os.path.join(fixtures_dir, input_filename), 'rb') as f:
-            parsed, algo = keys.parse_public(f.read())
+            parsed = keys.parse_public(f.read())
 
         self.assertEqual(algo, parsed['algorithm']['algorithm'].native)
 
@@ -106,7 +106,7 @@ class KeyTests(unittest.TestCase):
     @data('certificates')
     def parse_certificate(self, input_filename, algo):
         with open(os.path.join(fixtures_dir, input_filename), 'rb') as f:
-            parsed, algo = keys.parse_certificate(f.read())
+            parsed = keys.parse_certificate(f.read())
 
         self.assertEqual(algo, parsed['tbs_certificate']['subject_public_key_info']['algorithm']['algorithm'].native)
         self.assertEqual('Codex Non Sufficit LC', parsed['tbs_certificate']['subject'].native['organization_name'])
@@ -136,13 +136,13 @@ class KeyTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'keys/test-der.crt'), 'rb') as f:
             cert_der = f.read()
 
-        self.assertEqual(key_der, key_info[0].dump())
-        self.assertEqual(cert_der, cert_info[0].dump())
+        self.assertEqual(key_der, key_info.dump())
+        self.assertEqual(cert_der, cert_info.dump())
         self.assertEqual([], extra_cert_infos)
 
         # Make sure we can parse the DER
-        _ = key_info[0].native
-        _ = cert_info[0].native
+        _ = key_info.native
+        _ = cert_info.native
 
     def test_parse_pkcs12_dsa(self):
         with open(os.path.join(fixtures_dir, 'keys/test-dsa.p12'), 'rb') as f:
@@ -154,13 +154,13 @@ class KeyTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'keys/test-dsa-der.crt'), 'rb') as f:
             cert_der = f.read()
 
-        self.assertEqual(key_der, key_info[0].dump())
-        self.assertEqual(cert_der, cert_info[0].dump())
+        self.assertEqual(key_der, key_info.dump())
+        self.assertEqual(cert_der, cert_info.dump())
         self.assertEqual([], extra_cert_infos)
 
         # Make sure we can parse the DER
-        _ = key_info[0].native
-        _ = cert_info[0].native
+        _ = key_info.native
+        _ = cert_info.native
 
     def test_parse_pkcs12_chain(self):
         with open(os.path.join(fixtures_dir, 'keys/test-third.p12'), 'rb') as f:
@@ -179,12 +179,12 @@ class KeyTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'keys/test-der.crt'), 'rb') as f:
             root_cert_der = f.read()
 
-        self.assertEqual(key_der, key_info[0].dump())
-        self.assertEqual(cert_der, cert_info[0].dump())
-        self.assertEqual(sorted([intermediate_cert_der, root_cert_der]), sorted([info[0].dump() for info in extra_cert_infos]))
+        self.assertEqual(key_der, key_info.dump())
+        self.assertEqual(cert_der, cert_info.dump())
+        self.assertEqual(sorted([intermediate_cert_der, root_cert_der]), sorted([info.dump() for info in extra_cert_infos]))
 
         # Make sure we can parse the DER
-        _ = key_info[0].native
-        _ = cert_info[0].native
+        _ = key_info.native
+        _ = cert_info.native
         for info in extra_cert_infos:
-            _ = info[0].native
+            _ = info.native

@@ -333,11 +333,11 @@ def load_certificate(source):
         certificate = source
 
     elif isinstance(source, byte_cls):
-        certificate, _ = parse_certificate(source)
+        certificate = parse_certificate(source)
 
     elif isinstance(source, str_cls):
         with open(source, 'rb') as f:
-            certificate, _ = parse_certificate(f.read())
+            certificate = parse_certificate(f.read())
 
     else:
         raise ValueError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % source.__class__.__name__)
@@ -407,7 +407,7 @@ def load_private_key(source, password=None):
         elif not isinstance(source, byte_cls):
             raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % source.__class__.__name__)
 
-        private_object, _ = parse_private(source, password)
+        private_object = parse_private(source, password)
 
     return _load_key(private_object)
 
@@ -432,11 +432,11 @@ def load_public_key(source):
         public_key = source
 
     elif isinstance(source, byte_cls):
-        public_key, _ = parse_public(source)
+        public_key = parse_public(source)
 
     elif isinstance(source, str_cls):
         with open(source, 'rb') as f:
-            public_key, _ = parse_public(f.read())
+            public_key = parse_public(f.read())
 
     else:
         raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % public_key.__class__.__name__)
@@ -549,12 +549,12 @@ def load_pkcs12(source, password=None):
     cert = None
 
     if key_info:
-        key = _load_key(key_info[0])
+        key = _load_key(key_info)
 
     if cert_info:
-        cert = _load_x509(cert_info[0])
+        cert = _load_x509(cert_info)
 
-    extra_certs = [_load_x509(info[0]) for info in extra_certs_info]
+    extra_certs = [_load_x509(info) for info in extra_certs_info]
 
     return (key, cert, extra_certs)
 

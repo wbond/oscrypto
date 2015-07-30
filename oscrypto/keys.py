@@ -39,10 +39,11 @@ def parse_public(data):
     :param data:
         A byte string to load the public key from
 
+    :raises:
+        ValueError - when the data does not appear to contain a public key
+
     :return:
-        A two-element tuple with (byte string, unicode string) where the byte
-        string is a DER-encoded SubjectPublicKeyInfo structure and the unicode
-        string is the key type: "rsa", "dsa" or "ec".
+        An asn1crypto.keys.PublicKeyInfo object
     """
 
     if not isinstance(data, byte_cls):
@@ -61,20 +62,22 @@ def parse_public(data):
         # of RSA, that means the DER structure is of the type RSAPublicKey, so
         # we need to wrap it in the PublicKeyInfo structure.
         if algo == 'rsa':
-            return (keys.PublicKeyInfo.wrap(data, 'rsa'), algo)
+            return keys.PublicKeyInfo.wrap(data, 'rsa')
 
     if key_type is None or key_type == 'public key':
         try:
-            parsed = keys.PublicKeyInfo.load(data)
-            algo = parsed['algorithm']['algorithm'].native
-            return (parsed, algo)
+            pki = keys.PublicKeyInfo.load(data)
+            # Call .native to fully parse since asn1crypto is lazy
+            _ = pki.native
+            return pki
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not PublicKeyInfo
 
         try:
+            rpk = keys.RSAPublicKey.load(data)
             # Call .native to fully parse since asn1crypto is lazy
-            _ = keys.RSAPublicKey.load(data).native
-            return (keys.PublicKeyInfo.wrap(data, 'rsa'), 'rsa')
+            _ = rpk.native
+            return keys.PublicKeyInfo.wrap(rpk, 'rsa')
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not an RSAPublicKey
 
@@ -82,8 +85,7 @@ def parse_public(data):
         try:
             parsed_cert = x509.Certificate.load(data)
             key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
-            algo = key_info['algorithm']['algorithm'].native
-            return (key_info, algo)
+            return key_info
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not a cert
 
@@ -98,9 +100,11 @@ def parse_certificate(data):
     :param data:
         A byte string to load the certificate from
 
+    :raises:
+        ValueError - when the data does not appear to contain a certificate
+
     :return:
-        A two-element tuple with (Certificate object, unicode string) where the
-        unicode string is the public key type: "rsa", "dsa" or "ec".
+        An asn1crypto.x509.Certificate object
     """
 
     if not isinstance(data, byte_cls):
@@ -110,7 +114,7 @@ def parse_certificate(data):
 
     # Appears to be PEM formatted
     if data[0:5] == b'-----':
-        key_type, algo, data = _unarmor_pem(data)
+        key_type, _, data = _unarmor_pem(data)
 
         if key_type == 'private key':
             raise ValueError('The data specified does not appear to be a certificate, but rather a private key')
@@ -120,10 +124,7 @@ def parse_certificate(data):
 
     if key_type is None or key_type == 'certificate':
         try:
-            parsed_cert = x509.Certificate.load(data)
-            key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
-            algo = key_info['algorithm']['algorithm'].native
-            return (parsed_cert, algo)
+            return x509.Certificate.load(data)
         except (ValueError):  #pylint: disable=W0704
             pass  # Data was not a Certificate
 
@@ -150,11 +151,11 @@ def parse_private(data, password=None):
     :param password:
         The password to unencrypt the private key
 
+    :raises:
+        ValueError - when the data does not appear to contain a private key, or the password is invalid
+
     :return:
-        A two-element tuple with (PrivateKeyInfo object, unicode string) where
-        the unicode string is the key type: "rsa", "dsa" or "ec". If the
-        unwrapped parameter is True, the first element is an RSAPrivateKey,
-        DSAPrivateKey, or ECPrivateKey object instead of PrivateKeyInfo.
+        An asn1crypto.keys.PrivateKeyInfo object
     """
 
     if not isinstance(data, byte_cls):
@@ -168,7 +169,7 @@ def parse_private(data, password=None):
 
     # Appears to be PEM formatted
     if data[0:5] == b'-----':
-        key_type, algo, data = _unarmor_pem(data, password)
+        key_type, _, data = _unarmor_pem(data, password)
 
         if key_type == 'public key':
             raise ValueError('The data specified does not appear to be a private key, but rather a public key')
@@ -177,9 +178,10 @@ def parse_private(data, password=None):
             raise ValueError('The data specified does not appear to be a private key, but rather a certificate')
 
     try:
-        parsed = keys.PrivateKeyInfo.load(data)
-        algo = parsed['private_key_algorithm']['algorithm'].native
-        return (parsed, algo)
+        pki = keys.PrivateKeyInfo.load(data)
+        # Call .native to fully parse since asn1crypto is lazy
+        _ = pki.native
+        return pki
     except (ValueError):  #pylint: disable=W0704
         pass  # Data was not PrivateKeyInfo
 
@@ -188,9 +190,10 @@ def parse_private(data, password=None):
         encryption_algorithm_info = parsed_wrapper['encryption_algorithm']
         encrypted_data = parsed_wrapper['encrypted_data'].native
         decrypted_data = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_data, password)
-        parsed = keys.PrivateKeyInfo.load(decrypted_data)
-        algo = parsed['private_key_algorithm']['algorithm'].native
-        return (parsed, algo)
+        pki = keys.PrivateKeyInfo.load(decrypted_data)
+        # Call .native to fully parse since asn1crypto is lazy
+        _ = pki.native
+        return pki
     except (ValueError):  #pylint: disable=W0704
         pass  # Data was not EncryptedPrivateKeyInfo
 
@@ -198,7 +201,7 @@ def parse_private(data, password=None):
         parsed = keys.RSAPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         _ = parsed.native
-        return (keys.PrivateKeyInfo.wrap(parsed, 'rsa'), 'rsa')
+        return keys.PrivateKeyInfo.wrap(parsed, 'rsa')
     except (ValueError):  #pylint: disable=W0704
         pass  # Data was not an RSAPrivateKey
 
@@ -206,7 +209,7 @@ def parse_private(data, password=None):
         parsed = keys.DSAPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         _ = parsed.native
-        return (keys.PrivateKeyInfo.wrap(parsed, 'dsa'), 'dsa')
+        return keys.PrivateKeyInfo.wrap(parsed, 'dsa')
     except (ValueError):  #pylint: disable=W0704
         pass  # Data was not a DSAPrivateKey
 
@@ -214,7 +217,7 @@ def parse_private(data, password=None):
         parsed = keys.ECPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         _ = parsed.native
-        return (keys.PrivateKeyInfo.wrap(parsed, 'ec'), 'ec')
+        return keys.PrivateKeyInfo.wrap(parsed, 'ec')
     except (ValueError):  #pylint: disable=W0704
         pass  # Data was not an ECPrivateKey
 
@@ -373,18 +376,10 @@ def parse_pkcs12(data, password=None):
 
     :return:
         A three-element tuple of:
-         1. A two-element tuple with (byte string, unicode string) where the
-            byte string is a DER-encoded PrivateKeyInfo structure and the
-            unicode string is the key type: "rsa", "dsa" or "ec"
-         2. A two-element tuple with (byte string, unicode string) where the
-            byte string is a DER-encoded Certificate structure that is related
-            to the private key and the unicode string is the key type: "rsa",
-            "dsa", "ec"
-         3. A list of zero or more two-element tuples, each (byte string,
-            unicode string) where the byte string is a DER-encoded Certificate
-            structure that is an extra certificate (possibly in the cert chain)
-            and the unicode string is the key type of that certificate: "rsa",
-            "dsa" or "ec"
+         1. An ans1crypto.keys.PrivateKeyInfo object
+         2. An asn1crypto.x509.Certificate object
+         3. A list of zero or more asn1crypto.x509.Certificate objects that are
+            "extra" certificates, possibly intermediates from the cert chain
     """
 
     if not isinstance(data, byte_cls):
@@ -509,20 +504,17 @@ def _parse_safe_contents(safe_contents, certs, private_keys, password):
             if bag_value['cert_id'].native == 'x509':
                 cert = bag_value['cert_value'].parsed
                 public_key_info = cert['tbs_certificate']['subject_public_key_info']
-                algo = public_key_info['algorithm']['algorithm'].native
-                certs[public_key_info.fingerprint] = (bag_value['cert_value'].parsed, algo)
+                certs[public_key_info.fingerprint] = bag_value['cert_value'].parsed
 
         elif isinstance(bag_value, keys.PrivateKeyInfo):
-            algo = bag_value['private_key_algorithm']['algorithm'].native
-            private_keys[bag_value.fingerprint] = (bag_value, algo)
+            private_keys[bag_value.fingerprint] = bag_value
 
         elif isinstance(bag_value, keys.EncryptedPrivateKeyInfo):
             encryption_algorithm_info = bag_value['encryption_algorithm']
             encrypted_key_bytes = bag_value['encrypted_data'].native
             decrypted_key_bytes = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_key_bytes, password)
             private_key = keys.PrivateKeyInfo.load(decrypted_key_bytes)
-            algo = private_key['private_key_algorithm']['algorithm'].native
-            private_keys[private_key.fingerprint] = (private_key, algo)
+            private_keys[private_key.fingerprint] = private_key
 
         elif isinstance(bag_value, pkcs12.SafeContents):
             _parse_safe_contents(bag_value, certs, private_keys, password)
