@@ -20,6 +20,11 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
 
  - Exporting PEM-formatted CA certs from the operating system (for OpenSSL-based
    code)
+ - Generating public/private key pairs:
+   - RSA (1024, 2048, 3072, 4096 bit)
+   - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
+     Windows 8)
+   - EC (secp256r1, secp384r1, secp521r1 curves)
  - Encryption/decryption using:
    - AES (128, 192, 256), CBC mode, PKCS7 padding
    - AES (128, 192, 256), CBC mode, no padding

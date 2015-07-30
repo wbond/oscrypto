@@ -4,6 +4,7 @@ The *oscrypto.public_key* submodule implements public key signing, verification,
 encryption and decryption. The following functions comprise the public API:
 
  - Keys/Certificates
+   - `generate_pair()`
    - `load_certificate()`
    - `load_public_key()`
    - `load_private_key()`
