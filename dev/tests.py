@@ -13,12 +13,12 @@ else:
 
 from tests.test_kdf import KDFTests
 from tests.test_keys import KeyTests
-from tests.test_public_key import PublicKeyTests
+from tests.test_asymmetric import AsymmetricTests
 from tests.test_symmetric import SymmetricTests
 from tests.test_trust_list import TrustListTests
 
 
-test_classes = [KDFTests, KeyTests, PublicKeyTests, SymmetricTests, TrustListTests]
+test_classes = [KDFTests, KeyTests, AsymmetricTests, SymmetricTests, TrustListTests]
 
 
 def run(matcher=None, repeat=1):

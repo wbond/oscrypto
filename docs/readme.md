@@ -6,7 +6,7 @@ operating system. It is broken down into a few different submodules:
 | Submodule                                | Functionality                                                                                 |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
 | [`oscrypto.symmetric`](symmetric.md)     | AES, Triple DES, DES, RC2 and RC4 encryption                                                  |
-| [`oscrypto.public_key`](public_key.md)   | RSA, DSA and EC-key signing and verification, RSA encryption                                  |
+| [`oscrypto.asymmetric`](asymmetric.md)   | RSA, DSA and EC-key signing and verification, RSA encryption                                  |
 | [`oscrypto.kdf`](kdf.md)                 | PBKDF2, PBKDF1 and PKCS#12 key derivation functions                                           |
 | [`oscrypto.keys`](keys.md)               | Certificate, public key and private key loading, parsing and normalization                    |
 | [`oscrypto.trust_list`](trust_list.md)   | CA certificate list export from the OS trust store                                            |

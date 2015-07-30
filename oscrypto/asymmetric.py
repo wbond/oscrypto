@@ -5,7 +5,7 @@ import sys
 
 
 if sys.platform == 'darwin':
-    from ._osx.public_key import (  #pylint: disable=W0611
+    from ._osx.asymmetric import (  #pylint: disable=W0611
         Certificate,
         dsa_sign,
         dsa_verify,
@@ -29,7 +29,7 @@ if sys.platform == 'darwin':
     )
 
 elif sys.platform == 'win32':
-    from ._win.public_key import (  #pylint: disable=W0611
+    from ._win.asymmetric import (  #pylint: disable=W0611
         Certificate,
         dsa_sign,
         dsa_verify,
@@ -53,7 +53,7 @@ elif sys.platform == 'win32':
     )
 
 else:
-    from ._openssl.public_key import (  #pylint: disable=W0611
+    from ._openssl.asymmetric import (  #pylint: disable=W0611
         Certificate,
         dsa_sign,
         dsa_verify,
