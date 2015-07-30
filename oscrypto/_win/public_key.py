@@ -754,7 +754,7 @@ def _load_key(key_object, container):
                 'secp521r1': 66
             }[curve_name]
 
-            x, y = _decompose_ec_public_key(public_key)
+            x, y = public_key.to_coords()
 
             x_bytes = int_to_bytes(x)
             y_bytes = int_to_bytes(y)
@@ -779,35 +779,6 @@ def _load_key(key_object, container):
     finally:
         if alg_handle:
             close_alg_handle(alg_handle)
-
-
-def _decompose_ec_public_key(octet_string):
-    """
-    Takes the ECPoint representation of an elliptic curve public key and
-    decomposes it into the integers x and y
-
-    :param octet_string:
-        An asn1crypto.core.OctetString object containing the ECPoint value
-
-    :return:
-        A 2-element tuple of integers (x, y)
-    """
-
-    data = octet_string.native
-    first_byte = data[0:1]
-
-    # Uncompressed
-    if first_byte == b'\x04':
-        remaining = data[1:]
-        field_len = len(remaining) // 2
-        x = int_from_bytes(remaining[0:field_len])
-        y = int_from_bytes(remaining[field_len:])
-        return (x, y)
-
-    if first_byte not in {b'\x02', b'\x03'}:
-        raise ValueError('Invalid EC public key - first byte is incorrect')
-
-    raise ValueError('Compressed representations of EC public keys are not supported due to patent US6252960')
 
 
 def load_private_key(source, password=None):
