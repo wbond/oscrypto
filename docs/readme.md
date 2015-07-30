@@ -1,4 +1,4 @@
-# oscrypto docs
+# oscrypto Documentation
 
 *oscrypto* is a library that exposes cryptography primitives from the host
 operating system. It is broken down into a few different submodules:
