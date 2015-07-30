@@ -7,7 +7,7 @@ import math
 import struct
 import os
 
-from asn1crypto.int import int_from_bytes, int_to_bytes
+from asn1crypto.util import int_from_bytes, int_to_bytes
 
 from ._int import fill_width
 from .util import constant_compare

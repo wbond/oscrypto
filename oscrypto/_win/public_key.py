@@ -5,7 +5,7 @@ import sys
 import hashlib
 
 from asn1crypto import core, keys, x509
-from asn1crypto.int import int_from_bytes, int_to_bytes
+from asn1crypto.util import int_from_bytes, int_to_bytes
 
 from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struct, struct_bytes, cast, unwrap, buffer_from_unicode, struct_from_buffer, sizeof, native, byte_array
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle

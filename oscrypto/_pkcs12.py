@@ -5,7 +5,7 @@ import sys
 import hashlib
 import math
 
-from asn1crypto.int import int_from_bytes, int_to_bytes
+from asn1crypto.util import int_from_bytes, int_to_bytes
 
 
 if sys.version_info < (3,):
