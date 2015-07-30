@@ -99,3 +99,6 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         output += t
 
     return output[0:key_length]
+
+
+pbkdf2.pure_python = True

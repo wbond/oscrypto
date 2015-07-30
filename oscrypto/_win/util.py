@@ -81,6 +81,8 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         if alg_handle:
             close_alg_handle(alg_handle)
 
+pbkdf2.pure_python = False
+
 
 def rand_bytes(length):
     """

@@ -3,13 +3,14 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 import hashlib
+from datetime import datetime
 
 if sys.platform == 'darwin':
-    from ._osx.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
+    from ._osx.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
 elif sys.platform == 'win32':
-    from ._win.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
+    from ._win.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
 else:
-    from ._openssl.util import pbkdf2, pkcs12_kdf  #pylint: disable=W0611
+    from ._openssl.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
 
 
 if sys.version_info < (3,):
@@ -20,6 +21,64 @@ else:
     byte_cls = bytes
     int_types = int
 
+
+def determine_pbkdf2_iterations(hash_algorithm, key_length, target_ms=100, quiet=False):
+    """
+    Runs pbkdf2() until the derivation process takes a number of milliseconds.
+    Use this on a production machine to dynamically adjust the number of
+    iterations as high as you can.
+
+    :param hash_algorithm:
+        The string name of the hash algorithm to use: "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
+
+    :param key_length:
+        The length of the desired key in bytes
+
+    :param target_ms:
+        The number of milliseconds the derivation should take
+
+    :param quiet:
+        If no output should be printed as attempts are made
+
+    :return:
+        An integer number of iterations of PBKDF2 using the specified hash
+        that will take at least target_ms
+    """
+
+    if hash_algorithm not in {'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+
+    if not isinstance(key_length, int_types):
+        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+
+    if key_length < 1:
+        raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
+
+    if not isinstance(target_ms, int_types):
+        raise ValueError('target_ms must be an integer, not %s' % target_ms.__class__.__name__)
+
+    if target_ms < 1:
+        raise ValueError('target_ms must be greater than 0 - is %s' % repr(target_ms))
+
+    if pbkdf2.pure_python:
+        raise OSError('Only a very slow, pure-python version of PBKDF2 is available, making this function useless')
+
+    # This number is doubled even for the first attempt
+    iterations = 5000
+    password = 'this is a test'.encode('utf-8')
+    salt = rand_bytes(key_length)
+
+    observed_ms = 0
+    while observed_ms < target_ms:
+        iterations *= 2
+        start = datetime.now()
+        pbkdf2(hash_algorithm, password, salt, iterations, key_length)
+        length = datetime.now() - start
+        observed_ms = int(length.total_seconds() * 1000)
+        if not quiet:
+            print('%s iterations in %sms' % (iterations, observed_ms))
+
+    return iterations
 
 
 def pbkdf1(hash_algorithm, password, salt, iterations, key_length):
