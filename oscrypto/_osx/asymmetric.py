@@ -43,7 +43,7 @@ class PrivateKey():
         self.asn1 = asn1
 
     @property
-    def algo(self):
+    def algorithm(self):
         """
         :return:
             A unicode string of "rsa", "dsa" or "ec"
@@ -116,13 +116,13 @@ class Certificate():
         self.asn1 = asn1
 
     @property
-    def algo(self):
+    def algorithm(self):
         """
         :return:
             A unicode string of "rsa", "dsa" or "ec"
         """
 
-        return self.public_key.algo
+        return self.public_key.algorithm
 
     @property
     def bit_size(self):
@@ -811,7 +811,7 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'rsa':
+    if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -848,7 +848,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
 
-    if certificate_or_public_key.algo != 'rsa':
+    if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
     hash_length = {
@@ -886,7 +886,7 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'dsa':
+    if certificate_or_public_key.algorithm != 'dsa':
         raise ValueError('The key specified is not a DSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -914,7 +914,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'ec':
+    if certificate_or_public_key.algorithm != 'ec':
         raise ValueError('The key specified is not an EC public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -990,7 +990,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
             Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error_pointer)
             handle_cf_error(error_pointer)
 
-        if certificate_or_public_key.algo == 'rsa':
+        if certificate_or_public_key.algorithm == 'rsa':
             Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error_pointer)
             handle_cf_error(error_pointer)
 
@@ -1038,7 +1038,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1074,7 +1074,7 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
 
     hash_length = {
@@ -1110,7 +1110,7 @@ def dsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'dsa':
+    if private_key.algorithm != 'dsa':
         raise ValueError('The key specified is not a DSA private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1137,7 +1137,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'ec':
+    if private_key.algorithm != 'ec':
         raise ValueError('The key specified is not an EC private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1208,7 +1208,7 @@ def _sign(private_key, data, hash_algorithm):
             Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error_pointer)
             handle_cf_error(error_pointer)
 
-        if private_key.algo == 'rsa':
+        if private_key.algorithm == 'rsa':
             Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error_pointer)
             handle_cf_error(error_pointer)
 

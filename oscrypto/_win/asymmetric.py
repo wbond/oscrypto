@@ -43,7 +43,7 @@ class PrivateKey():
         self.asn1 = asn1
 
     @property
-    def algo(self):
+    def algorithm(self):
         """
         :return:
             A unicode string of "rsa", "dsa" or "ec"
@@ -927,7 +927,7 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'rsa':
+    if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -958,7 +958,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'rsa':
+    if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=True)
@@ -986,7 +986,7 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'dsa':
+    if certificate_or_public_key.algorithm != 'dsa':
         raise ValueError('The key specified is not a DSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -1014,7 +1014,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'ec':
+    if certificate_or_public_key.algorithm != 'ec':
         raise ValueError('The key specified is not an EC public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -1057,8 +1057,8 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
-    if certificate_or_public_key.algo != 'rsa' and rsa_pss_padding != False:
-        raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % certificate_or_public_key.algo.upper())
+    if certificate_or_public_key.algorithm != 'rsa' and rsa_pss_padding != False:
+        raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % certificate_or_public_key.algorithm.upper())
 
     hash_constant = {
         'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
@@ -1073,7 +1073,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     padding_info = null()
     flags = 0
 
-    if certificate_or_public_key.algo == 'rsa':
+    if certificate_or_public_key.algorithm == 'rsa':
         if rsa_pss_padding:
             hash_length = {
                 'md5': 16,
@@ -1131,7 +1131,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1161,7 +1161,7 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm, rsa_pss_padding=True)
@@ -1188,7 +1188,7 @@ def dsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'dsa':
+    if private_key.algorithm != 'dsa':
         raise ValueError('The key specified is not a DSA private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1215,7 +1215,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'ec':
+    if private_key.algorithm != 'ec':
         raise ValueError('The key specified is not an EC private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1254,8 +1254,8 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
-    if private_key.algo != 'rsa' and rsa_pss_padding != False:
-        raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % private_key.algo.upper())
+    if private_key.algorithm != 'rsa' and rsa_pss_padding != False:
+        raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % private_key.algorithm.upper())
 
     hash_constant = {
         'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
@@ -1270,7 +1270,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     padding_info = null()
     flags = 0
 
-    if private_key.algo == 'rsa':
+    if private_key.algorithm == 'rsa':
         if rsa_pss_padding:
             hash_length = {
                 'md5': 16,
@@ -1296,7 +1296,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
-    if private_key.algo == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in {'md5', 'sha1'}:
+    if private_key.algorithm == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in {'md5', 'sha1'}:
         raise ValueError('Windows does not support sha1 signatures with DSA keys based on sha224, sha256 or sha512')
 
     out_len = new(bcrypt, 'DWORD *')
@@ -1306,14 +1306,14 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     buffer_len = deref(out_len)
     buffer = buffer_from_bytes(buffer_len)
 
-    if private_key.algo == 'rsa':
+    if private_key.algorithm == 'rsa':
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
     res = bcrypt.BCryptSignHash(private_key.bcrypt_key_handle, padding_info, digest, len(digest), buffer, buffer_len, out_len, flags)
     handle_error(res)
     signature = bytes_from_buffer(buffer, deref(out_len))
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
         signature = Signature.from_bcrypt(signature).dump()

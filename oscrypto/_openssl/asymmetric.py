@@ -42,7 +42,7 @@ class PrivateKey():
         self.asn1 = asn1
 
     @property
-    def algo(self):
+    def algorithm(self):
         """
         :return:
             A unicode string of "rsa", "dsa" or "ec"
@@ -113,7 +113,7 @@ class Certificate():
         self.asn1 = asn1
 
     @property
-    def algo(self):
+    def algorithm(self):
         """
         :return:
             A unicode string of "rsa", "dsa" or "ec"
@@ -750,7 +750,7 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'rsa':
+    if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -781,7 +781,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'rsa':
+    if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=True)
@@ -809,7 +809,7 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'dsa':
+    if certificate_or_public_key.algorithm != 'dsa':
         raise ValueError('The key specified is not a DSA public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -837,7 +837,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
     """
 
-    if certificate_or_public_key.algo != 'ec':
+    if certificate_or_public_key.algorithm != 'ec':
         raise ValueError('The key specified is not an EC public key')
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
@@ -880,8 +880,8 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
-    if certificate_or_public_key.algo != 'rsa' and rsa_pss_padding:
-        raise ValueError('PSS padding can only be used with RSA keys - the key provided is a %s key' % certificate_or_public_key.algo.upper())
+    if certificate_or_public_key.algorithm != 'rsa' and rsa_pss_padding:
+        raise ValueError('PSS padding can only be used with RSA keys - the key provided is a %s key' % certificate_or_public_key.algorithm.upper())
 
     evp_md_ctx = None
     rsa = None
@@ -903,7 +903,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
         }[hash_algorithm]()
 
         if libcrypto_version_info < (1,):
-            if certificate_or_public_key.algo == 'rsa' and rsa_pss_padding:
+            if certificate_or_public_key.algorithm == 'rsa' and rsa_pss_padding:
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 rsa = libcrypto.EVP_PKEY_get1_RSA(certificate_or_public_key.evp_pkey)
@@ -917,7 +917,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
                 res = libcrypto.RSA_verify_PKCS1_PSS(rsa, digest, evp_md, decoded_buffer, libcrypto_const.EVP_MD_CTX_FLAG_PSS_MDLEN)
 
-            elif certificate_or_public_key.algo == 'rsa':
+            elif certificate_or_public_key.algorithm == 'rsa':
                 res = libcrypto.EVP_DigestInit_ex(evp_md_ctx, evp_md, null())
                 handle_openssl_error(res)
 
@@ -926,7 +926,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
                 res = libcrypto.EVP_VerifyFinal(evp_md_ctx, signature, len(signature), certificate_or_public_key.evp_pkey)
 
-            elif certificate_or_public_key.algo == 'dsa':
+            elif certificate_or_public_key.algorithm == 'dsa':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 signature_buffer = buffer_from_bytes(signature)
@@ -941,7 +941,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
                 res = libcrypto.DSA_do_verify(digest, len(digest), dsa_sig, dsa)
 
-            elif certificate_or_public_key.algo == 'ec':
+            elif certificate_or_public_key.algorithm == 'ec':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 signature_buffer = buffer_from_bytes(signature)
@@ -1030,7 +1030,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1060,7 +1060,7 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'rsa':
+    if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
 
     return _sign(private_key, data, hash_algorithm, rsa_pss_padding=True)
@@ -1087,7 +1087,7 @@ def dsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'dsa':
+    if private_key.algorithm != 'dsa':
         raise ValueError('The key specified is not a DSA private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1114,7 +1114,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algo != 'ec':
+    if private_key.algorithm != 'ec':
         raise ValueError('The key specified is not an EC private key')
 
     return _sign(private_key, data, hash_algorithm)
@@ -1153,8 +1153,8 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
-    if private_key.algo != 'rsa' and rsa_pss_padding:
-        raise ValueError('PSS padding can only be used with RSA keys - the key provided is a %s key' % private_key.algo.upper())
+    if private_key.algorithm != 'rsa' and rsa_pss_padding:
+        raise ValueError('PSS padding can only be used with RSA keys - the key provided is a %s key' % private_key.algorithm.upper())
 
     evp_md_ctx = None
     rsa = None
@@ -1176,7 +1176,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         }[hash_algorithm]()
 
         if libcrypto_version_info < (1,):
-            if private_key.algo == 'rsa' and rsa_pss_padding:
+            if private_key.algorithm == 'rsa' and rsa_pss_padding:
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 rsa = libcrypto.EVP_PKEY_get1_RSA(private_key.evp_pkey)
@@ -1192,7 +1192,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 signature_length = libcrypto.RSA_private_encrypt(buffer_size, em_buffer, signature_buffer, rsa, libcrypto_const.RSA_NO_PADDING)
                 handle_openssl_error(signature_length)
 
-            elif private_key.algo == 'rsa':
+            elif private_key.algorithm == 'rsa':
                 buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
                 signature_buffer = buffer_from_bytes(buffer_size)
                 signature_length = new(libcrypto, 'unsigned int *')
@@ -1208,7 +1208,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
 
                 signature_length = deref(signature_length)
 
-            elif private_key.algo == 'dsa':
+            elif private_key.algorithm == 'dsa':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 dsa = libcrypto.EVP_PKEY_get1_DSA(private_key.evp_pkey)
@@ -1225,7 +1225,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 signature_length = libcrypto.i2d_DSA_SIG(dsa_sig, signature_pointer)
                 handle_openssl_error(signature_length)
 
-            elif private_key.algo == 'ec':
+            elif private_key.algorithm == 'ec':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 ec_key = libcrypto.EVP_PKEY_get1_EC_KEY(private_key.evp_pkey)

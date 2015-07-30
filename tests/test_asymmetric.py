@@ -27,7 +27,7 @@ class AsymmetricTests(unittest.TestCase):
     def test_rsa_generate(self):
         public, private = asymmetric.generate_pair('rsa', bit_size=2048)
 
-        self.assertEqual('rsa', public.algo)
+        self.assertEqual('rsa', public.algorithm)
         self.assertEqual(2048, public.bit_size)
 
         original_data = b'This is data to sign'
@@ -38,7 +38,7 @@ class AsymmetricTests(unittest.TestCase):
     def test_dsa_generate(self):
         public, private = asymmetric.generate_pair('dsa', bit_size=1024)
 
-        self.assertEqual('dsa', public.algo)
+        self.assertEqual('dsa', public.algorithm)
         self.assertEqual(1024, public.bit_size)
 
         original_data = b'This is data to sign'
@@ -49,7 +49,7 @@ class AsymmetricTests(unittest.TestCase):
     def test_ec_generate(self):
         public, private = asymmetric.generate_pair('ec', curve='secp256r1')
 
-        self.assertEqual('ec', public.algo)
+        self.assertEqual('ec', public.algorithm)
         self.assertEqual('secp256r1', public.asn1.curve[1])
 
         original_data = b'This is data to sign'
