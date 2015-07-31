@@ -82,7 +82,16 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
     iterations = int(iterations / fraction / 2.0)
 
     fraction = _measure()
-    return int(round(iterations / fraction, -3))
+    iterations = iterations / fraction
+
+    # < 20,000 round to 1000
+    # 20,000-100,000 round to 5,000
+    # > 100,000 round to 10,000
+    round_factor = -3 if iterations < 100000 else -4
+    result = int(round(iterations, round_factor))
+    if result > 20000:
+        result = (result // 5000) * 5000
+    return result
 
 
 def pbkdf1(hash_algorithm, password, salt, iterations, key_length):
