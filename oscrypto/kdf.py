@@ -22,11 +22,11 @@ else:
     int_types = int
 
 
-def determine_pbkdf2_iterations(hash_algorithm, key_length, target_ms=100, quiet=False):
+def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet=False):
     """
-    Runs pbkdf2() until the derivation process takes a number of milliseconds.
-    Use this on a production machine to dynamically adjust the number of
-    iterations as high as you can.
+    Runs pbkdf2() twice to determine the approximate number of iterations to
+    use to hit a desired time per run. Use this on a production machine to
+    dynamically adjust the number of iterations as high as you can.
 
     :param hash_algorithm:
         The string name of the hash algorithm to use: "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
