@@ -63,22 +63,26 @@ def determine_pbkdf2_iterations(hash_algorithm, key_length, target_ms=100, quiet
     if pbkdf2.pure_python:
         raise OSError('Only a very slow, pure-python version of PBKDF2 is available, making this function useless')
 
-    # This number is doubled even for the first attempt
-    iterations = 5000
+    iterations = 10000
     password = 'this is a test'.encode('utf-8')
     salt = rand_bytes(key_length)
 
-    observed_ms = 0
-    while observed_ms < target_ms:
-        iterations *= 2
+    def _measure():
         start = datetime.now()
         pbkdf2(hash_algorithm, password, salt, iterations, key_length)
         length = datetime.now() - start
         observed_ms = int(length.total_seconds() * 1000)
         if not quiet:
             print('%s iterations in %sms' % (iterations, observed_ms))
+        return 1.0 / target_ms * observed_ms
 
-    return iterations
+    # Measure the initial guess, then estimate how many iterations it would
+    # take to reach 1/2 of the target ms and try it to get a good final number
+    fraction = _measure()
+    iterations = int(iterations / fraction / 2.0)
+
+    fraction = _measure()
+    return int(round(iterations / fraction, -3))
 
 
 def pbkdf1(hash_algorithm, password, salt, iterations, key_length):
