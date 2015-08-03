@@ -151,6 +151,7 @@ ffi.cdef("""
 
     EC_KEY *EC_KEY_new_by_curve_name(int nid);
     int EC_KEY_generate_key(EC_KEY *key);
+    void EC_KEY_set_asn1_flag(EC_KEY *, int);
     int i2d_ECPrivateKey(EC_KEY *key, unsigned char **out);
     int i2o_ECPublicKey(EC_KEY *key, unsigned char **out);
     void EC_KEY_free(EC_KEY *key);

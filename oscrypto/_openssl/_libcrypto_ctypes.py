@@ -245,6 +245,9 @@ try:
     libcrypto.EC_KEY_generate_key.argtypes = [P_EC_KEY]
     libcrypto.EC_KEY_generate_key.restype = c_int
 
+    libcrypto.EC_KEY_set_asn1_flag.argtypes = [P_EC_KEY, c_int]
+    libcrypto.EC_KEY_set_asn1_flag.restype = None
+
     libcrypto.i2d_ECPrivateKey.argtypes = [P_EC_KEY, POINTER(c_char_p)]
     libcrypto.i2d_ECPrivateKey.restype = c_int
 

@@ -305,6 +305,8 @@ def generate_pair(algorithm, bit_size=None, curve=None):
             result = libcrypto.EC_KEY_generate_key(ec_key)
             handle_openssl_error(result)
 
+            libcrypto.EC_KEY_set_asn1_flag(ec_key, libcrypto_const.OPENSSL_EC_NAMED_CURVE)
+
             buffer_length = libcrypto.i2o_ECPublicKey(ec_key, null())
             if buffer_length < 0:
                 handle_openssl_error(buffer_length)
