@@ -8,6 +8,10 @@ encryption and decryption. The following functions comprise the public API:
    - `load_certificate()`
    - `load_public_key()`
    - `load_private_key()`
+   - `dump_public_key()`
+   - `dump_certificate()`
+   - `dump_private_key()`
+   - `dump_openssl_private_key()`
    - `load_pkcs12()`
  - RSA
    - `rsa_pkcs1v15_sign()`

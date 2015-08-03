@@ -24,6 +24,34 @@ def _win_version_pair():
 
 class AsymmetricTests(unittest.TestCase):
 
+    def test_dump_public(self):
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        pem_serialized = asymmetric.dump_public_key(public)
+        public_reloaded = asymmetric.load_public_key(pem_serialized)
+        self.assertIsInstance(public_reloaded, asymmetric.PublicKey)
+        self.assertEqual('rsa', public_reloaded.algorithm)
+
+    def test_dump_certificate(self):
+        cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test.crt'))
+        pem_serialized = asymmetric.dump_certificate(cert)
+        cert_reloaded = asymmetric.load_certificate(pem_serialized)
+        self.assertIsInstance(cert_reloaded, asymmetric.Certificate)
+        self.assertEqual('rsa', cert_reloaded.algorithm)
+
+    def test_dump_private(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        pem_serialized = asymmetric.dump_private_key(private, 'password123', target_ms=20)
+        private_reloaded = asymmetric.load_private_key(pem_serialized, 'password123')
+        self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
+        self.assertEqual('rsa', private_reloaded.algorithm)
+
+    def test_dump_private_openssl(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        pem_serialized = asymmetric.dump_openssl_private_key(private, 'password123')
+        private_reloaded = asymmetric.load_private_key(pem_serialized, 'password123')
+        self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
+        self.assertEqual('rsa', private_reloaded.algorithm)
+
     def test_rsa_generate(self):
         public, private = asymmetric.generate_pair('rsa', bit_size=2048)
 
