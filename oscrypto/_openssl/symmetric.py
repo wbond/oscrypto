@@ -141,7 +141,7 @@ def aes_cbc_pkcs7_decrypt(key, data, iv):
     if len(iv) != 16:
         raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
 
-    return _decrypt(cipher, key, data, iv, False)
+    return _decrypt(cipher, key, data, iv, True)
 
 
 def _calculate_aes_cipher(key):
@@ -486,12 +486,12 @@ def _encrypt(cipher, key, data, iv, padding):
                 handle_openssl_error(res)
             evp_cipher = null()
 
+        res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
+        handle_openssl_error(res)
+
         if padding is not None:
             res = libcrypto.EVP_CIPHER_CTX_set_padding(evp_cipher_ctx, int(padding))
             handle_openssl_error(res)
-
-        res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
-        handle_openssl_error(res)
 
         buffer = buffer_from_bytes(buffer_size)
         output_length = new(libcrypto, 'int *')
@@ -574,12 +574,12 @@ def _decrypt(cipher, key, data, iv, padding):
                 handle_openssl_error(res)
             evp_cipher = null()
 
+        res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
+        handle_openssl_error(res)
+
         if padding is not None:
             res = libcrypto.EVP_CIPHER_CTX_set_padding(evp_cipher_ctx, int(padding))
             handle_openssl_error(res)
-
-        res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), key, iv)
-        handle_openssl_error(res)
 
         buffer = buffer_from_bytes(buffer_size)
         output_length = new(libcrypto, 'int *')
