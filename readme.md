@@ -91,6 +91,12 @@ pip install git+git://github.com/wbond/oscrypto.git@0.9.0
 
 ## Development
 
+To install required development dependencies, execute:
+
+```bash
+pip install -r dev-requirements.txt
+```
+
 The following commands will run the test suite, linter and test coverage:
 
 ```bash
