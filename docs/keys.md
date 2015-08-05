@@ -4,10 +4,10 @@ The *oscrypto.keys* submodule implements functions to parse certificates, public
 keys, private keys and PKCS#12 (`.p12`/`.pfx`) files. The following functions
 comprise the public API:
 
- - [`parse_certificate()`](#parse-certificate-function)
- - [`parse_public()`](#parse-public-function)
- - [`parse_private()`](#parse-private-function)
- - [`parse_pkcs12()`](#parse-pkcs12-function)
+ - [`parse_certificate()`](#parse_certificate-function)
+ - [`parse_public()`](#parse_public-function)
+ - [`parse_private()`](#parse_private-function)
+ - [`parse_pkcs12()`](#parse_pkcs12-function)
 
 ### `parse_certificate()` function
 

@@ -4,22 +4,22 @@ The *oscrypto.symmetric* submodule implements symmetric/secret key encryption
 and decryption. The following functions comprise the public API:
 
  - AES
-   - [`aes_cbc_pkcs7_encrypt()`](#aes-cbc-pkcs7-encrypt-function)
-   - [`aes_cbc_pkcs7_decrypt()`](#aes-cbc-pkcs7-decrypt-function)
-   - [`aes_cbc_no_padding_encrypt()`](#aes-cbc-no-padding-encrypt-function)
-   - [`aes_cbc_no_padding_decrypt()`](#aes-cbc-no-padding-decrypt-function)
+   - [`aes_cbc_pkcs7_encrypt()`](#aes_cbc_pkcs7_encrypt-function)
+   - [`aes_cbc_pkcs7_decrypt()`](#aes_cbc_pkcs7_decrypt-function)
+   - [`aes_cbc_no_padding_encrypt()`](#aes_cbc_no_padding_encrypt-function)
+   - [`aes_cbc_no_padding_decrypt()`](#aes_cbc_no_padding_decrypt-function)
  - Triple DES
-   - [`tripledes_cbc_pkcs5_encrypt()`](#tripledes-cbc-pkcs5-encrypt-function)
-   - [`tripledes_cbc_pkcs5_decrypt()`](#tripledes-cbc-pkcs5-decrypt-function)
+   - [`tripledes_cbc_pkcs5_encrypt()`](#tripledes_cbc_pkcs5_encrypt-function)
+   - [`tripledes_cbc_pkcs5_decrypt()`](#tripledes_cbc_pkcs5_decrypt-function)
  - DES
-   - [`des_cbc_pkcs5_encrypt()`](#des-cbc-pkcs5-encrypt-function)
-   - [`des_cbc_pkcs5_decrypt()`](#des-cbc-pkcs5-decrypt-function)
+   - [`des_cbc_pkcs5_encrypt()`](#des_cbc_pkcs5_encrypt-function)
+   - [`des_cbc_pkcs5_decrypt()`](#des_cbc_pkcs5_decrypt-function)
  - RC4
-   - [`rc4_encrypt()`](#rc4-encrypt-function)
-   - [`rc4_decrypt()`](#rc4-decrypt-function)
+   - [`rc4_encrypt()`](#rc4_encrypt-function)
+   - [`rc4_decrypt()`](#rc4_decrypt-function)
  - RC2
-   - [`rc2_cbc_pkcs5_encrypt()`](#rc2-cbc-pkcs5-encrypt-function)
-   - [`rc2_cbc_pkcs5_decrypt()`](#rc2-cbc-pkcs5-decrypt-function)
+   - [`rc2_cbc_pkcs5_encrypt()`](#rc2_cbc_pkcs5_encrypt-function)
+   - [`rc2_cbc_pkcs5_decrypt()`](#rc2_cbc_pkcs5_decrypt-function)
 
 ### `aes_cbc_pkcs7_encrypt()` function
 

@@ -4,9 +4,9 @@ The *oscrypto.kdf* submodule implements key derivation functions. The following
 functions comprise the public API:
 
  - [`pbkdf2()`](#pbkdf2-function)
- - [`pbkdf2_iteration_calculator()`](#pbkdf2-iteration-calculator-function)
+ - [`pbkdf2_iteration_calculator()`](#pbkdf2_iteration_calculator-function)
  - [`pbkdf1()`](#pbkdf1-function)
- - [`pkcs12_kdf()`](#pkcs12-kdf-function)
+ - [`pkcs12_kdf()`](#pkcs12_kdf-function)
 
 ### `pbkdf2()` function
 

@@ -4,30 +4,30 @@ The *oscrypto.assymetric* submodule implements public key signing, verification,
 encryption and decryption. The following functions comprise the public API:
 
  - Keys/Certificates
-   - [`generate_pair()`](#generate-pair-function)
-   - [`load_certificate()`](#load-certificate-function)
-   - [`load_public_key()`](#load-public-key-function)
-   - [`load_private_key()`](#load-private-key-function)
-   - [`load_pkcs12()`](#load-pkcs12-function)
-   - [`dump_public_key()`](#dump-public-key-function)
-   - [`dump_certificate()`](#dump-certificate-function)
-   - [`dump_private_key()`](#dump-private-key-function)
-   - [`dump_openssl_private_key()`](#dump-openssl-private_key-function)
+   - [`generate_pair()`](#generate_pair-function)
+   - [`load_certificate()`](#load_certificate-function)
+   - [`load_public_key()`](#load_public_key-function)
+   - [`load_private_key()`](#load_private_key-function)
+   - [`load_pkcs12()`](#load_pkcs12-function)
+   - [`dump_public_key()`](#dump_public_key-function)
+   - [`dump_certificate()`](#dump_certificate-function)
+   - [`dump_private_key()`](#dump_private_key-function)
+   - [`dump_openssl_private_key()`](#dump_openssl_private_key-function)
  - RSA
-   - [`rsa_pkcs1v15_sign()`](#rsa-pkcs1v15-sign-function)
-   - [`rsa_pkcs1v15_verify()`](#rsa-pkcs1v15-verify-function)
-   - [`rsa_pss_sign()`](#rsa-pss-sign-function)
-   - [`rsa_pss_verify()`](#rsa-pss-verify-function)
-   - [`rsa_pkcs1v15_encrypt()`](#rsa-pkcs1v15-encrypt-function)
-   - [`rsa_pkcs1v15_decrypt()`](#rsa-pkcs1v15-decrypt-function)
-   - [`rsa_oaep_encrypt()`](#rsa-oaep-encrypt-function)
-   - [`rsa_oaep_decrypt()`](#rsa-oaep-decrypt-function)
+   - [`rsa_pkcs1v15_sign()`](#rsa_pkcs1v15_sign-function)
+   - [`rsa_pkcs1v15_verify()`](#rsa_pkcs1v15_verify-function)
+   - [`rsa_pss_sign()`](#rsa_pss_sign-function)
+   - [`rsa_pss_verify()`](#rsa_pss_verify-function)
+   - [`rsa_pkcs1v15_encrypt()`](#rsa_pkcs1v15_encrypt-function)
+   - [`rsa_pkcs1v15_decrypt()`](#rsa_pkcs1v15_decrypt-function)
+   - [`rsa_oaep_encrypt()`](#rsa_oaep_encrypt-function)
+   - [`rsa_oaep_decrypt()`](#rsa_oaep_decrypt-function)
  - DSA
-   - [`dsa_sign()`](#dsa-sign-function)
-   - [`dsa_verify()`](#dsa-verify-function)
+   - [`dsa_sign()`](#dsa_sign-function)
+   - [`dsa_verify()`](#dsa_verify-function)
  - ECDSA
-   - [`ecdsa_sign()`](#ecdsa-sign-function)
-   - [`ecdsa_verify()`](#ecdsa-verify-function)
+   - [`ecdsa_sign()`](#ecdsa_sign-function)
+   - [`ecdsa_verify()`](#ecdsa_verify-function)
 
 ### `generate_pair()` function
 

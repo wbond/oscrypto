@@ -3,8 +3,8 @@
 The *oscrypto.util* submodule implements supporting cryptographic functionality.
 The following functions comprise the public API:
 
- - [`rand_bytes()`](#rand-bytes-function)
- - [`constant_compare()`](#constant-compare-function)
+ - [`rand_bytes()`](#rand_bytes-function)
+ - [`constant_compare()`](#constant_compare-function)
 
 ### `rand_bytes()` function
 
