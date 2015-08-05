@@ -1,30 +1,548 @@
-# oscrypto.assymetric
+# oscrypto.assymetric API Documentation
 
 The *oscrypto.assymetric* submodule implements public key signing, verification,
 encryption and decryption. The following functions comprise the public API:
 
  - Keys/Certificates
-   - `generate_pair()`
-   - `load_certificate()`
-   - `load_public_key()`
-   - `load_private_key()`
-   - `dump_public_key()`
-   - `dump_certificate()`
-   - `dump_private_key()`
-   - `dump_openssl_private_key()`
-   - `load_pkcs12()`
+   - [`generate_pair()`](#generate-pair-function)
+   - [`load_certificate()`](#load-certificate-function)
+   - [`load_public_key()`](#load-public-key-function)
+   - [`load_private_key()`](#load-private-key-function)
+   - [`load_pkcs12()`](#load-pkcs12-function)
+   - [`dump_public_key()`](#dump-public-key-function)
+   - [`dump_certificate()`](#dump-certificate-function)
+   - [`dump_private_key()`](#dump-private-key-function)
+   - [`dump_openssl_private_key()`](#dump-openssl-private_key-function)
  - RSA
-   - `rsa_pkcs1v15_sign()`
-   - `rsa_pkcs1v15_verify()`
-   - `rsa_pss_sign()`
-   - `rsa_pss_verify()`
-   - `rsa_pkcs1v15_encrypt()`
-   - `rsa_pkcs1v15_decrypt()`
-   - `rsa_oaep_encrypt()`
-   - `rsa_oaep_decrypt()`
+   - [`rsa_pkcs1v15_sign()`](#rsa-pkcs1v15-sign-function)
+   - [`rsa_pkcs1v15_verify()`](#rsa-pkcs1v15-verify-function)
+   - [`rsa_pss_sign()`](#rsa-pss-sign-function)
+   - [`rsa_pss_verify()`](#rsa-pss-verify-function)
+   - [`rsa_pkcs1v15_encrypt()`](#rsa-pkcs1v15-encrypt-function)
+   - [`rsa_pkcs1v15_decrypt()`](#rsa-pkcs1v15-decrypt-function)
+   - [`rsa_oaep_encrypt()`](#rsa-oaep-encrypt-function)
+   - [`rsa_oaep_decrypt()`](#rsa-oaep-decrypt-function)
  - DSA
-   - `dsa_sign()`
-   - `dsa_verify()`
+   - [`dsa_sign()`](#dsa-sign-function)
+   - [`dsa_verify()`](#dsa-verify-function)
  - ECDSA
-   - `ecdsa_sign()`
-   - `ecdsa_verify()`
+   - [`ecdsa_sign()`](#ecdsa-sign-function)
+   - [`ecdsa_verify()`](#ecdsa-verify-function)
+
+### `generate_pair()` function
+
+> ```python
+> def generate_pair(algorithm, bit_size=None, curve=None):
+>     """
+>     :param algorithm:
+>         The key algorithm - "rsa", "dsa" or "ec"
+>
+>     :param bit_size:
+>         An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
+>         2048, 3072 or 4096. For "dsa" the value may be 1024, plus 2048 or 3072
+>         if OpenSSL 1.0.0 or newer is available.
+>
+>     :param curve:
+>         A unicode string - used for "ec" keys. Valid values include "secp256r1",
+>         "secp384r1" and "secp521r1".
+>
+>     :return:
+>         A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
+>         may be saved by calling .asn1.dump().
+>     """
+> ```
+>
+> Generates a public/private key pair
+
+### `load_certificate()` function
+
+> ```python
+> def load_certificate(source):
+>     """
+>     :param source:
+>         A byte string of file contents, a unicode string filename or an
+>         asn1crypto.x509.Certificate object
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A Certificate object
+>     """
+> ```
+>
+> Loads an x509 certificate into a Certificate object
+
+### `load_public_key()` function
+
+> ```python
+> def load_public_key(source):
+>     """
+>     :param source:
+>         A byte string of file contents, a unicode string filename or an
+>         asn1crypto.keys.PublicKeyInfo object
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A PublicKey object
+>     """
+> ```
+>
+> Loads a public key into a PublicKey object
+
+### `load_private_key()` function
+
+> ```python
+> def load_private_key(source, password=None):
+>     """
+>     :param source:
+>         A byte string of file contents, a unicode string filename or an
+>         asn1crypto.keys.PrivateKeyInfo object
+>
+>     :param password:
+>         A byte or unicode string to decrypt the private key file. Unicode
+>         strings will be encoded using UTF-8. Not used is the source is a
+>         PrivateKeyInfo object.
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A PrivateKey object
+>     """
+> ```
+>
+> Loads a private key into a PrivateKey object
+
+### `load_pkcs12()` function
+
+> ```python
+> def load_pkcs12(source, password=None):
+>     """
+>     :param source:
+>         A byte string of file contents or a unicode string filename
+>
+>     :param password:
+>         A byte or unicode string to decrypt the PKCS12 file. Unicode strings
+>         will be encoded using UTF-8.
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
+>     """
+> ```
+>
+> Loads a .p12 or .pfx file into a PrivateKey object and one or more
+> Certificates objects
+
+### `dump_public_key()` function
+
+> ```python
+> def dump_public_key(public_key, encoding='pem'):
+>     """
+>     :param public_key:
+>         An oscrypto.asymmetric.PublicKey or asn1crypto.keys.PublicKeyInfo object
+>
+>     :param encoding:
+>         A unicode string of "pem" or "der"
+>
+>     :return:
+>         A byte string of the encoded public key
+>     """
+> ```
+>
+> Serializes a public key object into a byte string
+
+### `dump_certificate()` function
+
+> ```python
+> def dump_certificate(certificate, encoding='pem'):
+>     """
+>     :param certificate:
+>         An oscrypto.asymmetric.Certificate or asn1crypto.x509.Certificate object
+>
+>     :param encoding:
+>         A unicode string of "pem" or "der"
+>
+>     :return:
+>         A byte string of the encoded certificate
+>     """
+> ```
+>
+> Serializes a certificate object into a byte string
+
+### `dump_private_key()` function
+
+> ```python
+> def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
+>     """
+>     :param private_key:
+>         An oscrypto.asymmetric.PrivateKey or asn1crypto.keys.PrivateKeyInfo
+>         object
+>
+>     :param passphrase:
+>         A unicode string of the passphrase to encrypt the private key with.
+>         A passphrase of None will result in no encryption. A blank string will
+>         result in a ValueError to help ensure that the lack of passphrase is
+>         intentional.
+>
+>     :param encoding:
+>         A unicode string of "pem" or "der"
+>
+>     :param target_ms:
+>         Use PBKDF2 with the number of iterations that takes about this many
+>         milliseconds on the current machine.
+>
+>     :raises:
+>         ValueError - when a blank string is provided for the passphrase
+>
+>     :return:
+>         A byte string of the encoded and encrypted public key
+>     """
+> ```
+>
+> Serializes a private key object into a byte string of the PKCS#8 format
+
+### `dump_openssl_private_key()` function
+
+> ```python
+> def dump_openssl_private_key(private_key, passphrase):
+>     """
+>     :param private_key:
+>         An oscrypto.asymmetric.PrivateKey or asn1crypto.keys.PrivateKeyInfo
+>         object
+>
+>     :param passphrase:
+>         A unicode string of the passphrase to encrypt the private key with.
+>         A passphrase of None will result in no encryption. A blank string will
+>         result in a ValueError to help ensure that the lack of passphrase is
+>         intentional.
+>
+>     :raises:
+>         ValueError - when a blank string is provided for the passphrase
+>
+>     :return:
+>         A byte string of the encoded and encrypted public key
+>     """
+> ```
+>
+> Serializes a private key object into a byte string of the PEM formats used
+> by OpenSSL. The format chosen will depend on the type of private key - RSA,
+> DSA or EC.
+>
+> Do not use this method unless you really must interact with a system that
+> does not support PKCS#8 private keys. The encryption provided by PKCS#8 is
+> far superior to the OpenSSL formats. This is due to the fact that the
+> OpenSSL formats don't stretch the passphrase, making it very easy to
+> brute-force.
+
+### `rsa_pkcs1v15_sign()` function
+
+> ```python
+> def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
+>     """
+>     :param private_key:
+>         The PrivateKey to generate the signature with
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the signature
+>     """
+> ```
+>
+> Generates an RSASSA-PKCS-v1.5 signature
+
+### `rsa_pkcs1v15_verify()` function
+
+> ```python
+> def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
+>     """
+>     :param certificate_or_public_key:
+>         A Certificate or PublicKey instance to verify the signature with
+>
+>     :param signature:
+>         A byte string of the signature to verify
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>     """
+> ```
+>
+> Verifies an RSASSA-PKCS-v1.5 signature
+
+### `rsa_pss_sign()` function
+
+> ```python
+> def rsa_pss_sign(private_key, data, hash_algorithm):
+>     """
+>     :param private_key:
+>         The PrivateKey to generate the signature with
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the signature
+>     """
+> ```
+>
+> Generates an RSASSA-PSS signature. For the PSS padding the mask gen
+> algorithm will be mgf1 using the same hash algorithm as the signature. The
+> salt length with be the length of the hash algorithm, and the trailer field
+> with be the standard 0xBC byte.
+
+### `rsa_pss_verify()` function
+
+> ```python
+> def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
+>     """
+>     :param certificate_or_public_key:
+>         A Certificate or PublicKey instance to verify the signature with
+>
+>     :param signature:
+>         A byte string of the signature to verify
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>     """
+> ```
+>
+> Verifies an RSASSA-PSS signature. For the PSS padding the mask gen algorithm
+> will be mgf1 using the same hash algorithm as the signature. The salt length
+> with be the length of the hash algorithm, and the trailer field with be the
+> standard 0xBC byte.
+
+### `rsa_pkcs1v15_encrypt()` function
+
+> ```python
+> def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
+>     """
+>     :param certificate_or_public_key:
+>         A PublicKey or Certificate object
+>
+>     :param data:
+>         A byte string, with a maximum length 11 bytes less than the key length
+>         (in bytes)
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the encrypted data
+>     """
+> ```
+>
+> Encrypts a byte string using an RSA public key or certificate. Uses PKCS#1
+> v1.5 padding.
+
+### `rsa_pkcs1v15_decrypt()` function
+
+> ```python
+> def rsa_pkcs1v15_decrypt(private_key, ciphertext):
+>     """
+>     :param private_key:
+>         A PrivateKey object
+>
+>     :param ciphertext:
+>         A byte string of the encrypted data
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the original plaintext
+>     """
+> ```
+>
+> Decrypts a byte string using an RSA private key. Uses PKCS#1 v1.5 padding.
+
+### `rsa_oaep_encrypt()` function
+
+> ```python
+> def rsa_oaep_encrypt(certificate_or_public_key, data):
+>     """
+>     :param certificate_or_public_key:
+>         A PublicKey or Certificate object
+>
+>     :param data:
+>         A byte string, with a maximum length 41 bytes (or more) less than the
+>         key length (in bytes)
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the encrypted data
+>     """
+> ```
+>
+> Encrypts a byte string using an RSA public key or certificate. Uses PKCS#1
+> OAEP padding with SHA1.
+
+### `rsa_oaep_decrypt()` function
+
+> ```python
+> def rsa_oaep_decrypt(private_key, ciphertext):
+>     """
+>     :param private_key:
+>         A PrivateKey object
+>
+>     :param ciphertext:
+>         A byte string of the encrypted data
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS X Security Framework
+>
+>     :return:
+>         A byte string of the original plaintext
+>     """
+> ```
+>
+> Decrypts a byte string using an RSA private key. Uses PKCS#1 OAEP padding
+> with SHA1.
+
+### `dsa_sign()` function
+
+> ```python
+> def dsa_sign(private_key, data, hash_algorithm):
+>     """
+>     :param private_key:
+>         The PrivateKey to generate the signature with
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the signature
+>     """
+> ```
+>
+> Generates a DSA signature
+
+### `dsa_verify()` function
+
+> ```python
+> def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
+>     """
+>     :param certificate_or_public_key:
+>         A Certificate or PublicKey instance to verify the signature with
+>
+>     :param signature:
+>         A byte string of the signature to verify
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>     """
+> ```
+>
+> Verifies a DSA signature
+
+### `ecdsa_sign()` function
+
+> ```python
+> def ecdsa_sign(private_key, data, hash_algorithm):
+>     """
+>     :param private_key:
+>         The PrivateKey to generate the signature with
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         A byte string of the signature
+>     """
+> ```
+>
+> Generates an ECDSA signature
+
+### `ecdsa_verify()` function
+
+> ```python
+> def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
+>     """
+>     :param certificate_or_public_key:
+>         A Certificate or PublicKey instance to verify the signature with
+>
+>     :param signature:
+>         A byte string of the signature to verify
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>
+>     :raises:
+>         ValueError - when any of the parameters are of the wrong type or value
+>         OSError - when an error is returned by the OS crypto library
+>         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>     """
+> ```
+>
+> Verifies an ECDSA signature
