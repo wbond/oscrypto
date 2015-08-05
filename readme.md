@@ -76,13 +76,13 @@ implemented. CTR mode could be added, but GCM mode does not exist in OpenSSL
 
 ## Version
 
-0.9.0 - [changelog](changelog.md)
+0.10.0 - [changelog](changelog.md)
 
 ## Installation
 
 ```bash
-pip install git+git://github.com/wbond/asn1crypto.git@0.9.0
-pip install git+git://github.com/wbond/oscrypto.git@0.9.0
+pip install git+git://github.com/wbond/asn1crypto.git@0.10.0
+pip install git+git://github.com/wbond/oscrypto.git@0.10.0
 ```
 
 ## Documentation
