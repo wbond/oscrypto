@@ -43,7 +43,7 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
  - Loading and normalizing DER and PEM formatted:
    - RSA, DSA and EC Public keys
    - RSA, DSA and EC Private keys
-   - X509 Certificates
+   - X.509 Certificates
    - PKCS#12 archives (`.pfx`/`.p12`)
  - Key derivation:
    - PBKDF2
@@ -52,9 +52,9 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
  - Random byte generation
 
 The feature set was largely driven by the technologies used related to
-generating and validating X509 certificates. The various CBC encryption schemes
+generating and validating X.509 certificates. The various CBC encryption schemes
 and KDFs are used to load encrypted private keys, and the various RSA padding
-schemes are part of X509 signatures.
+schemes are part of X.509 signatures.
 
 For modern cryptography not tied to an existing system, please see the
 [Modern Cryptography](docs/readme.md#learning) section of the docs.

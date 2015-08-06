@@ -25,7 +25,7 @@ comprise the public API:
 >     """
 > ```
 >
-> Loads a certificate from a DER or PEM-formatted file. Supports X509
+> Loads a certificate from a DER or PEM-formatted file. Supports X.509
 > certificates only.
 
 ### `parse_public()` function
@@ -47,7 +47,7 @@ comprise the public API:
 > Loads a public key from a DER or PEM-formatted file. Supports RSA, DSA and
 > EC public keys. For RSA keys, both the old RSAPublicKey and
 > SubjectPublicKeyInfo structures are supported. Also allows extracting a
-> public key from an X509 certificate.
+> public key from an X.509 certificate.
 
 ### `parse_private()` function
 

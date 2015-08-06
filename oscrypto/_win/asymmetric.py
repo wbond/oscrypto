@@ -299,7 +299,8 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
 def _interpret_rsa_key_blob(key_type, blob_struct, blob):
     """
-    Take a CNG BCRYPT_RSAFULLPRIVATE_BLOB and converts it into an ASN1 structure
+    Take a CNG BCRYPT_RSAFULLPRIVATE_BLOB and converts it into an ASN.1
+    structure
 
     :param key_type:
         A unicode string of "private" or "public"
@@ -379,7 +380,7 @@ def _interpret_rsa_key_blob(key_type, blob_struct, blob):
 def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
     """
     Take a CNG BCRYPT_DSA_KEY_BLOB or BCRYPT_DSA_KEY_BLOB_V2 and converts it
-    into an ASN1 structure
+    into an ASN.1 structure
 
     :param key_type:
         A unicode string of "private" or "public"
@@ -421,7 +422,7 @@ def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
         public_offset = g_offset + key_byte_length
         private_offset = public_offset + key_byte_length
 
-        # The seed is skipped since it is not part of the ASN1 structure
+        # The seed is skipped since it is not part of the ASN.1 structure
         q = int_from_bytes(blob[q_offset:p_offset])
         p = int_from_bytes(blob[p_offset:g_offset])
         g = int_from_bytes(blob[g_offset:public_offset])
@@ -464,7 +465,7 @@ def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
 
 def _interpret_ec_key_blob(key_type, blob_struct, blob):
     """
-    Take a CNG BCRYPT_ECCKEY_BLOB and converts it into an ASN1 structure
+    Take a CNG BCRYPT_ECCKEY_BLOB and converts it into an ASN.1 structure
 
     :param key_type:
         A unicode string of "private" or "public"

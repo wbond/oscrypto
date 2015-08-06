@@ -34,7 +34,7 @@ def parse_public(data):
     Loads a public key from a DER or PEM-formatted file. Supports RSA, DSA and
     EC public keys. For RSA keys, both the old RSAPublicKey and
     SubjectPublicKeyInfo structures are supported. Also allows extracting a
-    public key from an X509 certificate.
+    public key from an X.509 certificate.
 
     :param data:
         A byte string to load the public key from
@@ -94,7 +94,7 @@ def parse_public(data):
 
 def parse_certificate(data):
     """
-    Loads a certificate from a DER or PEM-formatted file. Supports X509
+    Loads a certificate from a DER or PEM-formatted file. Supports X.509
     certificates only.
 
     :param data:
