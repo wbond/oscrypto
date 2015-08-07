@@ -295,6 +295,8 @@ def run():
             return added_lines
 
         for key in sections:
+            if key not in md_chunks:
+                raise ValueError('No documentation found for %s' % key[1])
             added_lines = _replace_md(key, sections, md_chunks[key], md_lines, added_lines)
 
         markdown = '\n'.join(md_lines).strip() + '\n'
