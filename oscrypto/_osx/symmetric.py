@@ -7,6 +7,7 @@ from .._ffi import new, null
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ._security import Security
 from .util import rand_bytes
+from .._errors import object_name
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -420,13 +421,13 @@ def _encrypt(cipher, key, data, iv, padding):
     """
 
     if not isinstance(key, byte_cls):
-        raise ValueError('key must be a byte string, not %s' % key.__class__.__name__)
+        raise ValueError('key must be a byte string, not %s' % object_name(key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not isinstance(iv, byte_cls):
-        raise ValueError('iv must be a byte string, not %s' % iv.__class__.__name__)
+        raise ValueError('iv must be a byte string, not %s' % object_name(iv))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not padding:
         raise ValueError('padding must be specified')
@@ -512,13 +513,13 @@ def _decrypt(cipher, key, data, iv, padding):
     """
 
     if not isinstance(key, byte_cls):
-        raise ValueError('key must be a byte string, not %s' % key.__class__.__name__)
+        raise ValueError('key must be a byte string, not %s' % object_name(key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not isinstance(iv, byte_cls):
-        raise ValueError('iv must be a byte string, not %s' % iv.__class__.__name__)
+        raise ValueError('iv must be a byte string, not %s' % object_name(iv))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not padding:
         raise ValueError('padding must be specified')

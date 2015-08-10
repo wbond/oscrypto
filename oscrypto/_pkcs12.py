@@ -6,6 +6,7 @@ import hashlib
 import math
 
 from asn1crypto.util import int_from_bytes, int_to_bytes
+from ._errors import object_name
 
 
 if sys.version_info < (3,):
@@ -48,19 +49,19 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     """
 
     if not isinstance(password, byte_cls):
-        raise ValueError('password must be a byte string, not %s' % password.__class__.__name__)
+        raise ValueError('password must be a byte string, not %s' % object_name(password))
 
     if not isinstance(salt, byte_cls):
-        raise ValueError('salt must be a byte string, not %s' % salt.__class__.__name__)
+        raise ValueError('salt must be a byte string, not %s' % object_name(salt))
 
     if not isinstance(iterations, int_types):
-        raise ValueError('iterations must be an integer, not %s' % iterations.__class__.__name__)
+        raise ValueError('iterations must be an integer, not %s' % object_name(iterations))
 
     if iterations < 1:
         raise ValueError('iterations must be greater than 0 - is %s' % repr(iterations))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))

@@ -12,6 +12,7 @@ import asn1crypto.pem
 from .symmetric import aes_cbc_pkcs7_encrypt
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
 from .util import rand_bytes
+from ._errors import object_name
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -111,7 +112,7 @@ def dump_public_key(public_key, encoding='pem'):
 
     is_oscrypto = isinstance(public_key, PublicKey)
     if not isinstance(public_key, keys.PublicKeyInfo) and not is_oscrypto:
-        raise ValueError('public_key must be an instance of oscrypto.asymmetric.PublicKey or asn1crypto.keys.PublicKeyInfo, not %s' % public_key.__class__.__name__)
+        raise ValueError('public_key must be an instance of oscrypto.asymmetric.PublicKey or asn1crypto.keys.PublicKeyInfo, not %s' % object_name(public_key))
 
     if is_oscrypto:
         public_key = public_key.asn1
@@ -141,7 +142,7 @@ def dump_certificate(certificate, encoding='pem'):
 
     is_oscrypto = isinstance(certificate, Certificate)
     if not isinstance(certificate, x509.Certificate) and not is_oscrypto:
-        raise ValueError('certificate must be an instance of oscrypto.asymmetric.Certificate or asn1crypto.x509.Certificate, not %s' % certificate.__class__.__name__)
+        raise ValueError('certificate must be an instance of oscrypto.asymmetric.Certificate or asn1crypto.x509.Certificate, not %s' % object_name(certificate))
 
     if is_oscrypto:
         certificate = certificate.asn1
@@ -185,13 +186,13 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
 
     if passphrase is not None:
         if not isinstance(passphrase, str_cls):
-            raise ValueError('passphrase must be a unicode string, not %s' % passphrase.__class__.__name__)
+            raise ValueError('passphrase must be a unicode string, not %s' % object_name(passphrase))
         if passphrase == '':
             raise ValueError('passphrase may not be a blank string - pass None to disable encryption')
 
     is_oscrypto = isinstance(private_key, PrivateKey)
     if not isinstance(private_key, keys.PrivateKeyInfo) and not is_oscrypto:
-        raise ValueError('private_key must be an instance of oscrypto.asymmetric.PrivateKey or asn1crypto.keys.PrivateKeyInfo, not %s' % private_key.__class__.__name__)
+        raise ValueError('private_key must be an instance of oscrypto.asymmetric.PrivateKey or asn1crypto.keys.PrivateKeyInfo, not %s' % object_name(private_key))
 
     if is_oscrypto:
         private_key = private_key.asn1
@@ -277,13 +278,13 @@ def dump_openssl_private_key(private_key, passphrase):
 
     if passphrase is not None:
         if not isinstance(passphrase, str_cls):
-            raise ValueError('passphrase must be a unicode string, not %s' % passphrase.__class__.__name__)
+            raise ValueError('passphrase must be a unicode string, not %s' % object_name(passphrase))
         if passphrase == '':
             raise ValueError('passphrase may not be a blank string - pass None to disable encryption')
 
     is_oscrypto = isinstance(private_key, PrivateKey)
     if not isinstance(private_key, keys.PrivateKeyInfo) and not is_oscrypto:
-        raise ValueError('private_key must be an instance of oscrypto.asymmetric.PrivateKey or asn1crypto.keys.PrivateKeyInfo, not %s' % private_key.__class__.__name__)
+        raise ValueError('private_key must be an instance of oscrypto.asymmetric.PrivateKey or asn1crypto.keys.PrivateKeyInfo, not %s' % object_name(private_key))
 
     if is_oscrypto:
         private_key = private_key.asn1

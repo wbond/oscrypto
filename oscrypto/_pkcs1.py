@@ -11,6 +11,7 @@ from asn1crypto.util import int_from_bytes, int_to_bytes
 
 from ._int import fill_width
 from .util import constant_compare
+from ._errors import object_name
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -50,16 +51,16 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     """
 
     if not isinstance(message, byte_cls):
-        raise ValueError('message must be a byte string, not %s' % message.__class__.__name__)
+        raise ValueError('message must be a byte string, not %s' % object_name(message))
 
     if not isinstance(salt_length, int_types):
-        raise ValueError('salt_length must be an integer, not %s' % salt_length.__class__.__name__)
+        raise ValueError('salt_length must be an integer, not %s' % object_name(salt_length))
 
     if salt_length < 0:
         raise ValueError('salt_length must be 0 or more - is %s' % repr(salt_length))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
 
     if key_length < 512:
         raise ValueError('key_length must be 512 or more - is %s' % repr(key_length))
@@ -133,13 +134,13 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     """
 
     if not isinstance(message, byte_cls):
-        raise ValueError('message must be a byte string, not %s' % message.__class__.__name__)
+        raise ValueError('message must be a byte string, not %s' % object_name(message))
 
     if not isinstance(signature, byte_cls):
-        raise ValueError('signature must be a byte string, not %s' % signature.__class__.__name__)
+        raise ValueError('signature must be a byte string, not %s' % object_name(signature))
 
     if not isinstance(salt_length, int_types):
-        raise ValueError('salt_length must be an integer, not %s' % salt_length.__class__.__name__)
+        raise ValueError('salt_length must be an integer, not %s' % object_name(salt_length))
 
     if salt_length < 0:
         raise ValueError('salt_length must be 0 or more - is %s' % repr(salt_length))
@@ -220,10 +221,10 @@ def mgf1(hash_algorithm, seed, mask_length):
     """
 
     if not isinstance(seed, byte_cls):
-        raise ValueError('seed must be a byte string, not %s' % seed.__class__.__name__)
+        raise ValueError('seed must be a byte string, not %s' % object_name(seed))
 
     if not isinstance(mask_length, int_types):
-        raise ValueError('mask_length must be an integer, not %s' % mask_length.__class__.__name__)
+        raise ValueError('mask_length must be an integer, not %s' % object_name(mask_length))
 
     if mask_length < 1:
         raise ValueError('mask_length must be greater than 0 - is %s' % repr(mask_length))

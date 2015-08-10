@@ -3,6 +3,8 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
+from ._errors import object_name
+
 if sys.platform == 'darwin':
     from ._osx.util import rand_bytes  #pylint: disable=W0611
 elif sys.platform == 'win32':
@@ -31,10 +33,10 @@ def constant_compare(a, b):
     """
 
     if not isinstance(a, byte_cls):
-        raise ValueError('a must be a byte string, not %s' % a.__class__.__name__)
+        raise ValueError('a must be a byte string, not %s' % object_name(a))
 
     if not isinstance(b, byte_cls):
-        raise ValueError('b must be a byte string, not %s' % b.__class__.__name__)
+        raise ValueError('b must be a byte string, not %s' % object_name(b))
 
     if len(a) != len(b):
         return False

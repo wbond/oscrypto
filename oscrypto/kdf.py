@@ -5,6 +5,8 @@ import sys
 import hashlib
 from datetime import datetime
 
+from ._errors import object_name
+
 if sys.platform == 'darwin':
     from ._osx.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
 elif sys.platform == 'win32':
@@ -49,13 +51,13 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
 
     if not isinstance(target_ms, int_types):
-        raise ValueError('target_ms must be an integer, not %s' % target_ms.__class__.__name__)
+        raise ValueError('target_ms must be an integer, not %s' % object_name(target_ms))
 
     if target_ms < 1:
         raise ValueError('target_ms must be greater than 0 - is %s' % repr(target_ms))
@@ -119,19 +121,19 @@ def pbkdf1(hash_algorithm, password, salt, iterations, key_length):
     """
 
     if not isinstance(password, byte_cls):
-        raise ValueError('password must be a byte string, not %s' % (password.__class__.__name__))
+        raise ValueError('password must be a byte string, not %s' % (object_name(password)))
 
     if not isinstance(salt, byte_cls):
-        raise ValueError('salt must be a byte string, not %s' % (salt.__class__.__name__))
+        raise ValueError('salt must be a byte string, not %s' % (object_name(salt)))
 
     if not isinstance(iterations, int_types):
-        raise ValueError('iterations must be an integer, not %s' % (iterations.__class__.__name__))
+        raise ValueError('iterations must be an integer, not %s' % (object_name(iterations)))
 
     if iterations < 1:
         raise ValueError('iterations must be greater than 0 - is %s' % repr(iterations))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % (key_length.__class__.__name__))
+        raise ValueError('key_length must be an integer, not %s' % (object_name(key_length)))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))

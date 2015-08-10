@@ -11,6 +11,7 @@ from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, PrivateKeyError
 from .._pkcs1 import add_pss_padding, verify_pss_padding
+from .._errors import object_name
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -340,7 +341,7 @@ def load_certificate(source):
             certificate = parse_certificate(f.read())
 
     else:
-        raise ValueError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % source.__class__.__name__)
+        raise ValueError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % object_name(source))
 
     return _load_x509(certificate)
 
@@ -398,14 +399,14 @@ def load_private_key(source, password=None):
             if isinstance(password, str_cls):
                 password = password.encode('utf-8')
             if not isinstance(password, byte_cls):
-                raise ValueError('password must be a byte string, not %s' % password.__class__.__name__)
+                raise ValueError('password must be a byte string, not %s' % object_name(password))
 
         if isinstance(source, str_cls):
             with open(source, 'rb') as f:
                 source = f.read()
 
         elif not isinstance(source, byte_cls):
-            raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % source.__class__.__name__)
+            raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % object_name(source))
 
         private_object = parse_private(source, password)
 
@@ -439,7 +440,7 @@ def load_public_key(source):
             public_key = parse_public(f.read())
 
     else:
-        raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % public_key.__class__.__name__)
+        raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
 
     return _load_key(public_key)
 
@@ -534,14 +535,14 @@ def load_pkcs12(source, password=None):
         if isinstance(password, str_cls):
             password = password.encode('utf-8')
         if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string, not %s' % password.__class__.__name__)
+            raise ValueError('password must be a byte string, not %s' % object_name(password))
 
     if isinstance(source, str_cls):
         with open(source, 'rb') as f:
             source = f.read()
 
     elif not isinstance(source, byte_cls):
-        raise ValueError('source must be a byte string or a unicode string, not %s' % source.__class__.__name__)
+        raise ValueError('source must be a byte string or a unicode string, not %s' % object_name(source))
 
     key_info, cert_info, extra_certs_info = parse_pkcs12(source, password)
 
@@ -580,10 +581,10 @@ def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % certificate_or_public_key.__class__.__name__)
+        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     key_length = certificate_or_public_key.byte_size
     buffer = buffer_from_bytes(key_length)
@@ -613,10 +614,10 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must an instance of the PrivateKey class, not %s' % private_key.__class__.__name__)
+        raise ValueError('private_key must an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(ciphertext, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % ciphertext.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(ciphertext))
 
     key_length = private_key.byte_size
     buffer = buffer_from_bytes(key_length)
@@ -694,10 +695,10 @@ def _encrypt(certificate_or_public_key, data, padding):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % certificate_or_public_key.__class__.__name__)
+        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if not padding:
         raise ValueError('padding must be specified')
@@ -753,10 +754,10 @@ def _decrypt(private_key, ciphertext, padding):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % private_key.__class__.__name__)
+        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(ciphertext, byte_cls):
-        raise ValueError('ciphertext must be a byte string, not %s' % ciphertext.__class__.__name__)
+        raise ValueError('ciphertext must be a byte string, not %s' % object_name(ciphertext))
 
     if not padding:
         raise ValueError('padding must be specified')
@@ -843,10 +844,10 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % certificate_or_public_key.__class__.__name__)
+        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
@@ -943,13 +944,13 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % certificate_or_public_key.__class__.__name__)
+        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(signature, byte_cls):
-        raise ValueError('signature must be a byte string, not %s' % signature.__class__.__name__)
+        raise ValueError('signature must be a byte string, not %s' % object_name(signature))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
@@ -1069,10 +1070,10 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % private_key.__class__.__name__)
+        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
@@ -1165,10 +1166,10 @@ def _sign(private_key, data, hash_algorithm):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of PrivateKey, not %s' % private_key.__class__.__name__)
+        raise ValueError('private_key must be an instance of PrivateKey, not %s' % object_name(private_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % data.__class__.__name__)
+        raise ValueError('data must be a byte string, not %s' % object_name(data))
 
     if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))

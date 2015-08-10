@@ -6,6 +6,7 @@ import sys
 from .._ffi import buffer_from_bytes, bytes_from_buffer
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._pkcs12 import pkcs12_kdf  #pylint: disable=W0611
+from .._errors import object_name
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -40,19 +41,19 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     """
 
     if not isinstance(password, byte_cls):
-        raise ValueError('password must be a byte string, not %s' % password.__class__.__name__)
+        raise ValueError('password must be a byte string, not %s' % object_name(password))
 
     if not isinstance(salt, byte_cls):
-        raise ValueError('salt must be a byte string, not %s' % salt.__class__.__name__)
+        raise ValueError('salt must be a byte string, not %s' % object_name(salt))
 
     if not isinstance(iterations, int_types):
-        raise ValueError('iterations must be an integer, not %s' % iterations.__class__.__name__)
+        raise ValueError('iterations must be an integer, not %s' % object_name(iterations))
 
     if iterations < 1:
         raise ValueError('iterations must be greater than 0')
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0')
@@ -100,7 +101,7 @@ def rand_bytes(length):
     """
 
     if not isinstance(length, int_types):
-        raise ValueError('length must be an integer, not %s' % length.__class__.__name__)
+        raise ValueError('length must be an integer, not %s' % object_name(length))
 
     if length < 1:
         raise ValueError('length must be greater than 0')
