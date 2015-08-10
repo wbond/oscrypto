@@ -64,6 +64,13 @@ Additionally, modern block modes such as CTR and GCM are not currently
 implemented. CTR mode could be added, but GCM mode does not exist in OpenSSL
 0.9.8.
 
+*oscrypto* is part of the modularcrypto family of Python packages:
+
+ - [asn1crypto](https://github.com/wbond/asn1crypto)
+ - [oscrypto](https://github.com/wbond/oscrypto)
+ - [certbuilder](https://github.com/wbond/certbuilder)
+ - [crlbuilder](https://github.com/wbond/crlbuilder)
+
 ## License
 
 *oscrypto* is licensed under the terms of the MIT license. See the
