@@ -7,9 +7,9 @@ from ._decode import _try_decode
 from .._ffi import FFIEngineError
 
 try:
-    from ._crypt32_cffi import crypt32, get_error  #pylint: disable=W0611
+    from ._kernel32_cffi import kernel32, get_error  #pylint: disable=W0611
 except (FFIEngineError, ImportError):
-    from ._crypt32_ctypes import crypt32, get_error
+    from ._kernel32_ctypes import kernel32, get_error
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -37,12 +37,3 @@ def handle_error(result):
         error_string = _try_decode(error_string)
 
     raise OSError(error_string)
-
-
-class crypt32_const():
-    X509_ASN_ENCODING = 1
-
-    ERROR_INSUFFICIENT_BUFFER = 122
-    CERT_FIND_PROP_ONLY_ENHKEY_USAGE_FLAG = 0x4
-    CRYPT_E_NOT_FOUND = -2146885628
-

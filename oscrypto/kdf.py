@@ -6,11 +6,13 @@ import hashlib
 from datetime import datetime
 
 from ._errors import object_name
+from ._ffi import new, deref
 
 if sys.platform == 'darwin':
     from ._osx.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
 elif sys.platform == 'win32':
     from ._win.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
+    from ._win._kernel32 import kernel32, handle_error
 else:
     from ._openssl.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
 
@@ -22,6 +24,26 @@ if sys.version_info < (3,):
 else:
     byte_cls = bytes
     int_types = int
+
+
+if sys.platform == 'win32':
+    def _get_start():
+        number = new(kernel32, 'LARGE_INTEGER *')
+        res = kernel32.QueryPerformanceCounter(number)
+        handle_error(res)
+        return deref(number)
+
+    def _get_elapsed(start):
+        length = _get_start() - start
+        return int(length / 1000.0)
+
+else:
+    def _get_start():
+        return datetime.now()
+
+    def _get_elapsed(start):
+        length = datetime.now() - start
+        return int(length.total_seconds() * 1000)
 
 
 def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet=False):
@@ -70,10 +92,9 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
     salt = rand_bytes(key_length)
 
     def _measure():
-        start = datetime.now()
+        start = _get_start()
         pbkdf2(hash_algorithm, password, salt, iterations, key_length)
-        length = datetime.now() - start
-        observed_ms = int(length.total_seconds() * 1000)
+        observed_ms = _get_elapsed(start)
         if not quiet:
             print('%s iterations in %sms' % (iterations, observed_ms))
         return 1.0 / target_ms * observed_ms
