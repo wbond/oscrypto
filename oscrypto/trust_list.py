@@ -120,9 +120,18 @@ def _cached_path_needs_update(ca_path, cache_length):
     """
 
     exists = os.path.exists(ca_path)
-    is_old = exists and os.stat(ca_path).st_mtime < time.time() - cache_length * 60 * 60
+    if not exists:
+        return False
 
-    return not exists or is_old
+    stats = os.stat(ca_path)
+
+    if stats.st_mtime < time.time() - cache_length * 60 * 60:
+        return True
+
+    if stats.st_size == 0:
+        return True
+
+    return False
 
 
 def _in_memory_up_to_date(cache_length):
