@@ -27,24 +27,24 @@ ffi.cdef("""
     typedef unsigned char *PBYTE;
 
 
-    struct BCRYPT_RSAKEY_BLOB {
+    typedef struct _BCRYPT_RSAKEY_BLOB {
         ULONG Magic;
         ULONG BitLength;
         ULONG cbPublicExp;
         ULONG cbModulus;
         ULONG cbPrime1;
         ULONG cbPrime2;
-    };
+    } BCRYPT_RSAKEY_BLOB;
 
-    struct BCRYPT_DSA_KEY_BLOB {
+    typedef struct _BCRYPT_DSA_KEY_BLOB {
         ULONG dwMagic;
         ULONG cbKey;
         UCHAR Count[4];
         UCHAR Seed[20];
         UCHAR q[20];
-    };
+    } BCRYPT_DSA_KEY_BLOB;
 
-    struct BCRYPT_DSA_KEY_BLOB_V2 {
+    typedef struct _BCRYPT_DSA_KEY_BLOB_V2 {
         ULONG dwMagic;
         ULONG cbKey;
         INT hashAlgorithm;
@@ -52,33 +52,33 @@ ffi.cdef("""
         ULONG cbSeedLength;
         ULONG cbGroupSize;
         UCHAR Count[4];
-    };
+    } BCRYPT_DSA_KEY_BLOB_V2;
 
-    struct BCRYPT_ECCKEY_BLOB {
+    typedef struct _BCRYPT_ECCKEY_BLOB {
         ULONG dwMagic;
         ULONG cbKey;
-    };
+    } BCRYPT_ECCKEY_BLOB;
 
-    struct BCRYPT_PKCS1_PADDING_INFO {
+    typedef struct _BCRYPT_PKCS1_PADDING_INFO {
         LPCWSTR pszAlgId;
-    };
+    } BCRYPT_PKCS1_PADDING_INFO;
 
-    struct BCRYPT_PSS_PADDING_INFO {
+    typedef struct _BCRYPT_PSS_PADDING_INFO {
         LPCWSTR pszAlgId;
         ULONG cbSalt;
-    };
+    } BCRYPT_PSS_PADDING_INFO;
 
-    struct BCRYPT_OAEP_PADDING_INFO {
+    typedef struct _BCRYPT_OAEP_PADDING_INFO {
         LPCWSTR pszAlgId;
         PUCHAR pbLabel;
         ULONG cbLabel;
-    };
+    } BCRYPT_OAEP_PADDING_INFO;
 
-    struct BCRYPT_KEY_DATA_BLOB_HEADER {
+    typedef struct _BCRYPT_KEY_DATA_BLOB_HEADER {
         ULONG dwMagic;
         ULONG dwVersion;
         ULONG cbKeyData;
-    };
+    } BCRYPT_KEY_DATA_BLOB_HEADER;
 
     NTSTATUS BCryptOpenAlgorithmProvider(BCRYPT_ALG_HANDLE *phAlgorithm, LPCWSTR pszAlgId, LPCWSTR pszImplementation, DWORD dwFlags);
     NTSTATUS BCryptCloseAlgorithmProvider(BCRYPT_ALG_HANDLE hAlgorithm, DWORD dwFlags);

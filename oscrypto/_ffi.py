@@ -101,14 +101,14 @@ try:
 
     def struct(library, name):
         ffi_obj = _get_ffi(library)
-        return ffi_obj.new('struct %s *' % name)
+        return ffi_obj.new('%s *' % name)
 
     def struct_bytes(struct_):
         return ffi.buffer(struct_)[:]
 
     def struct_from_buffer(library, name, buffer):
         ffi_obj = _get_ffi(library)
-        new_struct_pointer = ffi_obj.new('struct %s *' % name)
+        new_struct_pointer = ffi_obj.new('%s *' % name)
         new_struct = new_struct_pointer[0]
         struct_size = sizeof(library, new_struct)
         struct_buffer = ffi_obj.buffer(new_struct_pointer)

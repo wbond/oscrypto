@@ -25,42 +25,37 @@ ffi.cdef("""
     typedef unsigned char *PBYTE;
 
 
-    struct CRYPTOAPI_BLOB {
+    typedef struct _CRYPTOAPI_BLOB {
         DWORD cbData;
         PBYTE pbData;
-    };
-    typedef struct CRYPTOAPI_BLOB CRYPT_INTEGER_BLOB;
-    typedef struct CRYPTOAPI_BLOB CERT_NAME_BLOB;
-    typedef struct CRYPTOAPI_BLOB CRYPT_BIT_BLOB;
-    typedef struct CRYPTOAPI_BLOB CRYPT_OBJID_BLOB;
+    } CRYPTOAPI_BLOB;
+    typedef CRYPTOAPI_BLOB CRYPT_INTEGER_BLOB;
+    typedef CRYPTOAPI_BLOB CERT_NAME_BLOB;
+    typedef CRYPTOAPI_BLOB CRYPT_BIT_BLOB;
+    typedef CRYPTOAPI_BLOB CRYPT_OBJID_BLOB;
 
-    struct CRYPT_ALGORITHM_IDENTIFIER {
+    typedef struct _CRYPT_ALGORITHM_IDENTIFIER {
         LPSTR pszObjId;
         CRYPT_OBJID_BLOB Parameters;
-    };
-    typedef struct CRYPT_ALGORITHM_IDENTIFIER CRYPT_ALGORITHM_IDENTIFIER;
+    } CRYPT_ALGORITHM_IDENTIFIER;
 
-    struct FILETIME {
+    typedef struct _FILETIME {
         DWORD dwLowDateTime;
         DWORD dwHighDateTime;
-    };
-    typedef struct FILETIME FILETIME;
+    } FILETIME;
 
-    struct CERT_PUBLIC_KEY_INFO {
+    typedef struct _CERT_PUBLIC_KEY_INFO {
         CRYPT_ALGORITHM_IDENTIFIER Algorithm;
         CRYPT_BIT_BLOB PublicKey;
-    };
-    typedef struct CERT_PUBLIC_KEY_INFO CERT_PUBLIC_KEY_INFO;
+    } CERT_PUBLIC_KEY_INFO;
 
-    struct CERT_EXTENSION {
+    typedef struct _CERT_EXTENSION {
         LPSTR pszObjId;
         BOOL fCritical;
         CRYPT_OBJID_BLOB Value;
-    };
-    typedef struct CERT_EXTENSION CERT_EXTENSION;
-    typedef CERT_EXTENSION *PCERT_EXTENSION;
+    } CERT_EXTENSION, *PCERT_EXTENSION;
 
-    struct CERT_INFO {
+    typedef struct _CERT_INFO {
         DWORD dwVersion;
         CRYPT_INTEGER_BLOB SerialNumber;
         CRYPT_ALGORITHM_IDENTIFIER SignatureAlgorithm;
@@ -73,26 +68,20 @@ ffi.cdef("""
         CRYPT_BIT_BLOB SubjectUniqueId;
         DWORD cExtension;
         PCERT_EXTENSION *rgExtension;
-    };
-    typedef struct CERT_INFO CERT_INFO;
-    typedef CERT_INFO *PCERT_INFO;
+    } CERT_INFO, *PCERT_INFO;
 
-    struct CERT_CONTEXT {
+    typedef struct _CERT_CONTEXT {
         DWORD dwCertEncodingType;
         PBYTE pbCertEncoded;
         DWORD cbCertEncoded;
         PCERT_INFO pCertInfo;
         HCERTSTORE hCertStore;
-    };
-    typedef struct CERT_CONTEXT CERT_CONTEXT;
-    typedef CERT_CONTEXT *PCERT_CONTEXT;
+    } CERT_CONTEXT, *PCERT_CONTEXT;
 
-    struct CERT_ENHKEY_USAGE {
+    typedef struct _CERT_ENHKEY_USAGE {
         DWORD cUsageIdentifier;
         LPSTR *rgpszUsageIdentifier;
-    };
-    typedef struct CERT_ENHKEY_USAGE CERT_ENHKEY_USAGE;
-    typedef CERT_ENHKEY_USAGE *PCERT_ENHKEY_USAGE;
+    } CERT_ENHKEY_USAGE, *PCERT_ENHKEY_USAGE;
 
     HCERTSTORE CertOpenSystemStoreW(HANDLE hprov, LPCWSTR szSubsystemProtocol);
     PCERT_CONTEXT CertEnumCertificatesInStore(HCERTSTORE hCertStore, PCERT_CONTEXT pPrevCertContext);
