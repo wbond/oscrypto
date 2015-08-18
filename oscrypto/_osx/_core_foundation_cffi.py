@@ -48,8 +48,8 @@ ffi.cdef("""
     } CFDictionaryValueCallBacks;
 
     CFIndex CFDataGetLength(CFDataRef theData);
-    const unsigned char *CFDataGetBytePtr(CFDataRef theData);
-    CFDataRef CFDataCreate(CFAllocatorRef allocator, const unsigned char *bytes, CFIndex length);
+    const char *CFDataGetBytePtr(CFDataRef theData);
+    CFDataRef CFDataCreate(CFAllocatorRef allocator, const char *bytes, CFIndex length);
 
     CFDictionaryRef CFDictionaryCreate(CFAllocatorRef allocator, const void **keys, const void **values, CFIndex numValues, const CFDictionaryKeyCallBacks *keyCallBacks, const CFDictionaryValueCallBacks *valueCallBacks);
     CFIndex CFDictionaryGetCount(CFDictionaryRef theDict);

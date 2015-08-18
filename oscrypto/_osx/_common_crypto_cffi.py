@@ -19,9 +19,9 @@ ffi.cdef("""
     typedef unsigned int uint;
 
     int CCKeyDerivationPBKDF(CCPBKDFAlgorithm algorithm, const char *password, size_t passwordLen,
-                      const unsigned char *salt, size_t saltLen,
+                      const char *salt, size_t saltLen,
                       CCPseudoRandomAlgorithm prf, uint rounds,
-                      unsigned char *derivedKey, size_t derivedKeyLen);
+                      char *derivedKey, size_t derivedKeyLen);
 """)
 
 CommonCrypto = ffi.dlopen('/usr/lib/system/libcommonCrypto.dylib')

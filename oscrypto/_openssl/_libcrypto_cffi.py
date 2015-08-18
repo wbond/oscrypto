@@ -81,25 +81,25 @@ ffi.cdef("""
     const EVP_CIPHER *EVP_rc2_cbc(void);
 
     int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
-                    ENGINE *impl, const unsigned char *key,
-                    const unsigned char *iv);
-    int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
-                    const unsigned char *in, int inl);
-    int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl);
+                    ENGINE *impl, const char *key,
+                    const char *iv);
+    int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, char *out, int *outl,
+                    const char *in, int inl);
+    int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, char *out, int *outl);
 
     int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
-                    ENGINE *impl, const unsigned char *key,
-                    const unsigned char *iv);
-    int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
-                    const unsigned char *in, int inl);
-    int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl);
+                    ENGINE *impl, const char *key,
+                    const char *iv);
+    int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, char *out, int *outl,
+                    const char *in, int inl);
+    int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, char *out, int *outl);
 
-    EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **a, const unsigned char **pp,
+    EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **a, const char **pp,
                     long length);
-    EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length);
+    EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const char **pp, long length);
     void EVP_PKEY_free(EVP_PKEY *key);
 
-    X509 *d2i_X509(X509 **px, const unsigned char **in, int len);
+    X509 *d2i_X509(X509 **px, const char **in, int len);
     EVP_PKEY *X509_get_pubkey(X509 *x);
     void X509_free(X509 *a);
 
@@ -110,14 +110,14 @@ ffi.cdef("""
     RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
     void RSA_free(RSA *r);
 
-    int RSA_public_encrypt(int flen, const unsigned char *from,
-                    unsigned char *to, RSA *rsa, int padding);
-    int RSA_private_encrypt(int flen, const unsigned char *from,
-                    unsigned char *to, RSA *rsa, int padding);
-    int RSA_public_decrypt(int flen, const unsigned char *from,
-                    unsigned char *to, RSA *rsa, int padding);
-    int RSA_private_decrypt(int flen, const unsigned char *from,
-                    unsigned char *to, RSA *rsa, int padding);
+    int RSA_public_encrypt(int flen, const char *from,
+                    char *to, RSA *rsa, int padding);
+    int RSA_private_encrypt(int flen, const char *from,
+                    char *to, RSA *rsa, int padding);
+    int RSA_public_decrypt(int flen, const char *from,
+                    char *to, RSA *rsa, int padding);
+    int RSA_private_decrypt(int flen, const char *from,
+                    char *to, RSA *rsa, int padding);
 
     int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, unsigned int cnt);
 
@@ -128,32 +128,32 @@ ffi.cdef("""
     const EVP_MD *EVP_sha384(void);
     const EVP_MD *EVP_sha512(void);
 
-    int PKCS12_key_gen_uni(unsigned char *pass, int passlen, unsigned char *salt,
+    int PKCS12_key_gen_uni(char *pass, int passlen, char *salt,
                     int saltlen, int id, int iter, int n,
-                    unsigned char *out, const EVP_MD *md_type);
+                    char *out, const EVP_MD *md_type);
 
     void BN_free(BIGNUM *a);
     int BN_dec2bn(BIGNUM **a, const char *str);
 
     RSA *RSA_new(void);
     int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
-    int i2d_RSAPublicKey(RSA *a, unsigned char **pp);
-    int i2d_RSAPrivateKey(RSA *a, unsigned char **pp);
+    int i2d_RSAPublicKey(RSA *a, char **pp);
+    int i2d_RSAPrivateKey(RSA *a, char **pp);
 
     DSA *DSA_new(void);
     int DSA_generate_parameters_ex(DSA *dsa, int bits,
-                    const unsigned char *seed, int seed_len, int *counter_ret,
+                    const char *seed, int seed_len, int *counter_ret,
                     unsigned long *h_ret, BN_GENCB *cb);
     int DSA_generate_key(DSA *a);
-    int i2d_DSA_PUBKEY(const DSA *a, unsigned char **pp);
-    int i2d_DSAPrivateKey(const DSA *a, unsigned char **pp);
+    int i2d_DSA_PUBKEY(const DSA *a, char **pp);
+    int i2d_DSAPrivateKey(const DSA *a, char **pp);
     void DSA_free(DSA *dsa);
 
     EC_KEY *EC_KEY_new_by_curve_name(int nid);
     int EC_KEY_generate_key(EC_KEY *key);
     void EC_KEY_set_asn1_flag(EC_KEY *, int);
-    int i2d_ECPrivateKey(EC_KEY *key, unsigned char **out);
-    int i2o_ECPublicKey(EC_KEY *key, unsigned char **out);
+    int i2d_ECPrivateKey(EC_KEY *key, char **out);
+    int i2o_ECPublicKey(EC_KEY *key, char **out);
     void EC_KEY_free(EC_KEY *key);
 """)
 
@@ -162,17 +162,17 @@ if version_info < (1,):
         typedef ... *DSA_SIG;
         typedef ... *ECDSA_SIG;
 
-        DSA_SIG *DSA_do_sign(const unsigned char *dgst, int dlen, DSA *dsa);
-        ECDSA_SIG *ECDSA_do_sign(const unsigned char *dgst, int dgst_len, EC_KEY *eckey);
+        DSA_SIG *DSA_do_sign(const char *dgst, int dlen, DSA *dsa);
+        ECDSA_SIG *ECDSA_do_sign(const char *dgst, int dgst_len, EC_KEY *eckey);
 
-        DSA_SIG *d2i_DSA_SIG(DSA_SIG **v, const unsigned char **pp, long length);
-        ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **v, const unsigned char **pp, long len);
+        DSA_SIG *d2i_DSA_SIG(DSA_SIG **v, const char **pp, long length);
+        ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **v, const char **pp, long len);
 
-        int i2d_DSA_SIG(const DSA_SIG *a, unsigned char **pp);
-        int i2d_ECDSA_SIG(const ECDSA_SIG *a, unsigned char **pp);
+        int i2d_DSA_SIG(const DSA_SIG *a, char **pp);
+        int i2d_ECDSA_SIG(const ECDSA_SIG *a, char **pp);
 
-        int DSA_do_verify(const unsigned char *dgst, int dgst_len, DSA_SIG *sig, DSA *dsa);
-        int ECDSA_do_verify(const unsigned char *dgst, int dgst_len, const ECDSA_SIG *sig, EC_KEY *eckey);
+        int DSA_do_verify(const char *dgst, int dgst_len, DSA_SIG *sig, DSA *dsa);
+        int ECDSA_do_verify(const char *dgst, int dgst_len, const ECDSA_SIG *sig, EC_KEY *eckey);
 
         void DSA_SIG_free(DSA_SIG *a);
         void ECDSA_SIG_free(ECDSA_SIG *a);
@@ -180,31 +180,31 @@ if version_info < (1,):
         DSA *EVP_PKEY_get1_DSA(EVP_PKEY *pkey);
         EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
 
-        int RSA_verify_PKCS1_PSS(RSA *rsa, const unsigned char *mHash,
-                        const EVP_MD *Hash, const unsigned char *EM,
+        int RSA_verify_PKCS1_PSS(RSA *rsa, const char *mHash,
+                        const EVP_MD *Hash, const char *EM,
                         int sLen);
-        int RSA_padding_add_PKCS1_PSS(RSA *rsa, unsigned char *EM,
-                        const unsigned char *mHash, const EVP_MD *Hash,
+        int RSA_padding_add_PKCS1_PSS(RSA *rsa, char *EM,
+                        const char *mHash, const EVP_MD *Hash,
                         int sLen);
 
         int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl);
-        int EVP_SignFinal(EVP_MD_CTX *ctx, unsigned char *sig, unsigned int *s, EVP_PKEY *pkey);
-        int EVP_VerifyFinal(EVP_MD_CTX *ctx, unsigned char *sigbuf, unsigned int siglen, EVP_PKEY *pkey);
+        int EVP_SignFinal(EVP_MD_CTX *ctx, char *sig, unsigned int *s, EVP_PKEY *pkey);
+        int EVP_VerifyFinal(EVP_MD_CTX *ctx, char *sigbuf, unsigned int siglen, EVP_PKEY *pkey);
 
         void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
     """)
 else:
     ffi.cdef("""
         int PKCS5_PBKDF2_HMAC(const char *pass, int passlen,
-                        const unsigned char *salt, int saltlen, int iter,
+                        const char *salt, int saltlen, int iter,
                         const EVP_MD *digest,
-                        int keylen, unsigned char *out);
+                        int keylen, char *out);
 
         int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
-        int EVP_DigestSignFinal(EVP_MD_CTX *ctx, unsigned char *sig, size_t *siglen);
+        int EVP_DigestSignFinal(EVP_MD_CTX *ctx, char *sig, size_t *siglen);
 
         int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
-        int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const unsigned char *sig, size_t siglen);
+        int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const char *sig, size_t siglen);
 
         int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd, int p1, void *p2);
     """)

@@ -22,7 +22,7 @@ ffi = FFI()
 ffi.set_unicode(True)
 ffi.cdef("""
     typedef HANDLE HCERTSTORE;
-    typedef unsigned char *PBYTE;
+    typedef char *PBYTE;
 
 
     typedef struct _CRYPTOAPI_BLOB {

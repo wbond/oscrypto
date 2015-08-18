@@ -43,7 +43,7 @@ ffi.cdef("""
     typedef ... *SecAccessRef;
     typedef ... *SecKeychainRef;
 
-    int SecRandomCopyBytes(SecRandomRef rnd, size_t count, unsigned char *bytes);
+    int SecRandomCopyBytes(SecRandomRef rnd, size_t count, char *bytes);
     SecKeyRef SecKeyCreateFromData(CFDictionaryRef parameters, CFDataRef keyData, CFErrorRef *error);
     SecTransformRef SecEncryptTransformCreate(SecKeyRef keyRef, CFErrorRef *error);
     SecTransformRef SecDecryptTransformCreate(SecKeyRef keyRef, CFErrorRef *error);
@@ -61,8 +61,8 @@ ffi.cdef("""
     OSStatus SecTrustSettingsCopyTrustSettings(SecCertificateRef certRef, SecTrustSettingsDomain domain, CFArrayRef *trustSettings);
     CFDictionaryRef SecPolicyCopyProperties(SecPolicyRef policyRef);
     CFTypeID SecPolicyGetTypeID(void);
-    OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const unsigned char *plainText, size_t plainTextLen, unsigned char *cipherText, size_t *cipherTextLen);
-    OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const unsigned char *cipherText, size_t cipherTextLen, unsigned char *plainText, size_t *plainTextLen);
+    OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const char *plainText, size_t plainTextLen, char *cipherText, size_t *cipherTextLen);
+    OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const char *cipherText, size_t cipherTextLen, char *plainText, size_t *plainTextLen);
     OSStatus SecKeyGeneratePair(CFDictionaryRef parameters, SecKeyRef *publicKey, SecKeyRef *privateKey);
     OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags, const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
     OSStatus SecAccessCreate(CFStringRef descriptor, CFArrayRef trustedlist, SecAccessRef *accessRef);

@@ -36,13 +36,13 @@ try:
         return ffi
 
     def buffer_from_bytes(initializer):
-        return ffi.new('unsigned char[]', initializer)
+        return ffi.new('char[]', initializer)
 
     def buffer_from_unicode(initializer):
         return ffi.new('wchar_t []', initializer)
 
     def buffer_pointer(buffer):
-        return ffi.new('unsigned char *[]', [buffer])
+        return ffi.new('char *[]', [buffer])
 
     def cast(library, type_, value):
         ffi_obj = _get_ffi(library)
@@ -129,7 +129,6 @@ try:
             'LPWSTR': True,
             'LPCWSTR': True,
             'char *': True,
-            'unsigned char *': True,
             'wchar_t *': True,
         }
         string_type = name in string_types
@@ -157,7 +156,6 @@ except (ImportError):
         'void *': c_void_p,
         'wchar_t *': c_wchar_p,
         'char *': c_char_p,
-        'unsigned char *': c_char_p,
         'int': c_int,
         'unsigned int': c_uint,
         'size_t': ctypes.c_size_t,

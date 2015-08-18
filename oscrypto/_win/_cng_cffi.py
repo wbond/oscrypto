@@ -23,8 +23,8 @@ ffi.cdef("""
     typedef HANDLE BCRYPT_ALG_HANDLE;
     typedef HANDLE BCRYPT_KEY_HANDLE;
     typedef ULONG NTSTATUS;
-    typedef unsigned char *PUCHAR;
-    typedef unsigned char *PBYTE;
+    typedef char *PUCHAR;
+    typedef char *PBYTE;
 
 
     typedef struct _BCRYPT_RSAKEY_BLOB {
