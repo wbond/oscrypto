@@ -121,7 +121,7 @@ def _cached_path_needs_update(ca_path, cache_length):
 
     exists = os.path.exists(ca_path)
     if not exists:
-        return False
+        return True
 
     stats = os.stat(ca_path)
 
