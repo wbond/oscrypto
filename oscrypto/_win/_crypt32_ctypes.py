@@ -128,4 +128,4 @@ setattr(crypt32, 'CERT_ENHKEY_USAGE', CERT_ENHKEY_USAGE)
 
 def get_error():
     error = ctypes.GetLastError()
-    return (error, ctypes.FormatLastError(error))
+    return (error, ctypes.FormatError(error))

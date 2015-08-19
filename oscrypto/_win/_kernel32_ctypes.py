@@ -37,4 +37,4 @@ setattr(kernel32, 'LARGE_INTEGER', LARGE_INTEGER)
 
 def get_error():
     error = ctypes.GetLastError()
-    return (error, ctypes.FormatLastError(error))
+    return (error, ctypes.FormatError(error))
