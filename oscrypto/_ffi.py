@@ -41,6 +41,9 @@ try:
     def buffer_from_unicode(initializer):
         return ffi.new('wchar_t []', initializer)
 
+    def write_to_buffer(buffer, data, offset=0):
+        buffer[offset:offset+len(data)] = data
+
     def buffer_pointer(buffer):
         return ffi.new('char *[]', [buffer])
 
@@ -69,6 +72,8 @@ try:
     def is_null(point):
         if point == ffi.NULL:
             return True
+        if ffi.getctype(ffi.typeof(point)) == 'void *':
+            return False
         if point[0] == ffi.NULL:
             return True
         return False
@@ -85,6 +90,9 @@ try:
         if type_ in {'BCRYPT_KEY_HANDLE', 'BCRYPT_ALG_HANDLE'}:
             return ffi_obj.cast(type_, 0)
         return ffi_obj.new(type_, *params)
+
+    def ref(value, offset=0):
+        return value + offset
 
     def native(type_, value):
         if type_ == str_cls:
@@ -175,15 +183,21 @@ except (ImportError):
             'LPCWSTR': c_wchar_p,
             'ULONG': wintypes.ULONG,
             'DWORD': wintypes.DWORD,
+            'char *': ctypes.POINTER(ctypes.c_byte),
         })
 
-    def _is_pointer_type(library, type_):
+    def _type_info(library, type_):
         is_double_pointer = type_[-3:] == ' **'
         if is_double_pointer:
             type_ = type_[:-1]
         is_pointer = type_[-2:] == ' *' and type_ not in _pointer_types
         if is_pointer:
             type_ = type_[:-2]
+
+        is_array = type_.find('[') != -1
+        if is_array:
+            is_array = int(type_[type_.find('[')+1:type_.find(']')])
+            type_ = type_[0:type_.find('[')]
 
         if type_ in _type_map:
             type_ = _type_map[type_]
@@ -193,7 +207,7 @@ except (ImportError):
         if is_double_pointer:
             type_ = ctypes.POINTER(type_)
 
-        return (is_pointer, type_)
+        return (is_pointer, is_array, type_)
 
     def register_ffi(library, ffi_obj):  #pylint: disable=W0613
         pass
@@ -204,14 +218,22 @@ except (ImportError):
     def buffer_from_unicode(initializer):
         return ctypes.create_unicode_buffer(initializer)
 
+    def write_to_buffer(buffer, data, offset=0):
+        if offset == 0:
+            buffer.value = data
+        else:
+            buffer.value = buffer.raw[0:offset] + data
+
     def buffer_pointer(buffer):
         return pointer(ctypes.cast(buffer, c_char_p))
 
     def cast(library, type_, value):
-        is_pointer, type_ = _is_pointer_type(library, type_)
+        is_pointer, is_array, type_ = _type_info(library, type_)
 
         if is_pointer:
             type_ = ctypes.POINTER(type_)
+        elif is_array:
+            type_ = type_ * is_array
 
         return ctypes.cast(value, type_)
 
@@ -219,7 +241,7 @@ except (ImportError):
         return ctypes.sizeof(value)
 
     def bytes_from_buffer(buffer, maxlen=None):
-        if isinstance(buffer, (int, c_char_p)):
+        if isinstance(buffer, (int, c_char_p, ctypes.POINTER(ctypes.c_byte))):
             return ctypes.string_at(buffer, maxlen)
         if maxlen is not None:
             return buffer.raw[0:maxlen]
@@ -245,13 +267,19 @@ except (ImportError):
         if value is not None:
             params.append(value)
 
-        is_pointer, type_ = _is_pointer_type(library, type_)
+        is_pointer, is_array, type_ = _type_info(library, type_)
+        if is_array:
+            type_ = type_ * is_array
+
         output = type_(*params)
 
         if is_pointer:
             output = pointer(output)
 
         return output
+
+    def ref(value, offset=0):
+        return ctypes.cast(ctypes.addressof(value) + offset, ctypes.POINTER(ctypes.c_byte))
 
     def native(type_, value):
         if isinstance(value, type_):
@@ -279,7 +307,7 @@ except (ImportError):
         return ctypes.pointer(value)
 
     def array_from_pointer(library, type_, point, size):
-        _, type_ = _is_pointer_type(library, type_)
+        _, _, type_ = _type_info(library, type_)
         array = ctypes.cast(point, ctypes.POINTER(type_))
         output = []
         for i in range(0, size):

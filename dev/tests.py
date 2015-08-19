@@ -16,9 +16,10 @@ from tests.test_keys import KeyTests
 from tests.test_asymmetric import AsymmetricTests
 from tests.test_symmetric import SymmetricTests
 from tests.test_trust_list import TrustListTests
+from tests.test_tls import TLSTests
 
 
-test_classes = [KDFTests, KeyTests, AsymmetricTests, SymmetricTests, TrustListTests]
+test_classes = [KDFTests, KeyTests, AsymmetricTests, SymmetricTests, TrustListTests, TLSTests]
 
 
 def run(matcher=None, repeat=1):
