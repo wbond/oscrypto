@@ -8,6 +8,9 @@ from oscrypto import tls, errors
 from asn1crypto import x509
 
 from .unittest_data import DataDecorator, data
+from ._unittest_compat import patch
+
+patch()
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602

@@ -6,6 +6,10 @@ import sys
 
 from oscrypto import kdf, _pkcs5
 
+from ._unittest_compat import patch
+
+patch()
+
 if sys.version_info < (3,):
     byte_cls = str
 else:

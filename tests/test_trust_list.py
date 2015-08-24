@@ -7,6 +7,10 @@ import sys
 from oscrypto import trust_list
 from asn1crypto import x509, pem
 
+from ._unittest_compat import patch
+
+patch()
+
 if sys.version_info < (3,):
     byte_cls = str
 else:

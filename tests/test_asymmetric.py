@@ -7,6 +7,10 @@ import os
 
 from oscrypto import asymmetric, errors
 
+from ._unittest_compat import patch
+
+patch()
+
 if sys.version_info < (3,):
     byte_cls = str
 else:
