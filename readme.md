@@ -1,8 +1,8 @@
 # oscrypto
 
 A compilation-free, always up-to-date encryption library for Python that works
-on Windows, OS X, Linux and BSD. Supports all actively maintained versions
-of Python: 2.7, 3.3, 3.4, pypy and pypy3.
+on Windows, OS X, Linux and BSD. Supports the following versions of Python:
+2.6, 2.7, 3.3, 3.4, pypy and pypy3.
 
 The library integrates with the encryption library that is part of the operating
 system. This means that a compiler is never needed, and OS security updates take
@@ -79,7 +79,7 @@ implemented. CTR mode could be added, but GCM mode does not exist in OpenSSL
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.7, 3.3, 3.4, pypy or pypy3
+ - Python 2.6, 2.7, 3.3, 3.4, pypy or pypy3
 
 ## Version
 
