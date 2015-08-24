@@ -5,9 +5,9 @@ import re
 import os
 import ast, _ast
 import textwrap
-from collections import OrderedDict
 
 import CommonMark
+from asn1crypto.util import OrderedDict
 
 
 cur_dir = os.path.dirname(__file__)

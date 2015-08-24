@@ -4,10 +4,10 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 import hashlib
 import binascii
-from collections import OrderedDict
 
 from asn1crypto import keys, x509, algos, core
 import asn1crypto.pem
+from asn1crypto.util import OrderedDict
 
 from .symmetric import aes_cbc_pkcs7_encrypt
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
