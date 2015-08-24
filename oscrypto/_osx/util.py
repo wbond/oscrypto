@@ -81,24 +81,29 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     :param key_length:
         The length of the desired key in bytes
 
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
     :return:
         The derived key as a byte string
     """
 
     if not isinstance(password, byte_cls):
-        raise ValueError('password must be a byte string, not %s' % object_name(password))
+        raise TypeError('password must be a byte string, not %s' % object_name(password))
 
     if not isinstance(salt, byte_cls):
-        raise ValueError('salt must be a byte string, not %s' % object_name(salt))
+        raise TypeError('salt must be a byte string, not %s' % object_name(salt))
 
     if not isinstance(iterations, int_types):
-        raise ValueError('iterations must be an integer, not %s' % object_name(iterations))
+        raise TypeError('iterations must be an integer, not %s' % object_name(iterations))
 
     if iterations < 1:
         raise ValueError('iterations must be greater than 0')
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
+        raise TypeError('key_length must be an integer, not %s' % object_name(key_length))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0')
@@ -132,15 +137,16 @@ def rand_bytes(length):
         The desired number of bytes
 
     :raises:
-        ValueError - when the length parameter is incorrect
-        OSError - when an error is returned by OpenSSL
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string
     """
 
     if not isinstance(length, int_types):
-        raise ValueError('length must be an integer, not %s' % object_name(length))
+        raise TypeError('length must be an integer, not %s' % object_name(length))
 
     if length < 1:
         raise ValueError('length must be greater than 0')
@@ -199,6 +205,11 @@ try:
 
         :param id_:
             The ID of the usage - 1 for key, 2 for iv, 3 for mac
+
+        :raises:
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
 
         :return:
             The derived key as a byte string

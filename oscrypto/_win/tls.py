@@ -53,10 +53,15 @@ class TLSContext(object):
         :param manual_validation:
             If certificate and certificate path validation should be skipped
             and left to the developer to implement
+
+        :raises:
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
         """
 
         if not isinstance(manual_validation, bool):
-            raise ValueError('manual_validation must be a boolean, not %s' % object_name(manual_validation))
+            raise TypeError('manual_validation must be a boolean, not %s' % object_name(manual_validation))
 
         self._manual_validation = manual_validation
 
@@ -66,7 +71,7 @@ class TLSContext(object):
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
-            raise ValueError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
+            raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
 
         unsupported_protocols = protocol - {'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'}
         if unsupported_protocols:
@@ -204,6 +209,11 @@ class TLSSocket(object):
         :param context:
             An existing TLSContext object to allow for session reuse, specific
             protocol or manual certificate validation
+
+        :raises:
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
         """
 
         if not isinstance(socket, socket_.socket):
@@ -475,7 +485,9 @@ class TLSSocket(object):
         :raises:
             socket.socket - when a non-TLS socket error occurs
             oscrypto.errors.TLSError - when a TLS-related error occurs
-            OSError - when an error occurs with the Windows crypto library
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
 
         :return:
             A byte string
@@ -612,7 +624,9 @@ class TLSSocket(object):
         :raises:
             socket.socket - when a non-TLS socket error occurs
             oscrypto.errors.TLSError - when a TLS-related error occurs
-            OSError - when an error occurs with the Windows crypto library
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
         """
 
         if self._context_handle_pointer is None:
@@ -658,6 +672,9 @@ class TLSSocket(object):
     def shutdown(self):
         """
         Shuts down the TLS session and then shuts down the underlying socket
+
+        :raises:
+            OSError - when an error is returned by the OS crypto library
         """
 
         if self._context_handle_pointer is None:

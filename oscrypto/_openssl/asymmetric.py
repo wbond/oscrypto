@@ -10,7 +10,7 @@ import asn1crypto.x509
 from .._ffi import new, null, buffer_from_bytes, is_null, deref, bytes_from_buffer, buffer_pointer, unwrap
 from ._libcrypto import libcrypto, libcrypto_const, libcrypto_version_info, handle_openssl_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
-from ..errors import SignatureError, PrivateKeyError
+from ..errors import SignatureError, AsymmetricKeyError
 from .._errors import object_name
 
 if sys.version_info < (3,):
@@ -190,7 +190,8 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
-        OSError - when an error is returned by OpenSSL
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
@@ -360,8 +361,9 @@ def load_certificate(source):
         asn1crypto.x509.Certificate object
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A Certificate object
@@ -417,8 +419,10 @@ def load_private_key(source, password=None):
         PrivateKeyInfo object.
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        oscrypto.errors.AsymmetricKeyError - when the private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PrivateKey object
@@ -455,9 +459,10 @@ def load_public_key(source):
         asn1crypto.keys.PublicKeyInfo object
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        oscrypto.errors.PrivateKeyError - when the private key is incompatible with the crypto library
-        OSError - when an error is returned by OpenSSL
+        oscrypto.errors.AsymmetricKeyError - when the public key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PublicKey object
@@ -477,7 +482,7 @@ def load_public_key(source):
         raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
 
     if libcrypto_version_info < (1,) and public_key.algorithm == 'dsa' and public_key.hash_algo == 'sha2':
-        raise PrivateKeyError('OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % public_key.bit_size)
+        raise AsymmetricKeyError('OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % public_key.bit_size)
 
     data = public_key.dump()
     buffer = buffer_from_bytes(data)
@@ -499,7 +504,7 @@ def _load_key(private_object):
     """
 
     if libcrypto_version_info < (1,) and private_object.algorithm == 'dsa' and private_object.hash_algo == 'sha2':
-        raise PrivateKeyError('OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % private_object.bit_size)
+        raise AsymmetricKeyError('OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % private_object.bit_size)
 
     source = private_object.unwrap().dump()
 
@@ -523,8 +528,10 @@ def load_pkcs12(source, password=None):
         will be encoded using UTF-8.
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        oscrypto.errors.AsymmetricKeyError - when a contained public or private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
@@ -572,8 +579,9 @@ def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
         (in bytes)
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
@@ -593,8 +601,9 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
         A byte string of the encrypted data
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the original plaintext
@@ -616,8 +625,9 @@ def rsa_oaep_encrypt(certificate_or_public_key, data):
         key length (in bytes)
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
@@ -638,8 +648,9 @@ def rsa_oaep_decrypt(private_key, ciphertext):
         A byte string of the encrypted data
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by the OS X Security Framework
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the original plaintext
@@ -662,8 +673,9 @@ def _encrypt(certificate_or_public_key, data, padding):
         The padding mode to use
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
@@ -706,8 +718,9 @@ def _decrypt(private_key, ciphertext, padding):
         The padding mode to use
 
     :raises:
+        ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the plaintext
@@ -753,10 +766,10 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
-        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'rsa':
@@ -785,10 +798,10 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
-        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'rsa':
@@ -814,10 +827,10 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
-        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'dsa':
@@ -843,10 +856,10 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
-        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'ec':
@@ -875,10 +888,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
         If the certificate_or_public_key is an RSA key, this enables PSS padding
 
     :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
-        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        OSError - when an error is returned by the OS crypto library
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
@@ -1038,7 +1051,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1069,7 +1082,7 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1097,7 +1110,7 @@ def dsa_sign(private_key, data, hash_algorithm):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1125,7 +1138,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1156,7 +1169,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        OSError - when an error is returned by OpenSSL
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature

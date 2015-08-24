@@ -23,6 +23,9 @@ def extract_from_system():
     """
     Extracts trusted CA certificates from the Windows certificate store
 
+    :raises:
+        OSError - when an error is returned by the OS crypto library
+
     :return:
         A list of byte strings - each a DER-encoded certificate
     """

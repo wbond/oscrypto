@@ -13,7 +13,7 @@ class SignatureError(Exception):
     pass
 
 
-class PrivateKeyError(Exception):
+class AsymmetricKeyError(Exception):
 
     """
     An exception when a key is invalid or unsupported

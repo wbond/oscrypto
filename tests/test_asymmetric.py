@@ -207,7 +207,7 @@ class AsymmetricTests(unittest.TestCase):
             asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
         if sys.platform == 'win32':
-            with self.assertRaises(errors.PrivateKeyError):
+            with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         else:
             do_run()
@@ -224,7 +224,7 @@ class AsymmetricTests(unittest.TestCase):
             asymmetric.dsa_verify(public, signature, original_data, 'sha256')
 
         if sys.platform == 'darwin' or (sys.platform == 'win32' and _win_version_pair() < (6, 2)):
-            with self.assertRaises(errors.PrivateKeyError):
+            with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         else:
             do_run()
@@ -241,7 +241,7 @@ class AsymmetricTests(unittest.TestCase):
             asymmetric.dsa_verify(public, signature, original_data, 'sha256')
 
         if sys.platform == 'darwin' or (sys.platform == 'win32' and _win_version_pair() < (6, 2)):
-            with self.assertRaises(errors.PrivateKeyError):
+            with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         else:
             do_run()
@@ -258,7 +258,7 @@ class AsymmetricTests(unittest.TestCase):
             asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
         if sys.platform == 'darwin':
-            with self.assertRaises(errors.PrivateKeyError):
+            with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         elif sys.platform == 'win32':
             with self.assertRaises(ValueError):

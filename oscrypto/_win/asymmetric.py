@@ -11,7 +11,7 @@ from .._ffi import new, null, buffer_from_bytes, deref, bytes_from_buffer, struc
 from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
 from .._int import fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
-from ..errors import SignatureError, PrivateKeyError
+from ..errors import SignatureError, AsymmetricKeyError
 from .._errors import object_name
 
 if sys.version_info < (3,):
@@ -25,7 +25,7 @@ else:
 
 class PrivateKey():
     """
-    Container for the Windows CNG library representation of a private key
+    Container for the OS crypto library representation of a private key
     """
 
     bcrypt_key_handle = None
@@ -88,7 +88,7 @@ class PrivateKey():
 
 class PublicKey(PrivateKey):
     """
-    Container for the Windows CNG library representation of a public key
+    Container for the OS crypto library representation of a public key
     """
 
     def __init__(self, bcrypt_key_handle, asn1):
@@ -105,7 +105,7 @@ class PublicKey(PrivateKey):
 
 class Certificate(PublicKey):
     """
-    Container for the Windows CNG library representation of a certificate
+    Container for the OS crypto library representation of a certificate
     """
 
     def __init__(self, bcrypt_key_handle, asn1):
@@ -158,7 +158,7 @@ class Certificate(PublicKey):
 
 class Signature(core.Sequence):
     """
-    An ASN.1 class for translating between the Windows CNG library's
+    An ASN.1 class for translating between the OS crypto library's
     representation of a DSA signature and the ASN.1 structure that is part of
     various RFCs.
     """
@@ -214,11 +214,16 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     :param bit_size:
         An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
         2048, 3072 or 4096. For "dsa" the value may be 1024, plus 2048 or 3072
-        if OpenSSL 1.0.0 or newer is available.
+        if on Windows 8 or newer.
 
     :param curve:
         A unicode string - used for "ec" keys. Valid values include "secp256r1",
         "secp384r1" and "secp521r1".
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
@@ -574,8 +579,9 @@ def load_certificate(source):
         A byte string of file contents or a unicode string filename
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A Certificate object
@@ -592,7 +598,7 @@ def load_certificate(source):
             certificate = parse_certificate(f.read())
 
     else:
-        raise ValueError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % object_name(source))
+        raise TypeError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % object_name(source))
 
     return _load_key(certificate, Certificate)
 
@@ -610,8 +616,10 @@ def _load_key(key_object, container):
         The class of the object to hold the bcrypt_key_handle
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the public or private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PrivateKey, PublicKey or Certificate object, based on container
@@ -633,17 +641,17 @@ def _load_key(key_object, container):
         if algo == 'ec':
             curve_type, curve_name = key_info.curve
             if curve_type != 'named':
-                raise PrivateKeyError('Windows only supports EC keys using named curves')
+                raise AsymmetricKeyError('Windows only supports EC keys using named curves')
             if curve_name not in {'secp256r1', 'secp384r1', 'secp521r1'}:
-                raise PrivateKeyError('Windows only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
+                raise AsymmetricKeyError('Windows only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
         elif algo == 'dsa':
             ver_info = sys.getwindowsversion()
             pair = (ver_info.major, ver_info.minor)
             if key_info.bit_size > 1024 and pair < (6, 2):
-                raise PrivateKeyError('Windows Vista, 7 and Server 2008 only support DSA keys based on SHA1 (1024 bits or less) - this key is based on %s and is %s bits' % (key_info.hash_algo.upper(), key_info.bit_size))
+                raise AsymmetricKeyError('Windows Vista, 7 and Server 2008 only support DSA keys based on SHA1 (1024 bits or less) - this key is based on %s and is %s bits' % (key_info.hash_algo.upper(), key_info.bit_size))
             elif key_info.bit_size == 2048 and key_info.hash_algo == 'sha1':
-                raise PrivateKeyError('Windows only supports 2048 bit DSA keys based on SHA2 - this key is 2048 bits and based on SHA1, a non-standard combination that is usually generated by old versions of OpenSSL')
+                raise AsymmetricKeyError('Windows only supports 2048 bit DSA keys based on SHA2 - this key is 2048 bits and based on SHA1, a non-standard combination that is usually generated by old versions of OpenSSL')
 
         alg_selector = key_info.curve[1] if algo == 'ec' else algo
         alg_constant = {
@@ -837,8 +845,10 @@ def load_private_key(source, password=None):
         PrivateKeyInfo object.
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PrivateKey object
@@ -852,14 +862,14 @@ def load_private_key(source, password=None):
             if isinstance(password, str_cls):
                 password = password.encode('utf-8')
             if not isinstance(password, byte_cls):
-                raise ValueError('password must be a byte string, not %s' % object_name(password))
+                raise TypeError('password must be a byte string, not %s' % object_name(password))
 
         if isinstance(source, str_cls):
             with open(source, 'rb') as f:
                 source = f.read()
 
         elif not isinstance(source, byte_cls):
-            raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % object_name(source))
+            raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % object_name(source))
 
         private_object = parse_private(source, password)
 
@@ -875,8 +885,10 @@ def load_public_key(source):
         asn1crypto.keys.PublicKeyInfo object
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the public key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PublicKey object
@@ -893,7 +905,7 @@ def load_public_key(source):
             public_key = parse_public(f.read())
 
     else:
-        raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
+        raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
 
     return _load_key(public_key, PublicKey)
 
@@ -911,8 +923,10 @@ def load_pkcs12(source, password=None):
         will be encoded using UTF-8.
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when a contained public or private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
@@ -922,14 +936,14 @@ def load_pkcs12(source, password=None):
         if isinstance(password, str_cls):
             password = password.encode('utf-8')
         if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string, not %s' % object_name(password))
+            raise TypeError('password must be a byte string, not %s' % object_name(password))
 
     if isinstance(source, str_cls):
         with open(source, 'rb') as f:
             source = f.read()
 
     elif not isinstance(source, byte_cls):
-        raise ValueError('source must be a byte string or a unicode string, not %s' % object_name(source))
+        raise TypeError('source must be a byte string or a unicode string, not %s' % object_name(source))
 
     key_info, cert_info, extra_certs_info = parse_pkcs12(source, password)
 
@@ -964,9 +978,10 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'rsa':
@@ -995,9 +1010,10 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'rsa':
@@ -1023,9 +1039,10 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'dsa':
@@ -1051,9 +1068,10 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'ec':
@@ -1082,19 +1100,20 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
         If PSS padding should be used for RSA keys
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(signature, byte_cls):
-        raise ValueError('signature must be a byte string, not %s' % object_name(signature))
+        raise TypeError('signature must be a byte string, not %s' % object_name(signature))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
@@ -1166,8 +1185,9 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1196,8 +1216,9 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1223,8 +1244,9 @@ def dsa_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1250,8 +1272,9 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1280,18 +1303,19 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         If PSS padding should be used for RSA keys
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of PrivateKey, not %s' % object_name(private_key))
+        raise TypeError('private_key must be an instance of PrivateKey, not %s' % object_name(private_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
@@ -1377,21 +1401,22 @@ def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
         If OAEP padding should be used instead of PKCS#1 v1.5
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the ciphertext
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if not isinstance(rsa_oaep_padding, bool):
-        raise ValueError('rsa_oaep_padding must be a bool, not %s' % object_name(rsa_oaep_padding))
+        raise TypeError('rsa_oaep_padding must be a bool, not %s' % object_name(rsa_oaep_padding))
 
     flags = bcrypt_const.BCRYPT_PAD_PKCS1
     if rsa_oaep_padding is True:
@@ -1435,21 +1460,22 @@ def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
         If OAEP padding should be used instead of PKCS#1 v1.5
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the plaintext
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(ciphertext, byte_cls):
-        raise ValueError('ciphertext must be a byte string, not %s' % object_name(ciphertext))
+        raise TypeError('ciphertext must be a byte string, not %s' % object_name(ciphertext))
 
     if not isinstance(rsa_oaep_padding, bool):
-        raise ValueError('rsa_oaep_padding must be a bool, not %s' % object_name(rsa_oaep_padding))
+        raise TypeError('rsa_oaep_padding must be a bool, not %s' % object_name(rsa_oaep_padding))
 
     flags = bcrypt_const.BCRYPT_PAD_PKCS1
     if rsa_oaep_padding is True:
@@ -1492,8 +1518,9 @@ def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
         (in bytes)
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
@@ -1513,8 +1540,9 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
         A byte string of the encrypted data
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Window CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the original plaintext
@@ -1536,8 +1564,9 @@ def rsa_oaep_encrypt(certificate_or_public_key, data):
         key length (in bytes)
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
@@ -1558,8 +1587,9 @@ def rsa_oaep_decrypt(private_key, ciphertext):
         A byte string of the encrypted data
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the Windows CNG library
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the original plaintext

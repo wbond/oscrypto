@@ -9,7 +9,7 @@ from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, nul
 from ._security import Security, security_const, handle_sec_error
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
-from ..errors import SignatureError, PrivateKeyError
+from ..errors import SignatureError, AsymmetricKeyError
 from .._pkcs1 import add_pss_padding, verify_pss_padding
 from .._errors import object_name
 
@@ -24,7 +24,7 @@ else:
 
 class PrivateKey():
     """
-    Container for the OS X Security Framework representation of a private key
+    Container for the OS crypto library representation of a private key
     """
 
     sec_key_ref = None
@@ -78,7 +78,7 @@ class PrivateKey():
 
 class PublicKey(PrivateKey):
     """
-    Container for the OS X Security Framework representation of a public key
+    Container for the OS crypto library representation of a public key
     """
 
     def __init__(self, sec_key_ref, asn1):
@@ -96,7 +96,7 @@ class PublicKey(PrivateKey):
 
 class Certificate():
     """
-    Container for the OS X Security Framework representation of a certificate
+    Container for the OS crypto library representation of a certificate
     """
 
     sec_certificate_ref = None
@@ -187,12 +187,16 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
     :param bit_size:
         An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
-        2048, 3072 or 4096. For "dsa" the value may be 1024, plus 2048 or 3072
-        if OpenSSL 1.0.0 or newer is available.
+        2048, 3072 or 4096. For "dsa" the value may be 1024.
 
     :param curve:
         A unicode string - used for "ec" keys. Valid values include "secp256r1",
         "secp384r1" and "secp521r1".
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
@@ -323,8 +327,9 @@ def load_certificate(source):
         asn1crypto.x509.Certificate object
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A Certificate object
@@ -341,7 +346,7 @@ def load_certificate(source):
             certificate = parse_certificate(f.read())
 
     else:
-        raise ValueError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % object_name(source))
+        raise TypeError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % object_name(source))
 
     return _load_x509(certificate)
 
@@ -384,8 +389,10 @@ def load_private_key(source, password=None):
         PrivateKeyInfo object.
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PrivateKey object
@@ -399,14 +406,14 @@ def load_private_key(source, password=None):
             if isinstance(password, str_cls):
                 password = password.encode('utf-8')
             if not isinstance(password, byte_cls):
-                raise ValueError('password must be a byte string, not %s' % object_name(password))
+                raise TypeError('password must be a byte string, not %s' % object_name(password))
 
         if isinstance(source, str_cls):
             with open(source, 'rb') as f:
                 source = f.read()
 
         elif not isinstance(source, byte_cls):
-            raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % object_name(source))
+            raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % object_name(source))
 
         private_object = parse_private(source, password)
 
@@ -422,8 +429,10 @@ def load_public_key(source):
         asn1crypto.keys.PublicKeyInfo object
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the public key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A PublicKey object
@@ -440,7 +449,7 @@ def load_public_key(source):
             public_key = parse_public(f.read())
 
     else:
-        raise ValueError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
+        raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
 
     return _load_key(public_key)
 
@@ -454,6 +463,12 @@ def _load_key(key_object):
         An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
         object
 
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the public or private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
+
     :return:
         A PublicKey or PrivateKey object
     """
@@ -461,12 +476,12 @@ def _load_key(key_object):
     if key_object.algorithm == 'ec':
         curve_type, details = key_object.curve
         if curve_type != 'named':
-            raise PrivateKeyError('OS X only supports EC keys using named curves')
+            raise AsymmetricKeyError('OS X only supports EC keys using named curves')
         if details not in {'secp256r1', 'secp384r1', 'secp521r1'}:
-            raise PrivateKeyError('OS X only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
+            raise AsymmetricKeyError('OS X only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
     elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
-        raise PrivateKeyError('OS X only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % key_object.bit_size)
+        raise AsymmetricKeyError('OS X only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % key_object.bit_size)
 
     if isinstance(key_object, keys.PublicKeyInfo):
         source = key_object.dump()
@@ -524,8 +539,10 @@ def load_pkcs12(source, password=None):
         will be encoded using UTF-8.
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when a contained public or private key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A three-element tuple containing (PrivateKey, Certificate, [Certificate, ...])
@@ -535,14 +552,14 @@ def load_pkcs12(source, password=None):
         if isinstance(password, str_cls):
             password = password.encode('utf-8')
         if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string, not %s' % object_name(password))
+            raise TypeError('password must be a byte string, not %s' % object_name(password))
 
     if isinstance(source, str_cls):
         with open(source, 'rb') as f:
             source = f.read()
 
     elif not isinstance(source, byte_cls):
-        raise ValueError('source must be a byte string or a unicode string, not %s' % object_name(source))
+        raise TypeError('source must be a byte string or a unicode string, not %s' % object_name(source))
 
     key_info, cert_info, extra_certs_info = parse_pkcs12(source, password)
 
@@ -573,18 +590,19 @@ def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
         (in bytes)
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     key_length = certificate_or_public_key.byte_size
     buffer = buffer_from_bytes(key_length)
@@ -606,18 +624,19 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
         A byte string of the encrypted data
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the original plaintext
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError('private_key must an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(ciphertext, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(ciphertext))
+        raise TypeError('data must be a byte string, not %s' % object_name(ciphertext))
 
     key_length = private_key.byte_size
     buffer = buffer_from_bytes(key_length)
@@ -641,8 +660,9 @@ def rsa_oaep_encrypt(certificate_or_public_key, data):
         key length (in bytes)
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the encrypted data
@@ -663,8 +683,9 @@ def rsa_oaep_decrypt(private_key, ciphertext):
         A byte string of the encrypted data
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the original plaintext
@@ -687,18 +708,19 @@ def _encrypt(certificate_or_public_key, data, padding):
         The padding mode to use, specified as a kSecPadding*Key value
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the ciphertext
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if not padding:
         raise ValueError('padding must be specified')
@@ -746,18 +768,19 @@ def _decrypt(private_key, ciphertext, padding):
         The padding mode to use, specified as a kSecPadding*Key value
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the plaintext
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(ciphertext, byte_cls):
-        raise ValueError('ciphertext must be a byte string, not %s' % object_name(ciphertext))
+        raise TypeError('ciphertext must be a byte string, not %s' % object_name(ciphertext))
 
     if not padding:
         raise ValueError('padding must be specified')
@@ -807,9 +830,10 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'rsa':
@@ -838,16 +862,17 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
@@ -882,9 +907,10 @@ def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'dsa':
@@ -910,9 +936,10 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if certificate_or_public_key.algorithm != 'ec':
@@ -938,19 +965,20 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise ValueError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
 
     if not isinstance(signature, byte_cls):
-        raise ValueError('signature must be a byte string, not %s' % object_name(signature))
+        raise TypeError('signature must be a byte string, not %s' % object_name(signature))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
@@ -1032,8 +1060,9 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1062,18 +1091,19 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
@@ -1104,8 +1134,9 @@ def dsa_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1131,8 +1162,9 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
@@ -1158,18 +1190,19 @@ def _sign(private_key, data, hash_algorithm):
         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 
     :raises:
-        ValueError - when any of the parameters are of the wrong type or value
-        OSError - when an error is returned by the OS X Security Framework
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
 
     :return:
         A byte string of the signature
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError('private_key must be an instance of PrivateKey, not %s' % object_name(private_key))
+        raise TypeError('private_key must be an instance of PrivateKey, not %s' % object_name(private_key))
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError('data must be a byte string, not %s' % object_name(data))
 
     if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
