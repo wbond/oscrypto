@@ -69,7 +69,7 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
         that will take at least target_ms
     """
 
-    if hash_algorithm not in {'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     if not isinstance(key_length, int_types):
@@ -159,10 +159,10 @@ def pbkdf1(hash_algorithm, password, salt, iterations, key_length):
     if key_length < 1:
         raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
 
-    if hash_algorithm not in {'md2', 'md5', 'sha1'}:
+    if hash_algorithm not in set(['md2', 'md5', 'sha1']):
         raise ValueError('hash_algorithm must be one of "md2", "md5", "sha1", not %s' % repr(hash_algorithm))
 
-    if key_length > 16 and hash_algorithm in {'md2', 'md5'}:
+    if key_length > 16 and hash_algorithm in set(['md2', 'md5']):
         raise ValueError('key_length can not be longer than 16 for %s - is %s' % (hash_algorithm, repr(key_length)))
 
     if key_length > 20 and hash_algorithm == 'sha1':

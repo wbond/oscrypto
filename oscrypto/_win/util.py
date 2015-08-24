@@ -63,7 +63,7 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     if key_length < 1:
         raise ValueError('key_length must be greater than 0')
 
-    if hash_algorithm not in {'sha1', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['sha1', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     alg_constant = {

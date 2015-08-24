@@ -107,7 +107,7 @@ def dump_public_key(public_key, encoding='pem'):
         A byte string of the encoded public key
     """
 
-    if encoding not in {'pem', 'der'}:
+    if encoding not in set(['pem', 'der']):
         raise ValueError('encoding must be one of "pem", "der", not %s' % repr(encoding))
 
     is_oscrypto = isinstance(public_key, PublicKey)
@@ -137,7 +137,7 @@ def dump_certificate(certificate, encoding='pem'):
         A byte string of the encoded certificate
     """
 
-    if encoding not in {'pem', 'der'}:
+    if encoding not in set(['pem', 'der']):
         raise ValueError('encoding must be one of "pem", "der", not %s' % repr(encoding))
 
     is_oscrypto = isinstance(certificate, Certificate)
@@ -181,7 +181,7 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
         A byte string of the encoded and encrypted public key
     """
 
-    if encoding not in {'pem', 'der'}:
+    if encoding not in set(['pem', 'der']):
         raise ValueError('encoding must be one of "pem", "der", not %s' % repr(encoding))
 
     if passphrase is not None:

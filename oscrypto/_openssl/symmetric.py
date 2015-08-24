@@ -490,7 +490,7 @@ def _encrypt(cipher, key, data, iv, padding):
         if iv is None:
             iv = null()
 
-        if cipher in {'rc2', 'rc4'}:
+        if cipher in set(['rc2', 'rc4']):
             res = libcrypto.EVP_EncryptInit_ex(evp_cipher_ctx, evp_cipher, null(), null(), null())
             handle_openssl_error(res)
             res = libcrypto.EVP_CIPHER_CTX_set_key_length(evp_cipher_ctx, len(key))
@@ -579,7 +579,7 @@ def _decrypt(cipher, key, data, iv, padding):
         if iv is None:
             iv = null()
 
-        if cipher in {'rc2', 'rc4'}:
+        if cipher in set(['rc2', 'rc4']):
             res = libcrypto.EVP_DecryptInit_ex(evp_cipher_ctx, evp_cipher, null(), null(), null())
             handle_openssl_error(res)
             res = libcrypto.EVP_CIPHER_CTX_set_key_length(evp_cipher_ctx, len(key))

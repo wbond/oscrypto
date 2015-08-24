@@ -65,7 +65,7 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     if key_length < 512:
         raise ValueError('key_length must be 512 or more - is %s' % repr(key_length))
 
-    if hash_algorithm not in {'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     hash_func = getattr(hashlib, hash_algorithm)
@@ -145,7 +145,7 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     if salt_length < 0:
         raise ValueError('salt_length must be 0 or more - is %s' % repr(salt_length))
 
-    if hash_algorithm not in {'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     hash_func = getattr(hashlib, hash_algorithm)
@@ -229,7 +229,7 @@ def mgf1(hash_algorithm, seed, mask_length):
     if mask_length < 1:
         raise ValueError('mask_length must be greater than 0 - is %s' % repr(mask_length))
 
-    if hash_algorithm not in {'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     output = b''

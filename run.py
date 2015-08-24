@@ -29,7 +29,7 @@ if len(sys.argv) < 2 or len(sys.argv) > 4:
 
 task = get_arg(1)
 
-if task not in {'api_docs', 'lint', 'tests', 'coverage'}:
+if task not in set(['api_docs', 'lint', 'tests', 'coverage']):
     show_usage()
 
 if task != 'tests' and len(sys.argv) > 2:

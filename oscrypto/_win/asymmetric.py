@@ -230,11 +230,11 @@ def generate_pair(algorithm, bit_size=None, curve=None):
         may be saved by calling .asn1.dump().
     """
 
-    if algorithm not in {'rsa', 'dsa', 'ec'}:
+    if algorithm not in set(['rsa', 'dsa', 'ec']):
         raise ValueError('algorithm must be one of "rsa", "dsa", "ec", not %s' % repr(algorithm))
 
     if algorithm == 'rsa':
-        if bit_size not in {1024, 2048, 3072, 4096}:
+        if bit_size not in set([1024, 2048, 3072, 4096]):
             raise ValueError('bit_size must be one of 1024, 2048, 3072, 4096, not %s' % repr(bit_size))
 
     elif algorithm == 'dsa':
@@ -244,11 +244,11 @@ def generate_pair(algorithm, bit_size=None, curve=None):
             if bit_size != 1024:
                 raise ValueError('bit_size must be 1024, not %s' % repr(bit_size))
         else:
-            if bit_size not in {1024, 2048, 3072}:
+            if bit_size not in set([1024, 2048, 3072]):
                 raise ValueError('bit_size must be one of 1024, 2048, 3072, not %s' % repr(bit_size))
 
     elif algorithm == 'ec':
-        if curve not in {'secp256r1', 'secp384r1', 'secp521r1'}:
+        if curve not in set(['secp256r1', 'secp384r1', 'secp521r1']):
             raise ValueError('curve must be one of "secp256r1", "secp384r1", "secp521r1", not %s' % repr(curve))
 
     if algorithm == 'rsa':
@@ -642,7 +642,7 @@ def _load_key(key_object, container):
             curve_type, curve_name = key_info.curve
             if curve_type != 'named':
                 raise AsymmetricKeyError('Windows only supports EC keys using named curves')
-            if curve_name not in {'secp256r1', 'secp384r1', 'secp521r1'}:
+            if curve_name not in set(['secp256r1', 'secp384r1', 'secp521r1']):
                 raise AsymmetricKeyError('Windows only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
         elif algo == 'dsa':
@@ -1115,7 +1115,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['md5', 'sha1', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     if certificate_or_public_key.algorithm != 'rsa' and rsa_pss_padding != False:
@@ -1317,7 +1317,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in {'md5', 'sha1', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['md5', 'sha1', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     if private_key.algorithm != 'rsa' and rsa_pss_padding != False:
@@ -1362,7 +1362,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
-    if private_key.algorithm == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in {'md5', 'sha1'}:
+    if private_key.algorithm == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in set(['md5', 'sha1']):
         raise ValueError('Windows does not support sha1 signatures with DSA keys based on sha224, sha256 or sha512')
 
     out_len = new(bcrypt, 'DWORD *')

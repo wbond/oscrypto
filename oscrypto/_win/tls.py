@@ -353,7 +353,7 @@ class TLSSocket(object):
                 output_context_flags_pointer,
                 null()
             )
-            if result not in {secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED}:
+            if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
                 handle_error(result)
 
             if not renegotiate:
@@ -396,7 +396,7 @@ class TLSSocket(object):
                 if result == secur32_const.SEC_E_INCOMPLETE_MESSAGE:
                     continue
 
-                if result not in {secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED}:
+                if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result)
 
                 if in_buffers[1].BufferType == secur32_const.SECBUFFER_EXTRA:
@@ -430,7 +430,7 @@ class TLSSocket(object):
                 secur32_const.SP_PROT_TLS1_2_CLIENT: 'TLS 1.2',
             }.get(native(int, connection_info.dwProtocol), str_cls(connection_info.dwProtocol))
 
-            if self._protocol in {'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'}:
+            if self._protocol in set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2']):
                 tls_record_header = handshake_bytes[0:5]
                 tls_record_length = int_from_bytes(tls_record_header[3:])
                 tls_record = handshake_bytes[5:5+tls_record_length]
@@ -592,7 +592,7 @@ class TLSSocket(object):
                     output += bytes_from_buffer(buf.pvBuffer, buf.cbBuffer)
                 elif buffer_type == secur32_const.SECBUFFER_EXTRA:
                     extra_amount = native(int, buf.cbBuffer)
-                elif buffer_type not in {secur32_const.SECBUFFER_EMPTY, secur32_const.SECBUFFER_STREAM_HEADER, secur32_const.SECBUFFER_STREAM_TRAILER}:
+                elif buffer_type not in set([secur32_const.SECBUFFER_EMPTY, secur32_const.SECBUFFER_STREAM_HEADER, secur32_const.SECBUFFER_STREAM_TRAILER]):
                     raise OSError('Unexpected decrypt output buffer of type %s' % buffer_type)
 
             if extra_amount:
@@ -719,7 +719,7 @@ class TLSSocket(object):
                 output_context_flags_pointer,
                 null()
             )
-            if result not in {secur32_const.SEC_E_OK, secur32_const.SEC_E_CONTEXT_EXPIRED}:
+            if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_E_CONTEXT_EXPIRED]):
                 handle_error(result)
 
             token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)

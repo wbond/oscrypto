@@ -203,19 +203,19 @@ def generate_pair(algorithm, bit_size=None, curve=None):
         may be saved by calling .asn1.dump().
     """
 
-    if algorithm not in {'rsa', 'dsa', 'ec'}:
+    if algorithm not in set(['rsa', 'dsa', 'ec']):
         raise ValueError('algorithm must be one of "rsa", "dsa", "ec", not %s' % repr(algorithm))
 
     if algorithm == 'rsa':
-        if bit_size not in {1024, 2048, 3072, 4096}:
+        if bit_size not in set([1024, 2048, 3072, 4096]):
             raise ValueError('bit_size must be one of 1024, 2048, 3072, 4096, not %s' % repr(bit_size))
 
     elif algorithm == 'dsa':
-        if bit_size not in {1024}:
+        if bit_size not in set([1024]):
             raise ValueError('bit_size must be 1024, not %s' % repr(bit_size))
 
     elif algorithm == 'ec':
-        if curve not in {'secp256r1', 'secp384r1', 'secp521r1'}:
+        if curve not in set(['secp256r1', 'secp384r1', 'secp521r1']):
             raise ValueError('curve must be one of "secp256r1", "secp384r1", "secp521r1", not %s' % repr(curve))
 
     cf_dict = None
@@ -477,7 +477,7 @@ def _load_key(key_object):
         curve_type, details = key_object.curve
         if curve_type != 'named':
             raise AsymmetricKeyError('OS X only supports EC keys using named curves')
-        if details not in {'secp256r1', 'secp384r1', 'secp521r1'}:
+        if details not in set(['secp256r1', 'secp384r1', 'secp521r1']):
             raise AsymmetricKeyError('OS X only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
 
     elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
@@ -980,7 +980,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     cf_signature = None
@@ -1006,7 +1006,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
         Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
         handle_cf_error(error_pointer)
 
-        if hash_algorithm in {'sha224', 'sha256', 'sha384', 'sha512'}:
+        if hash_algorithm in set(['sha224', 'sha256', 'sha384', 'sha512']):
             hash_length = {
                 'sha224': 224,
                 'sha256': 256,
@@ -1204,7 +1204,7 @@ def _sign(private_key, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}:
+    if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
         raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
 
     cf_signature = None
@@ -1229,7 +1229,7 @@ def _sign(private_key, data, hash_algorithm):
         Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
         handle_cf_error(error_pointer)
 
-        if hash_algorithm in {'sha224', 'sha256', 'sha384', 'sha512'}:
+        if hash_algorithm in set(['sha224', 'sha256', 'sha384', 'sha512']):
             hash_length = {
                 'sha224': 224,
                 'sha256': 256,
