@@ -43,7 +43,9 @@ else:
 
     def _get_elapsed(start):
         length = datetime.now() - start
-        return int(length.total_seconds() * 1000)
+        seconds = length.seconds + (length.days * 24 * 3600)
+        milliseconds = (length.microseconds / 10**3)
+        return int(milliseconds + (seconds * 10**3))
 
 
 def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet=False):
