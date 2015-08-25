@@ -7,7 +7,7 @@ from os import path
 parent_dir = path.dirname(path.dirname(path.abspath(__file__)))
 sys.path.insert(0, parent_dir)
 
-from oscrypto._osx import tls
+from oscrypto import tls
 
 context = tls.TLSContext()
 
