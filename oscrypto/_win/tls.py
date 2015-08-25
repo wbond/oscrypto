@@ -2,7 +2,9 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
+import re
 import socket as socket_
+import select
 import numbers
 
 from asn1crypto import x509
@@ -19,11 +21,16 @@ if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
     int_types = (int, long)  #pylint: disable=E0602
     range = xrange  #pylint: disable=W0622,E0602
+    byte_cls = str
 
 else:
     str_cls = str
     int_types = int
+    byte_cls = bytes
 
+
+
+_line_regex = re.compile(b'(\r\n|\r|\n)')
 
 
 class TLSContext(object):
@@ -192,6 +199,7 @@ class TLSSocket(object):
 
     _protocol = None
     _cipher_suite = None
+    _session_id = None
 
     _remote_closed = False
 
@@ -439,6 +447,8 @@ class TLSSocket(object):
                 if tls_record[0:1] == b'\x02':
                     session_id_length = int_from_bytes(tls_record[38:39])
                     cipher_suite_start = 39 + session_id_length
+                    if session_id_length > 0:
+                        self._session_id = tls_record[39:cipher_suite_start]
                     cipher_suite_bytes = tls_record[cipher_suite_start:cipher_suite_start+2]
                     self._cipher_suite = CIPHER_SUITE_MAP[cipher_suite_bytes]
 
@@ -475,12 +485,12 @@ class TLSSocket(object):
             if new_context_handle_pointer:
                 secur32.DeleteSecurityContext(new_context_handle_pointer)
 
-    def read(self, max_length=0):
+    def read(self, max_length):
         """
         Reads data from the TLS-wrapped socket
 
         :param max_length:
-            The number of bytes to read - 0 for all available
+            The number of bytes to read
 
         :raises:
             socket.socket - when a non-TLS socket error occurs
@@ -490,7 +500,7 @@ class TLSSocket(object):
             OSError - when an error is returned by the OS crypto library
 
         :return:
-            A byte string
+            A byte string of the data read
         """
 
         if not isinstance(max_length, int_types):
@@ -500,12 +510,8 @@ class TLSSocket(object):
 
             # Allow the user to read any remaining decrypted data
             if self._decrypted_bytes != b'':
-                if max_length == 0:
-                    output = self._decrypted_bytes
-                    self._decrypted_bytes = b''
-                else:
-                    output = self._decrypted_bytes[0:max_length]
-                    self._decrypted_bytes = self._decrypted_bytes[max_length:]
+                output = self._decrypted_bytes[0:max_length]
+                self._decrypted_bytes = self._decrypted_bytes[max_length:]
                 return output
 
             self._raise_closed()
@@ -547,11 +553,18 @@ class TLSSocket(object):
             buf3.pvBuffer = null_value
             buf3.cbBuffer = 0
 
-        read_next = True
         output = self._decrypted_bytes
-        while max_length == 0 or len(output) < max_length:
-            if read_next:
-                self._received_bytes += self._socket.recv(to_recv)
+        output_len = len(output)
+
+        # Don't block if we have buffered data available
+        if output_len > 0 and not self.select_read(0):
+            self._decrypted_bytes = b''
+            return output
+
+        # This read loop will only be run if there wasn't enough
+        # buffered data to fulfill the requested max_length
+        while output_len < max_length:
+            self._received_bytes += self._socket.recv(to_recv)
 
             data_len = min(len(self._received_bytes), self._buffer_size)
             if data_len == 0:
@@ -566,11 +579,8 @@ class TLSSocket(object):
                 null()
             )
 
-            read_next = False
-
             if result == secur32_const.SEC_E_INCOMPLETE_MESSAGE:
                 _reset_buffers()
-                read_next = True
                 continue
 
             elif result == secur32_const.SEC_I_CONTEXT_EXPIRED:
@@ -590,6 +600,7 @@ class TLSSocket(object):
                 buffer_type = buf.BufferType
                 if buffer_type == secur32_const.SECBUFFER_DATA:
                     output += bytes_from_buffer(buf.pvBuffer, buf.cbBuffer)
+                    output_len = len(output)
                 elif buffer_type == secur32_const.SECBUFFER_EXTRA:
                     extra_amount = native(int, buf.cbBuffer)
                 elif buffer_type not in set([secur32_const.SECBUFFER_EMPTY, secur32_const.SECBUFFER_STREAM_HEADER, secur32_const.SECBUFFER_STREAM_TRAILER]):
@@ -603,14 +614,111 @@ class TLSSocket(object):
             # Here we reset the structs for the next call to DecryptMessage()
             _reset_buffers()
 
-            if max_length == 0 and len(self._received_bytes) == 0:
+            # If we have read something, but there is nothing left to read, we
+            # break so that we don't block for longer than necessary
+            if not self.select_read(0):
                 break
 
-        if max_length > 0 and len(output) > max_length:
+        # If the output is more than we requested (because data is decrypted in
+        # blocks), we save the extra in a buffer
+        if len(output) > max_length:
             self._decrypted_bytes = output[max_length:]
             output = output[0:max_length]
-        else:
-            self._decrypted_bytes = b''
+
+        return output
+
+    def select_read(self, timeout=None):
+        """
+        Blocks until the socket is ready to be read from, or the timeout is hit
+
+        :param timeout:
+            A float - the period of time to wait for data to be read. None for
+            no time limit.
+
+        :return:
+            A boolean - if data is ready to be read. Will only be False if
+            timeout is not None.
+        """
+
+        # If we have buffered data, we consider a read possible
+        if len(self._decrypted_bytes) > 0:
+            return True
+
+        read_ready, _, _ = select.select([self._socket], [], [], timeout)
+        return len(read_ready) > 0
+
+    def read_until(self, marker):
+        """
+        Reads data from the socket until a marker is found. Data read may
+        include data beyond the marker.
+
+        :param marker:
+            A byte string or regex object from re.compile(). Used to determine
+            when to stop reading.
+
+        :return:
+            A byte string of the data read
+        """
+
+        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):  #pylint: disable=W0212
+            raise TypeError('marker must be a byte string or compiled regex object, not %s' % object_name(marker))
+
+        output = b''
+
+        is_regex = isinstance(marker, re._pattern_type)  #pylint: disable=W0212
+
+        while True:
+            if len(self._decrypted_bytes) > 0:
+                chunk = self._decrypted_bytes
+                self._decrypted_bytes = b''
+            else:
+                chunk = self.read(8192)
+
+            output += chunk
+
+            if is_regex:
+                match = marker.search(chunk)
+                if match is not None:
+                    offset = len(output) - len(chunk)
+                    end = offset + match.end()
+                    break
+            else:
+                match = chunk.find(marker)
+                if match != -1:
+                    offset = len(output) - len(chunk)
+                    end = offset + match + len(marker)
+                    break
+
+        self._decrypted_bytes = output[end:] + self._decrypted_bytes
+        return output[0:end]
+
+    def read_line(self):
+        """
+        Reads a line from the socket, including the line ending of "\r\n", "\r",
+        or "\n"
+
+        :return:
+            A byte string of the next line from the socket
+        """
+
+        return self.read_until(_line_regex)
+
+    def read_exactly(self, num_bytes):
+        """
+        Reads exactly the specified number of bytes from the socket
+
+        :param num_bytes:
+            An integer - the exact number of bytes to read
+
+        :return:
+            A byte string of the data that was read
+        """
+
+        output = b''
+        remaining = num_bytes
+        while remaining > 0:
+            output += self.read(remaining)
+            remaining = num_bytes - len(output)
 
         return output
 
@@ -668,6 +776,22 @@ class TLSSocket(object):
             self._socket.send(bytes_from_buffer(self._encrypt_data_buffer, to_send))
 
             data = data[to_send:]
+
+    def select_write(self, timeout=None):
+        """
+        Blocks until the socket is ready to be written to, or the timeout is hit
+
+        :param timeout:
+            A float - the period of time to wait for the socket to be ready to
+            written to. None for no time limit.
+
+        :return:
+            A boolean - if the socket is ready for writing. Will only be False
+            if timeout is not None.
+        """
+
+        _, write_ready, _ = select.select([], [self._socket], [], timeout)
+        return len(write_ready) > 0
 
     def shutdown(self):
         """
@@ -844,6 +968,14 @@ class TLSSocket(object):
         """
 
         return self._protocol
+
+    @property
+    def session_id(self):
+        """
+        A byte string of the session ID from the server, or None
+        """
+
+        return self._session_id
 
     @property
     def context(self):

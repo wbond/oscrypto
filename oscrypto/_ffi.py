@@ -66,10 +66,19 @@ try:
     def byte_array(byte_string):
         return byte_string
 
+    def pointer_set(pointer_, value):
+        pointer_[0] = value
+
+    def array_set(array, value):
+        for index, val in enumerate(value):
+            array[index] = val
+
     def null():
         return ffi.NULL
 
     def is_null(point):
+        if point is None:
+            return True
         if point == ffi.NULL:
             return True
         if ffi.getctype(ffi.typeof(point)) == 'void *':
@@ -148,6 +157,10 @@ try:
             output.append(value)
         return output
 
+    def callback(library, signature_name, func):
+        ffi_obj = _get_ffi(library)
+        return ffi_obj.callback(signature_name, func)
+
     engine = 'cffi'
 
 except (ImportError):
@@ -167,6 +180,7 @@ except (ImportError):
         'int': c_int,
         'unsigned int': c_uint,
         'size_t': ctypes.c_size_t,
+        'uint32_t': ctypes.c_uint32,
     }
     if sys.platform == 'win32':
         from ctypes import wintypes
@@ -196,7 +210,11 @@ except (ImportError):
 
         is_array = type_.find('[') != -1
         if is_array:
-            is_array = int(type_[type_.find('[')+1:type_.find(']')])
+            is_array = type_[type_.find('[')+1:type_.find(']')]
+            if is_array == '':
+                is_array = True
+            else:
+                is_array = int(is_array)
             type_ = type_[0:type_.find('[')]
 
         if type_ in _type_map:
@@ -219,6 +237,10 @@ except (ImportError):
         return ctypes.create_unicode_buffer(initializer)
 
     def write_to_buffer(buffer, data, offset=0):
+        if isinstance(buffer, ctypes.POINTER(ctypes.c_byte)):
+            ctypes.memmove(buffer, data, len(data))
+            return
+
         if offset == 0:
             buffer.value = data
         else:
@@ -253,6 +275,13 @@ except (ImportError):
     def byte_array(byte_string):
         return (ctypes.c_byte * len(byte_string))(*bytes_to_list(byte_string))
 
+    def pointer_set(pointer_, value):
+        pointer_.contents.value = value
+
+    def array_set(array, value):
+        for index, val in enumerate(value):
+            array[index] = val
+
     def null():
         return None
 
@@ -263,14 +292,17 @@ except (ImportError):
         return ctypes.get_errno()
 
     def new(library, type_, value=None):
+        is_pointer, is_array, type_ = _type_info(library, type_)
+        if is_array:
+            if is_array is True:
+                type_ = type_ * value
+                value = None
+            else:
+                type_ = type_ * is_array
+
         params = []
         if value is not None:
             params.append(value)
-
-        is_pointer, is_array, type_ = _type_info(library, type_)
-        if is_array:
-            type_ = type_ * is_array
-
         output = type_(*params)
 
         if is_pointer:
@@ -284,8 +316,8 @@ except (ImportError):
     def native(type_, value):
         if isinstance(value, type_):
             return value
-        if isinstance(value, ctypes.Array) and value._type_ == ctypes.c_byte:
-            return ctypes.string_at(ctypes.addressof(value), value._length_)
+        if isinstance(value, ctypes.Array) and value._type_ == ctypes.c_byte:  #pylint: disable=W0212
+            return ctypes.string_at(ctypes.addressof(value), value._length_)  #pylint: disable=W0212
         return type_(value.value)
 
     def deref(point):
@@ -313,6 +345,9 @@ except (ImportError):
         for i in range(0, size):
             output.append(array[i])
         return output
+
+    def callback(library, signature_type, func):
+        return getattr(library, signature_type)(func)
 
     engine = 'ctypes'
 

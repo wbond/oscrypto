@@ -4,10 +4,10 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from .._ffi import FFIEngineError, null
 
 try:
-    from ._security_cffi import Security
+    from ._security_cffi import Security, version_info as osx_version_info
     from ._core_foundation_cffi import CoreFoundation, CFHelpers
 except (FFIEngineError):
-    from ._security_ctypes import Security
+    from ._security_ctypes import Security, version_info as osx_version_info
     from ._core_foundation_ctypes import CoreFoundation, CFHelpers
 
 
@@ -48,6 +48,22 @@ class security_const():
     kSecTrustSettingsDomainUser = 0
     kSecTrustSettingsDomainAdmin = 1
     kSecTrustSettingsDomainSystem = 2
+
+    kSSLSessionOptionBreakOnServerAuth = 0
+
+    kSSLProtocol2 = 1
+    kSSLProtocol3 = 2
+    kTLSProtocol1 = 4
+    kTLSProtocol11 = 7
+    kTLSProtocol12 = 8
+
+    kSSLClientSide = 1
+    kSSLStreamType = 0
+
+    errSSLWouldBlock = -9803
+    errSSLClosedGraceful = -9805
+    errSSLClosedNoNotify = -9816
+    errSSLClosedAbort = -9806
 
     errSecNoTrustSettings = -25263
 

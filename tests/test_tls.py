@@ -40,10 +40,5 @@ class TLSTests(unittest.TestCase):
         self.assertIsInstance(connection.certificate, x509.Certificate)
         self.assertLess(10, len(connection.cipher_suite))
         connection.write(b'GET / HTTP/1.1\r\nHost: ' + hostname.encode('utf-8') + b'\r\n\r\n')
-        html = b''
-        try:
-            while b'</html>' not in html:
-                html += connection.read()
-        except (errors.TLSError):  #pylint: disable=W0704
-            pass
+        html = connection.read_until(b'</html>')
         self.assertIn(b'</html>', html)

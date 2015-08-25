@@ -1,14 +1,21 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import platform
 from ctypes.util import find_library
-from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_uint64, c_ulong
-from ctypes import CDLL, POINTER
+from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_uint64, c_ulong, c_long, c_bool
+from ctypes import CDLL, POINTER, CFUNCTYPE
 
 
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
 
+
+version = platform.mac_ver()[0]
+version_info = tuple(map(int, version.split('.')))
+
+if version_info < (10, 7):
+    raise OSError('Only OS X 10.7 and newer are supported, not %s.%s' % (version_info[0], version_info[1]))
 
 security_path = find_library('Security')
 if not security_path:
@@ -16,6 +23,8 @@ if not security_path:
 
 Security = CDLL(security_path, use_errno=True)
 
+Boolean = c_bool
+CFIndex = c_long
 CFData = c_void_p
 CFString = c_void_p
 CFArray = c_void_p
@@ -43,6 +52,8 @@ SecTrustSettingsDomain = c_uint32
 SecItemImportExportFlags = c_uint32
 SecExternalFormat = c_uint32
 SecPadding = c_uint32
+SSLProtocol = c_uint32
+SSLCipherSuite = c_uint32
 SecPolicyRef = c_void_p
 CSSM_CC_HANDLE = c_uint64
 CSSM_ALGORITHMS = c_uint32
@@ -50,6 +61,9 @@ CSSM_KEYUSE = c_uint32
 SecItemImportExportKeyParameters = c_void_p
 SecAccessRef = POINTER(c_void_p)
 SecKeychainRef = c_void_p
+SSLContextRef = POINTER(c_void_p)
+SecTrustRef = POINTER(c_void_p)
+SSLConnectionRef = c_uint32
 
 try:
     Security.SecRandomCopyBytes.argtypes = [SecRandomRef, c_size_t, c_char_p]
@@ -65,7 +79,7 @@ try:
     Security.SecDecryptTransformCreate.restype = SecTransformRef
 
     Security.SecTransformSetAttribute.argtypes = [SecTransformRef, CFStringRef, CFTypeRef, POINTER(CFErrorRef)]
-    Security.SecTransformSetAttribute.restype = c_byte
+    Security.SecTransformSetAttribute.restype = Boolean
 
     Security.SecTransformExecute.argtypes = [SecTransformRef, POINTER(CFErrorRef)]
     Security.SecTransformExecute.restype = CFTypeRef
@@ -126,6 +140,103 @@ try:
 
     Security.SecKeychainItemDelete.argtypes = [SecKeyRef]
     Security.SecKeychainItemDelete.restype = OSStatus
+
+    SSLReadFunc = CFUNCTYPE(OSStatus, SSLConnectionRef, POINTER(c_byte), POINTER(c_size_t))
+    SSLWriteFunc = CFUNCTYPE(OSStatus, SSLConnectionRef, POINTER(c_byte), POINTER(c_size_t))
+
+    Security.SSLSetIOFuncs.argtypes = [SSLContextRef, SSLReadFunc, SSLWriteFunc]
+    Security.SSLSetIOFuncs.restype = OSStatus
+
+    Security.SSLSetPeerID.argtypes = [SSLContextRef, c_char_p, c_size_t]
+    Security.SSLSetPeerID.restype = OSStatus
+
+    Security.SSLSetConnection.argtypes = [SSLContextRef, SSLConnectionRef]
+    Security.SSLSetConnection.restype = OSStatus
+
+    Security.SSLSetPeerDomainName.argtypes = [SSLContextRef, c_char_p, c_size_t]
+    Security.SSLSetPeerDomainName.restype = OSStatus
+
+    Security.SSLHandshake.argtypes = [SSLContextRef]
+    Security.SSLHandshake.restype = OSStatus
+
+    Security.SSLGetBufferedReadSize.argtypes = [SSLContextRef, POINTER(c_size_t)]
+    Security.SSLGetBufferedReadSize.restype = OSStatus
+
+    Security.SSLRead.argtypes = [SSLContextRef, c_char_p, c_size_t, POINTER(c_size_t)]
+    Security.SSLRead.restype = OSStatus
+
+    Security.SSLWrite.argtypes = [SSLContextRef, c_char_p, c_size_t, POINTER(c_size_t)]
+    Security.SSLWrite.restype = OSStatus
+
+    Security.SSLClose.argtypes = [SSLContextRef]
+    Security.SSLClose.restype = OSStatus
+
+    Security.SSLGetNumberSupportedCiphers.argtypes = [SSLContextRef, POINTER(c_size_t)]
+    Security.SSLGetNumberSupportedCiphers.restype = OSStatus
+
+    Security.SSLGetSupportedCiphers.argtypes = [SSLContextRef, POINTER(SSLCipherSuite), POINTER(c_size_t)]
+    Security.SSLGetSupportedCiphers.restype = OSStatus
+
+    Security.SSLSetEnabledCiphers.argtypes = [SSLContextRef, POINTER(SSLCipherSuite), c_size_t]
+    Security.SSLSetEnabledCiphers.restype = OSStatus
+
+    Security.SSLGetNumberEnabledCiphers.argtype = [SSLContextRef, POINTER(c_size_t)]
+    Security.SSLGetNumberEnabledCiphers.restype = OSStatus
+
+    Security.SSLGetEnabledCiphers.argtypes = [SSLContextRef, POINTER(SSLCipherSuite), POINTER(c_size_t)]
+    Security.SSLGetEnabledCiphers.restype = OSStatus
+
+    Security.SSLGetNegotiatedCipher.argtypes = [SSLContextRef, POINTER(SSLCipherSuite)]
+    Security.SSLGetNegotiatedCipher.restype = OSStatus
+
+    Security.SSLGetNegotiatedProtocolVersion.argtypes = [SSLContextRef, POINTER(SSLProtocol)]
+    Security.SSLGetNegotiatedProtocolVersion.restype = OSStatus
+
+    Security.SSLCopyPeerTrust.argtypes = [SSLContextRef, POINTER(SecTrustRef)]
+    Security.SSLCopyPeerTrust.restype = OSStatus
+
+    Security.SecTrustGetCertificateCount.argtypes = [SecTrustRef]
+    Security.SecTrustGetCertificateCount.restype = CFIndex
+
+    Security.SecTrustGetCertificateAtIndex.argtypes = [SecTrustRef, CFIndex]
+    Security.SecTrustGetCertificateAtIndex.restype = SecCertificateRef
+
+    if version_info < (10, 8):
+        Security.SSLNewContext.argtypes = [Boolean, POINTER(SSLContextRef)]
+        Security.SSLNewContext.restype = OSStatus
+
+        Security.SSLDisposeContext.argtypes = [SSLContextRef]
+        Security.SSLDisposeContext.restype = OSStatus
+
+        Security.SSLSetEnableCertVerify.argtypes = [SSLContextRef, Boolean]
+        Security.SSLSetEnableCertVerify.restype = OSStatus
+
+        Security.SSLSetProtocolVersionEnabled.argtypes = [SSLContextRef, SSLProtocol, Boolean]
+        Security.SSLSetProtocolVersionEnabled.restype = OSStatus
+
+    else:
+        SSLProtocolSide = c_uint32
+        SSLConnectionType = c_uint32
+        SSLSessionOption = c_uint32
+
+        Security.SSLCreateContext.argtypes = [CFAllocatorRef, SSLProtocolSide, SSLConnectionType]
+        Security.SSLCreateContext.restype = SSLContextRef
+
+        Security.SSLSetSessionOption.argtypes = [SSLContextRef, SSLSessionOption, Boolean]
+        Security.SSLSetSessionOption.restype = OSStatus
+
+        Security.SSLSetProtocolVersionMin.argtypes = [SSLContextRef, SSLProtocol]
+        Security.SSLSetProtocolVersionMin.restype = OSStatus
+
+        Security.SSLSetProtocolVersionMax.argtypes = [SSLContextRef, SSLProtocol]
+        Security.SSLSetProtocolVersionMax.restype = OSStatus
+
+    setattr(Security, 'SSLReadFunc', SSLReadFunc)
+    setattr(Security, 'SSLWriteFunc', SSLWriteFunc)
+    setattr(Security, 'SSLContextRef', SSLContextRef)
+    setattr(Security, 'SSLProtocol', SSLProtocol)
+    setattr(Security, 'SSLCipherSuite', SSLCipherSuite)
+    setattr(Security, 'SecTrustRef', SecTrustRef)
 
     setattr(Security, 'SecAccessRef', SecAccessRef)
     setattr(Security, 'SecKeyRef', SecKeyRef)

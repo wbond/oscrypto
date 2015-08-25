@@ -18,6 +18,7 @@ def patch():
     unittest.TestCase.assertIsInstance = _assert_is_instance
     unittest.TestCase.assertRaises = _assert_raises
     unittest.TestCase.assertLess = _assert_less
+    unittest.TestCase.assertIn = _assert_in
     _non_local['patched'] = True
 
 
@@ -32,6 +33,12 @@ def _assert_is_instance(self, obj, cls, msg=None):
         if not msg:
             msg = '%s is not an instance of %r' % (obj, cls)
         self.fail(msg)
+
+
+def _assert_in(self, member, container, msg=None):
+    if member not in container:
+        standardMsg = '%s not found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
+        self.fail(self._formatMessage(msg, standardMsg))  #pylint: disable=W0212
 
 
 def _assert_raises(self, excClass, callableObj=None, *args, **kwargs):
