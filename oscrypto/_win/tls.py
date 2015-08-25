@@ -565,9 +565,9 @@ class TLSSocket(object):
 
         # This read loop will only be run if there wasn't enough
         # buffered data to fulfill the requested max_length
-        do_read = False
+        do_read = len(self._received_bytes) == 0
         while output_len < max_length:
-            if do_read or len(self._received_bytes) == 0:
+            if do_read:
                 self._received_bytes += self._socket.recv(to_recv)
 
             data_len = min(len(self._received_bytes), self._buffer_size)
@@ -625,6 +625,9 @@ class TLSSocket(object):
             # break so that we don't block for longer than necessary
             if self.select_read(0):
                 do_read = True
+
+            if not do_read and len(self._received_bytes) == 0:
+                break
 
         # If the output is more than we requested (because data is decrypted in
         # blocks), we save the extra in a buffer
