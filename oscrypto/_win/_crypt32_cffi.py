@@ -6,7 +6,7 @@ import sys
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
-    from cffi import FFI
+    import cffi
 
 except (ImportError):
     raise FFIEngineError('Error importing cffi')
@@ -18,8 +18,9 @@ else:
 
 
 
-ffi = FFI()
-ffi.set_unicode(True)
+ffi = cffi.FFI()
+if cffi.__version_info__ >= (0, 9):
+    ffi.set_unicode(True)
 ffi.cdef("""
     typedef HANDLE HCERTSTORE;
     typedef char *PBYTE;
