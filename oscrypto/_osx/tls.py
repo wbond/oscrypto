@@ -18,6 +18,7 @@ from .._errors import object_name
 from ..errors import TLSError
 from .._cipher_suites import CIPHER_SUITE_MAP
 from .util import rand_bytes
+from .._tls import parse_session_info
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -129,10 +130,16 @@ class TLSSocket(object):
 
     _protocol = None
     _cipher_suite = None
+    _compression = None
     _session_id = None
+    _session_ticket = None
 
     _chunks_read = None
     _server_hello = None
+
+    _chunks_written = None
+    _client_hello = None
+
     _local_closed = False
 
     @classmethod
@@ -190,6 +197,10 @@ class TLSSocket(object):
 
         self._chunks_read = 0
         self._server_hello = b''
+
+        self._chunks_written = 0
+        self._client_hello = b''
+
         self._decrypted_bytes = b''
 
         if address is None and port is None:
@@ -366,6 +377,14 @@ class TLSSocket(object):
             cipher_bytes = int_to_bytes(cipher_int, width=2)
             self._cipher_suite = CIPHER_SUITE_MAP.get(cipher_bytes, cipher_bytes)
 
+            session_info = parse_session_info(
+                self._server_hello,
+                self._client_hello
+            )
+            self._compression = session_info['compression']
+            self._session_id = session_info['session_id']
+            self._session_ticket = session_info['session_ticket']
+
         except (OSError):
             if session_context:
                 if osx_version_info < (10, 8):
@@ -412,17 +431,6 @@ class TLSSocket(object):
 
         if self._chunks_read < 3:
             self._server_hello += data
-            if self._chunks_read == 2:
-                tls_record_header = self._server_hello[0:5]
-                tls_record_length = int_from_bytes(tls_record_header[3:])
-                tls_record = self._server_hello[5:5+tls_record_length]
-
-                # Ensure we are working with a ServerHello message
-                if tls_record[0:1] == b'\x02':
-                    session_id_length = int_from_bytes(tls_record[38:39])
-                    if session_id_length > 0:
-                        self._session_id = tls_record[39:39+session_id_length]
-
         self._chunks_read += 1
 
         write_to_buffer(data_buffer, data)
@@ -453,6 +461,10 @@ class TLSSocket(object):
 
         data_length = deref(data_length_pointer)
         data = bytes_from_buffer(data_buffer, data_length)
+
+        if self._chunks_written < 1:
+            self._client_hello += data
+        self._chunks_written += 1
 
         error = None
         try:
@@ -845,12 +857,28 @@ class TLSSocket(object):
         return self._protocol
 
     @property
+    def compression(self):
+        """
+        A boolean if compression is enabled
+        """
+
+        return self._compression
+
+    @property
     def session_id(self):
         """
-        A byte string of the session ID from the server, or None
+        A unicode string of "new" or "reused" or None for no ticket
         """
 
         return self._session_id
+
+    @property
+    def session_ticket(self):
+        """
+        A unicode string of "new" or "reused" or None for no ticket
+        """
+
+        return self._session_ticket
 
     @property
     def context(self):

@@ -81,7 +81,7 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
 
         # On subsequent requests, the session ticket will only be seen
         # in the ClientHello message
-        if session_id is None and session_ticket is None:
+        if server_session_id is None and session_ticket is None:
             extensions_length_start = compression_start + 1 + compression_length
             extentions_length = int_from_bytes(client_tls_record[extensions_length_start:extensions_length_start+2])
             extensions_start = extensions_length_start + 2
