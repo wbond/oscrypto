@@ -420,7 +420,8 @@ class TLSSocket(object):
                 # Ensure we are working with a ServerHello message
                 if tls_record[0:1] == b'\x02':
                     session_id_length = int_from_bytes(tls_record[38:39])
-                    self._session_id = tls_record[39:39+session_id_length]
+                    if session_id_length > 0:
+                        self._session_id = tls_record[39:39+session_id_length]
 
         self._chunks_read += 1
 
