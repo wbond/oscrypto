@@ -9,9 +9,8 @@ sys.path.insert(0, parent_dir)
 
 from oscrypto import tls
 
-context = tls.TLSContext()
 
-def read_html(domain, url_path='/'):
+def read_html(domain, url_path='/', context=None):
     con = tls.TLSSocket(domain, 443, context=context)
     print('Domain:\n  %s' % domain)
     print('Protocol:\n  %s' % con.protocol)
@@ -58,6 +57,9 @@ def read_html(domain, url_path='/'):
 
     print()
 
-read_html('www.google.com')
+goog_context = tls.TLSContext()
+
+read_html('www.google.com', context=goog_context)
+read_html('www.google.com', url_path='/music', context=goog_context)
 read_html('www.howsmyssl.com', url_path='/a/check')
 read_html('packagecontrol.io')
