@@ -16,6 +16,7 @@ from ._crypt32 import crypt32
 from .._errors import object_name
 from ..errors import TLSError
 from .._cipher_suites import CIPHER_SUITE_MAP
+from .._tls import parse_session_info
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -199,7 +200,9 @@ class TLSSocket(object):
 
     _protocol = None
     _cipher_suite = None
+    _compression = None
     _session_id = None
+    _session_ticket = None
 
     _remote_closed = False
 
@@ -369,18 +372,20 @@ class TLSSocket(object):
             else:
                 temp_context_handle_pointer = first_handle
 
+            handshake_server_bytes = b''
+            handshake_client_bytes = b''
+
             if out_buffers[0].cbBuffer > 0:
                 token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
+                handshake_client_bytes += token
                 self._socket.send(token)
 
             in_data_buffer = buffer_from_bytes(32768)
             in_buffers[0].pvBuffer = cast(secur32, 'char *', in_data_buffer)
 
-            handshake_bytes = b''
-
             while result != secur32_const.SEC_E_OK:
                 bytes_read = self._socket.recv(8192)
-                handshake_bytes += bytes_read
+                handshake_server_bytes += bytes_read
                 self._received_bytes += bytes_read
 
                 in_buffers[0].cbBuffer = len(self._received_bytes)
@@ -409,6 +414,7 @@ class TLSSocket(object):
 
                 if out_buffers[0].cbBuffer > 0:
                     token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
+                    handshake_client_bytes += token
                     self._socket.send(token)
 
                 if in_buffers[1].BufferType == secur32_const.SECBUFFER_EXTRA:
@@ -419,7 +425,7 @@ class TLSSocket(object):
 
                     # The handshake is complete, so discard any extra bytes
                     if result == secur32_const.SEC_E_OK:
-                        handshake_bytes = handshake_bytes[-extra_amount:]
+                        handshake_server_bytes = handshake_server_bytes[-extra_amount:]
 
                 else:
                     self._received_bytes = b''
@@ -443,18 +449,11 @@ class TLSSocket(object):
             }.get(native(int, connection_info.dwProtocol), str_cls(connection_info.dwProtocol))
 
             if self._protocol in set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2']):
-                tls_record_header = handshake_bytes[0:5]
-                tls_record_length = int_from_bytes(tls_record_header[3:])
-                tls_record = handshake_bytes[5:5+tls_record_length]
-
-                # Ensure we are working with a ServerHello message
-                if tls_record[0:1] == b'\x02':
-                    session_id_length = int_from_bytes(tls_record[38:39])
-                    cipher_suite_start = 39 + session_id_length
-                    if session_id_length > 0:
-                        self._session_id = tls_record[39:cipher_suite_start]
-                    cipher_suite_bytes = tls_record[cipher_suite_start:cipher_suite_start+2]
-                    self._cipher_suite = CIPHER_SUITE_MAP[cipher_suite_bytes]
+                session_info = parse_session_info(handshake_server_bytes, handshake_client_bytes)
+                self._cipher_suite = session_info['cipher_suite']
+                self._compression = session_info['compression']
+                self._session_id = session_info['session_id']
+                self._session_ticket = session_info['session_ticket']
 
             output_context_flags = deref(output_context_flags_pointer)
 
@@ -984,12 +983,28 @@ class TLSSocket(object):
         return self._protocol
 
     @property
+    def compression(self):
+        """
+        A boolean if compression is enabled
+        """
+
+        return self._compression
+
+    @property
     def session_id(self):
         """
-        A byte string of the session ID from the server, or None
+        A unicode string of "new" or "reused" or None for no ticket
         """
 
         return self._session_id
+
+    @property
+    def session_ticket(self):
+        """
+        A unicode string of "new" or "reused" or None for no ticket
+        """
+
+        return self._session_ticket
 
     @property
     def context(self):
