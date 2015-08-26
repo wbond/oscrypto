@@ -265,7 +265,11 @@ class AsymmetricTests(unittest.TestCase):
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         elif sys.platform == 'win32':
-            with self.assertRaises(ValueError):
+            if _win_version_pair() < (6, 2):
+                exception_class = errors.AsymmetricKeyError
+            else:
+                exception_class = ValueError
+            with self.assertRaises(exception_class):
                 do_run()
         else:
             do_run()
