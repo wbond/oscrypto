@@ -369,16 +369,16 @@ class TLSSocket(object):
             else:
                 temp_context_handle_pointer = first_handle
 
+            if out_buffers[0].cbBuffer > 0:
+                token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
+                self._socket.send(token)
+
             in_data_buffer = buffer_from_bytes(32768)
             in_buffers[0].pvBuffer = cast(secur32, 'char *', in_data_buffer)
 
             handshake_bytes = b''
 
             while result != secur32_const.SEC_E_OK:
-                if result == secur32_const.SEC_I_CONTINUE_NEEDED and out_buffers[0].cbBuffer > 0:
-                    token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
-                    self._socket.send(token)
-
                 bytes_read = self._socket.recv(8192)
                 handshake_bytes += bytes_read
                 self._received_bytes += bytes_read
@@ -406,6 +406,10 @@ class TLSSocket(object):
 
                 if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result)
+
+                if out_buffers[0].cbBuffer > 0:
+                    token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
+                    self._socket.send(token)
 
                 if in_buffers[1].BufferType == secur32_const.SECBUFFER_EXTRA:
                     extra_amount = in_buffers[1].cbBuffer
