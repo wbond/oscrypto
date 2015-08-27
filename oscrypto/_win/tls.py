@@ -75,14 +75,14 @@ class TLSSession(object):
         self._manual_validation = manual_validation
 
         if protocol is None:
-            protocol = {'TLS 1.0', 'TLS 1.1', 'TLS 1.2'}
+            protocol = set(['TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
 
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
             raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
 
-        unsupported_protocols = protocol - {'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'}
+        unsupported_protocols = protocol - set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
         if unsupported_protocols:
             raise ValueError('protocol must contain only the unicode strings "SSL 3.0", "TLS 1.0", "TLS 1.1", "TLS 1.2", not %s' % repr(unsupported_protocols))
 
