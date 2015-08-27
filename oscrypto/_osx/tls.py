@@ -53,9 +53,9 @@ _line_regex = re.compile(b'(\r\n|\r|\n)')
 _cipher_blacklist_regex = re.compile('anon|PSK|SEED|RC4|MD5|NULL|CAMELLIA|ARIA|SRP|KRB5|EXPORT|(?<!3)DES|IDEA')
 
 
-class TLSContext(object):
+class TLSSession(object):
     """
-    A TLS context object that multiple TLSSocket objects can share for the
+    A TLS session object that multiple TLSSocket objects can share for the
     sake of session reuse
     """
 
@@ -115,7 +115,7 @@ class TLSSocket(object):
     """
 
     _socket = None
-    _context = None
+    _session = None
 
     _session_context = None
     _read_callback_pointer = None
@@ -143,7 +143,7 @@ class TLSSocket(object):
     _local_closed = False
 
     @classmethod
-    def wrap(cls, socket, hostname, context=None):
+    def wrap(cls, socket, hostname, session=None):
         """
         Takes an existing socket and adds TLS
 
@@ -153,8 +153,8 @@ class TLSSocket(object):
         :param hostname:
             A unicode string of the hostname or IP the socket is connected to
 
-        :param context:
-            An existing TLSContext object to allow for session reuse, specific
+        :param session:
+            An existing TLSSession object to allow for session reuse, specific
             protocol or manual certificate validation
 
         :raises:
@@ -169,17 +169,17 @@ class TLSSocket(object):
         if not isinstance(hostname, str_cls):
             raise TypeError('hostname must be a unicode string, not %s' % object_name(hostname))
 
-        if context is not None and not isinstance(context, TLSContext):
-            raise TypeError('context must be an instance of oscrypto.tls.TLSContext, not %s' % object_name(context))
+        if session is not None and not isinstance(session, TLSSession):
+            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
 
-        new_socket = cls(None, None, context=context)
+        new_socket = cls(None, None, session=session)
         new_socket._socket = socket  #pylint: disable=W0212
         new_socket._hostname = hostname  #pylint: disable=W0212
         new_socket._handshake()  #pylint: disable=W0212
 
         return new_socket
 
-    def __init__(self, address, port, timeout=None, context=None):
+    def __init__(self, address, port, timeout=None, session=None):
         """
         :param address:
             A unicode string of the domain name or IP address to conenct to
@@ -190,8 +190,8 @@ class TLSSocket(object):
         :param timeout:
             An integer timeout to use for the socket
 
-        :param context:
-            An oscrypto.tls.TLSContext object to allow for session reuse and
+        :param session:
+            An oscrypto.tls.TLSSession object to allow for session reuse and
             controlling the protocols and validation performed
         """
 
@@ -218,13 +218,13 @@ class TLSSocket(object):
 
             self._socket = socket_.create_connection((address, port), timeout)
 
-        if context is None:
-            context = TLSContext()
+        if session is None:
+            session = TLSSession()
 
-        elif not isinstance(context, TLSContext):
-            raise TypeError('context must be an instance of oscrypto.tls.TLSContext, not %s' % object_name(context))
+        elif not isinstance(session, TLSSession):
+            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
 
-        self._context = context
+        self._session = session
 
         if self._socket:
             self._hostname = address
@@ -275,7 +275,7 @@ class TLSSocket(object):
             if osx_version_info < (10, 8):
                 for protocol in ['SSL 2.0', 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2']:
                     protocol_const = _PROTOCOL_STRING_CONST_MAP[protocol]
-                    enabled = protocol in self._context._protocols  #pylint: disable=W0212
+                    enabled = protocol in self._session._protocols  #pylint: disable=W0212
                     result = Security.SSLSetProtocolVersionEnabled(
                         session_context,
                         protocol_const,
@@ -283,12 +283,12 @@ class TLSSocket(object):
                     )
                     handle_sec_error(result)
 
-                if self._context._manual_validation:  #pylint: disable=W0212
+                if self._session._manual_validation:  #pylint: disable=W0212
                     result = Security.SSLSetEnableCertVerify(session_context, False)
                     handle_sec_error(result)
 
             else:
-                protocol_consts = [_PROTOCOL_STRING_CONST_MAP[protocol] for protocol in self._context._protocols]  #pylint: disable=W0212
+                protocol_consts = [_PROTOCOL_STRING_CONST_MAP[protocol] for protocol in self._session._protocols]  #pylint: disable=W0212
                 min_protocol = min(protocol_consts)
                 max_protocol = max(protocol_consts)
                 result = Security.SSLSetProtocolVersionMin(
@@ -302,7 +302,7 @@ class TLSSocket(object):
                 )
                 handle_sec_error(result)
 
-                if self._context._manual_validation:  #pylint: disable=W0212
+                if self._session._manual_validation:  #pylint: disable=W0212
                     result = Security.SSLSetSessionOption(
                         session_context,
                         security_const.kSSLSessionOptionBreakOnServerAuth,
@@ -343,8 +343,8 @@ class TLSSocket(object):
             )
             handle_sec_error(result)
 
-            # Set a peer id from the context to allow for session reuse
-            peer_id = self._context._peer_id  #pylint: disable=W0212
+            # Set a peer id from the session to allow for session reuse
+            peer_id = self._session._peer_id  #pylint: disable=W0212
             result = Security.SSLSetPeerID(session_context, peer_id, len(peer_id))
             handle_sec_error(result)
 
@@ -881,12 +881,12 @@ class TLSSocket(object):
         return self._session_ticket
 
     @property
-    def context(self):
+    def session(self):
         """
-        The oscrypto.tls.TLSContext object used for this connection
+        The oscrypto.tls.TLSSession object used for this connection
         """
 
-        return self._context
+        return self._session
 
     @property
     def socket(self):

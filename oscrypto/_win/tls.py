@@ -35,9 +35,9 @@ _gwv = sys.getwindowsversion()
 _win_version_info = (_gwv.major, _gwv.minor)
 
 
-class TLSContext(object):
+class TLSSession(object):
     """
-    A TLS context object that multiple TLSSocket objects can share for the
+    A TLS session object that multiple TLSSocket objects can share for the
     sake of session reuse
     """
 
@@ -175,7 +175,7 @@ class TLSSocket(object):
     """
 
     _socket = None
-    _context = None
+    _session = None
 
     _context_handle_pointer = None
     _context_flags = None
@@ -208,7 +208,7 @@ class TLSSocket(object):
     _remote_closed = False
 
     @classmethod
-    def wrap(cls, socket, hostname, context=None):
+    def wrap(cls, socket, hostname, session=None):
         """
         Takes an existing socket and adds TLS
 
@@ -218,8 +218,8 @@ class TLSSocket(object):
         :param hostname:
             A unicode string of the hostname or IP the socket is connected to
 
-        :param context:
-            An existing TLSContext object to allow for session reuse, specific
+        :param session:
+            An existing TLSSession object to allow for session reuse, specific
             protocol or manual certificate validation
 
         :raises:
@@ -234,17 +234,17 @@ class TLSSocket(object):
         if not isinstance(hostname, str_cls):
             raise TypeError('hostname must be a unicode string, not %s' % object_name(hostname))
 
-        if context is not None and not isinstance(context, TLSContext):
-            raise TypeError('context must be an instance of oscrypto.tls.TLSContext, not %s' % object_name(context))
+        if session is not None and not isinstance(session, TLSSession):
+            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
 
-        new_socket = cls(None, None, context=context)
+        new_socket = cls(None, None, session=session)
         new_socket._socket = socket  #pylint: disable=W0212
         new_socket._hostname = hostname  #pylint: disable=W0212
         new_socket._handshake()  #pylint: disable=W0212
 
         return new_socket
 
-    def __init__(self, address, port, timeout=None, context=None):
+    def __init__(self, address, port, timeout=None, session=None):
 
         self._received_bytes = b''
         self._decrypted_bytes = b''
@@ -264,13 +264,13 @@ class TLSSocket(object):
 
             self._socket = socket_.create_connection((address, port), timeout)
 
-        if context is None:
-            context = TLSContext({'TLS 1.0', 'TLS 1.1', 'TLS 1.2'})
+        if session is None:
+            session = TLSSession()
 
-        elif not isinstance(context, TLSContext):
-            raise TypeError('context must be an instance of oscrypto.tls.TLSContext, not %s' % object_name(context))
+        elif not isinstance(session, TLSSession):
+            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
 
-        self._context = context
+        self._session = session
 
         if self._socket:
             self._hostname = address
@@ -352,7 +352,7 @@ class TLSSocket(object):
                 second_handle = temp_context_handle_pointer
 
             result = secur32.InitializeSecurityContextW(
-                self._context._credentials_handle,  #pylint: disable=W0212
+                self._session._credentials_handle,  #pylint: disable=W0212
                 first_handle,
                 self._hostname,
                 self._context_flags,
@@ -393,7 +393,7 @@ class TLSSocket(object):
                 write_to_buffer(in_data_buffer, self._received_bytes)
 
                 result = secur32.InitializeSecurityContextW(
-                    self._context._credentials_handle,  #pylint: disable=W0212
+                    self._session._credentials_handle,  #pylint: disable=W0212
                     temp_context_handle_pointer,
                     self._hostname,
                     self._context_flags,
@@ -847,7 +847,7 @@ class TLSSocket(object):
             output_context_flags_pointer = new(secur32, 'ULONG *')
 
             result = secur32.InitializeSecurityContextW(
-                self._context._credentials_handle,  #pylint: disable=W0212
+                self._session._credentials_handle,  #pylint: disable=W0212
                 self._context_handle_pointer,
                 self._hostname,
                 self._context_flags,
@@ -1011,12 +1011,12 @@ class TLSSocket(object):
         return self._session_ticket
 
     @property
-    def context(self):
+    def session(self):
         """
-        The oscrypto.tls.TLSContext object used for this connection
+        The oscrypto.tls.TLSSession object used for this connection
         """
 
-        return self._context
+        return self._session
 
     @property
     def socket(self):
