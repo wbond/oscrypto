@@ -52,16 +52,17 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
         compression = server_tls_record[compression_start:compression_start+1] != b'\x00'
 
         extensions_length_start = compression_start + 1
-        extentions_length = int_from_bytes(server_tls_record[extensions_length_start:extensions_length_start+2])
-        extensions_start = extensions_length_start + 2
-        extensions_end = extensions_start + extentions_length
-        extension_start = extensions_start
-        while extension_start < extensions_end:
-            extension_type = int_from_bytes(server_tls_record[extension_start:extension_start+2])
-            extension_length = int_from_bytes(server_tls_record[extension_start+2:extension_start+4])
-            if extension_type == 35:
-                session_ticket = "new"
-            extension_start += 4 + extension_length
+        if extensions_length_start < len(server_tls_record):
+            extentions_length = int_from_bytes(server_tls_record[extensions_length_start:extensions_length_start+2])
+            extensions_start = extensions_length_start + 2
+            extensions_end = extensions_start + extentions_length
+            extension_start = extensions_start
+            while extension_start < extensions_end:
+                extension_type = int_from_bytes(server_tls_record[extension_start:extension_start+2])
+                extension_length = int_from_bytes(server_tls_record[extension_start+2:extension_start+4])
+                if extension_type == 35:
+                    session_ticket = "new"
+                extension_start += 4 + extension_length
 
     client_tls_record_header = client_handshake_bytes[0:5]
     client_tls_record_length = int_from_bytes(client_tls_record_header[3:])
@@ -83,16 +84,17 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
         # in the ClientHello message
         if server_session_id is None and session_ticket is None:
             extensions_length_start = compression_start + 1 + compression_length
-            extentions_length = int_from_bytes(client_tls_record[extensions_length_start:extensions_length_start+2])
-            extensions_start = extensions_length_start + 2
-            extensions_end = extensions_start + extentions_length
-            extension_start = extensions_start
-            while extension_start < extensions_end:
-                extension_type = int_from_bytes(client_tls_record[extension_start:extension_start+2])
-                extension_length = int_from_bytes(client_tls_record[extension_start+2:extension_start+4])
-                if extension_type == 35:
-                    session_ticket = "reused"
-                extension_start += 4 + extension_length
+            if extensions_length_start < len(client_tls_record):
+                extentions_length = int_from_bytes(client_tls_record[extensions_length_start:extensions_length_start+2])
+                extensions_start = extensions_length_start + 2
+                extensions_end = extensions_start + extentions_length
+                extension_start = extensions_start
+                while extension_start < extensions_end:
+                    extension_type = int_from_bytes(client_tls_record[extension_start:extension_start+2])
+                    extension_length = int_from_bytes(client_tls_record[extension_start+2:extension_start+4])
+                    if extension_type == 35:
+                        session_ticket = "reused"
+                    extension_start += 4 + extension_length
 
     if server_session_id is not None:
         if client_session_id is None:
