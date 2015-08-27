@@ -8,14 +8,12 @@ import select
 import numbers
 
 from asn1crypto import x509
-from asn1crypto.util import int_from_bytes
 
 from .._ffi import new, null, is_null, struct, unwrap, bytes_from_buffer, write_to_buffer, deref, native, buffer_from_bytes, ref, cast
 from ._secur32 import secur32, secur32_const, handle_error
 from ._crypt32 import crypt32
 from .._errors import object_name
 from ..errors import TLSError
-from .._cipher_suites import CIPHER_SUITE_MAP
 from .._tls import parse_session_info
 
 if sys.version_info < (3,):

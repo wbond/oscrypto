@@ -9,7 +9,7 @@ import numbers
 import errno
 
 from asn1crypto import x509
-from asn1crypto.util import int_to_bytes, int_from_bytes
+from asn1crypto.util import int_to_bytes
 
 from ._security import Security, osx_version_info, handle_sec_error, security_const
 from ._core_foundation import CoreFoundation, handle_cf_error, CFHelpers

@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 import ctypes
-from ctypes import windll, wintypes, POINTER, c_void_p, c_char_p, c_uint, Structure
+from ctypes import windll, wintypes, POINTER, c_void_p, c_uint, Structure
 from ctypes.wintypes import DWORD, ULONG
 
 from .._ffi import FFIEngineError, LibraryNotFoundError

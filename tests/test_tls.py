@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import unittest
 import sys
 
-from oscrypto import tls, errors
+from oscrypto import tls
 from asn1crypto import x509
 
 from .unittest_data import DataDecorator, data
