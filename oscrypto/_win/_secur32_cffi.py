@@ -21,10 +21,13 @@ else:
 ffi = cffi.FFI()
 if cffi.__version_info__ >= (0, 9):
     ffi.set_unicode(True)
+if sys.maxsize > 2**32:
+    ffi.cdef("typedef uint64_t ULONG_PTR;")
+else:
+    ffi.cdef("typedef unsigned long ULONG_PTR;")
 ffi.cdef("""
     typedef HANDLE HCERTSTORE;
     typedef unsigned int ALG_ID;
-    typedef unsigned long ULONG_PTR;
     typedef WCHAR SEC_WCHAR;
     typedef unsigned long SECURITY_STATUS;
     typedef void *LUID;
