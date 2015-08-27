@@ -58,6 +58,7 @@ def read_html(domain, url_path='/', context=None):
     print(repr(output))
 
     print()
+    con.shutdown()
 
 goog_context = tls.TLSContext()
 
