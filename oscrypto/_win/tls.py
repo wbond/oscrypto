@@ -33,6 +33,9 @@ else:
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 
+_gwv = sys.getwindowsversion()
+_win_version_info = (_gwv.major, _gwv.minor)
+
 
 class TLSContext(object):
     """
@@ -819,22 +822,25 @@ class TLSSocket(object):
 
         out_buffers = None
         try:
-            buffers = new(secur32, 'SecBuffer[1]')
+            # ApplyControlToken fails with SEC_E_UNSUPPORTED_FUNCTION
+            # when called on Windows 7
+            if _win_version_info >= (6, 2):
+                buffers = new(secur32, 'SecBuffer[1]')
 
-            # This is a SCHANNEL_SHUTDOWN token (DWORD of 1)
-            buffers[0].cbBuffer = 4
-            buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
-            buffers[0].pvBuffer = cast(secur32, 'char *', buffer_from_bytes(b'\x01\x00\x00\x00'))
+                # This is a SCHANNEL_SHUTDOWN token (DWORD of 1)
+                buffers[0].cbBuffer = 4
+                buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
+                buffers[0].pvBuffer = cast(secur32, 'char *', buffer_from_bytes(b'\x01\x00\x00\x00'))
 
-            sec_buffer_desc_pointer = struct(secur32, 'SecBufferDesc')
-            sec_buffer_desc = unwrap(sec_buffer_desc_pointer)
+                sec_buffer_desc_pointer = struct(secur32, 'SecBufferDesc')
+                sec_buffer_desc = unwrap(sec_buffer_desc_pointer)
 
-            sec_buffer_desc.ulVersion = secur32_const.SECBUFFER_VERSION
-            sec_buffer_desc.cBuffers = 1
-            sec_buffer_desc.pBuffers = buffers
+                sec_buffer_desc.ulVersion = secur32_const.SECBUFFER_VERSION
+                sec_buffer_desc.cBuffers = 1
+                sec_buffer_desc.pBuffers = buffers
 
-            result = secur32.ApplyControlToken(self._context_handle_pointer, sec_buffer_desc_pointer)
-            handle_error(result)
+                result = secur32.ApplyControlToken(self._context_handle_pointer, sec_buffer_desc_pointer)
+                handle_error(result)
 
             out_sec_buffer_desc_pointer, out_buffers = self._create_buffers(2)
             out_buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
@@ -856,7 +862,7 @@ class TLSSocket(object):
                 output_context_flags_pointer,
                 null()
             )
-            if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_E_CONTEXT_EXPIRED]):
+            if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_E_CONTEXT_EXPIRED, secur32_const.SEC_I_CONTINUE_NEEDED]):
                 handle_error(result)
 
             token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
