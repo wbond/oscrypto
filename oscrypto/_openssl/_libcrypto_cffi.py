@@ -100,6 +100,7 @@ ffi.cdef("""
     void EVP_PKEY_free(EVP_PKEY *key);
 
     X509 *d2i_X509(X509 **px, const char **in, int len);
+    int i2d_X509(X509 *x, char **out);
     EVP_PKEY *X509_get_pubkey(X509 *x);
     void X509_free(X509 *a);
 

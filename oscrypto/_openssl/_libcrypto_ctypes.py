@@ -140,6 +140,9 @@ try:
     libcrypto.d2i_X509.argtypes = [POINTER(P_X509), POINTER(c_char_p), c_int]
     libcrypto.d2i_X509.restype = P_X509
 
+    libcrypto.i2d_X509.argtypes = [P_X509, POINTER(c_char_p)]
+    libcrypto.i2d_X509.restype = c_int
+
     libcrypto.X509_get_pubkey.argtypes = [P_X509]
     libcrypto.X509_get_pubkey.restype = P_EVP_PKEY
 
