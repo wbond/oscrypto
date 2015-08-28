@@ -732,7 +732,10 @@ class TLSSocket(object):
         self._local_closed = True
         self._session_context = None
 
-        self._socket.shutdown(socket_.SHUT_RDWR)
+        try:
+            self._socket.shutdown(socket_.SHUT_RDWR)
+        except (socket_.error):  #pylint: disable=W0704
+            pass
 
     def close(self):
         """

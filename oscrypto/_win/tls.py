@@ -869,7 +869,10 @@ class TLSSocket(object):
             secur32.DeleteSecurityContext(self._context_handle_pointer)
             self._context_handle_pointer = None
 
-            self._socket.shutdown(socket_.SHUT_RDWR)
+            try:
+                self._socket.shutdown(socket_.SHUT_RDWR)
+            except (socket_.error):  #pylint: disable=W0704
+                pass
 
         finally:
             if out_buffers:
