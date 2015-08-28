@@ -105,6 +105,14 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pss_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_raw_verify(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_signature_raw'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'raw')
+
     def test_dsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -188,6 +196,16 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(signature, byte_cls)
 
         asymmetric.rsa_pss_verify(public, signature, original_data, 'sha256')
+
+    def test_rsa_raw_sign(self):
+        original_data = b'This is data to sign!'
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+
+        signature = asymmetric.rsa_pkcs1v15_sign(private, original_data, 'raw')
+        self.assertIsInstance(signature, byte_cls)
+
+        asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'raw')
 
     def test_dsa_sign(self):
         original_data = b'This is data to sign'

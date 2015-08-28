@@ -815,7 +815,12 @@ def _decrypt(private_key, ciphertext, padding):
 
 def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Verifies an RSASSA-PKCS-v1.5 signature
+    Verifies an RSASSA-PKCS-v1.5 signature.
+
+    When the hash_algorithm is "raw", the operation is identical to RSA
+    public key decryption. That is: the data is not hashed and no ASN.1
+    structure with an algorithm identifier of the hash algorithm is placed in
+    the encrypted byte string.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -827,7 +832,7 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" or "raw"
 
     :raises:
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
@@ -838,6 +843,19 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
 
     if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
+
+    if hash_algorithm == 'raw':
+        if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
+            raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+
+        if not isinstance(data, byte_cls):
+            raise TypeError('data must be a byte string, not %s' % object_name(data))
+
+        result = Security.SecKeyRawVerify(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), signature, len(signature))
+        if result == security_const.errSecVerifyFailed:
+            raise SignatureError('Signature is invalid')
+        handle_sec_error(result)
+        return
 
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
@@ -1048,7 +1066,12 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
 def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     """
-    Generates an RSASSA-PKCS-v1.5 signature
+    Generates an RSASSA-PKCS-v1.5 signature.
+
+    When the hash_algorithm is "raw", the operation is identical to RSA
+    private key encryption. That is: the data is not hashed and no ASN.1
+    structure with an algorithm identifier of the hash algorithm is placed in
+    the encrypted byte string.
 
     :param private_key:
         The PrivateKey to generate the signature with
@@ -1057,7 +1080,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" or "raw"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1070,6 +1093,21 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
 
     if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
+
+    if hash_algorithm == 'raw':
+        if not isinstance(private_key, PrivateKey):
+            raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
+
+        if not isinstance(data, byte_cls):
+            raise TypeError('data must be a byte string, not %s' % object_name(data))
+
+        key_length = private_key.byte_size
+        buffer = buffer_from_bytes(key_length)
+        output_length = new(Security, 'size_t *', key_length)
+        result = Security.SecKeyRawSign(private_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), buffer, output_length)
+        handle_sec_error(result)
+
+        return bytes_from_buffer(buffer, deref(output_length))
 
     return _sign(private_key, data, hash_algorithm)
 

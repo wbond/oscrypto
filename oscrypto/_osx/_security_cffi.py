@@ -75,6 +75,8 @@ ffi.cdef("""
     CFTypeID SecPolicyGetTypeID(void);
     OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const char *plainText, size_t plainTextLen, char *cipherText, size_t *cipherTextLen);
     OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const char *cipherText, size_t cipherTextLen, char *plainText, size_t *plainTextLen);
+    OSStatus SecKeyRawSign(SecKeyRef key, SecPadding padding, const char *dataToSign, size_t dataToSignLen, char *sig, size_t * sigLen);
+    OSStatus SecKeyRawVerify(SecKeyRef key, SecPadding padding, const char *signedData, size_t signedDataLen, const char *sig, size_t sigLen);
     OSStatus SecKeyGeneratePair(CFDictionaryRef parameters, SecKeyRef *publicKey, SecKeyRef *privateKey);
     OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags, const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
     OSStatus SecAccessCreate(CFStringRef descriptor, CFArrayRef trustedlist, SecAccessRef *accessRef);

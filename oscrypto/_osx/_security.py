@@ -65,6 +65,7 @@ class security_const():
     errSSLClosedNoNotify = -9816
     errSSLClosedAbort = -9806
 
+    errSecVerifyFailed = -67808
     errSecNoTrustSettings = -25263
 
     kSecPaddingNone = 0

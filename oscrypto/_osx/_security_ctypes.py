@@ -126,6 +126,12 @@ try:
     Security.SecKeyDecrypt.argtypes = [SecKeyRef, SecPadding, c_char_p, c_size_t, c_char_p, POINTER(c_size_t)]
     Security.SecKeyDecrypt.restype = OSStatus
 
+    Security.SecKeyRawSign.argtypes = [SecKeyRef, SecPadding, c_char_p, c_size_t, c_char_p, POINTER(c_size_t)]
+    Security.SecKeyRawSign.restype = OSStatus
+
+    Security.SecKeyRawVerify.argtypes = [SecKeyRef, SecPadding, c_char_p, c_size_t, c_char_p, c_size_t]
+    Security.SecKeyRawVerify.restype = OSStatus
+
     Security.SecKeyGeneratePair.argtypes = [CFDictionaryRef, POINTER(SecKeyRef), POINTER(SecKeyRef)]
     Security.SecKeyGeneratePair.restype = OSStatus
 
