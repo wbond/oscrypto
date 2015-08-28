@@ -62,7 +62,7 @@ ffi.cdef("""
     unsigned long ERR_get_error(void);
     char *ERR_error_string(unsigned long e, char *buf);
 
-    void OPENSSL_no_config(void);
+    void OPENSSL_config(const char *config_name);
 
     EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
     void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx);

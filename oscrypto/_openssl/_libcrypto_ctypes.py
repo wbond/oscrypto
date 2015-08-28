@@ -69,8 +69,8 @@ try:
     libcrypto.ERR_free_strings.argtypes = []
     libcrypto.ERR_free_strings.restype = None
 
-    libcrypto.OPENSSL_no_config.argtypes = []
-    libcrypto.OPENSSL_no_config.restype = None
+    libcrypto.OPENSSL_config.argtypes = [c_char_p]
+    libcrypto.OPENSSL_config.restype = None
 
     # This allocates the memory and inits
     libcrypto.EVP_CIPHER_CTX_new.argtype = []

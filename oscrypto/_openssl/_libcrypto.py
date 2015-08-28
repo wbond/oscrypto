@@ -3,7 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import FFIEngineError, buffer_from_bytes, byte_string_from_buffer
+from .._ffi import FFIEngineError, buffer_from_bytes, byte_string_from_buffer, null
 
 try:
     #pylint: disable=W0611
@@ -31,7 +31,7 @@ _fallback_encodings = ['utf-8', 'cp1252']
 
 
 libcrypto.ERR_load_crypto_strings()
-libcrypto.OPENSSL_no_config()
+libcrypto.OPENSSL_config(null())
 
 
 def _try_decode(value):
