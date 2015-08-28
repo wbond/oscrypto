@@ -6,11 +6,11 @@ import sys
 from asn1crypto import keys, x509
 
 from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null
-from ._security import Security, security_const, handle_sec_error
+from ._security import Security, security_const, handle_sec_error, osx_version_info
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, AsymmetricKeyError
-from .._pkcs1 import add_pss_padding, verify_pss_padding
+from .._pkcs1 import add_pss_padding, verify_pss_padding, remove_pkcs1v15_encryption_padding
 from .._errors import object_name
 
 if sys.version_info < (3,):
@@ -641,10 +641,21 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
     key_length = private_key.byte_size
     buffer = buffer_from_bytes(key_length)
     output_length = new(Security, 'size_t *', key_length)
-    result = Security.SecKeyDecrypt(private_key.sec_key_ref, security_const.kSecPaddingPKCS1, ciphertext, len(ciphertext), buffer, output_length)
+
+    if osx_version_info < (10, 8):
+        padding = security_const.kSecPaddingNone
+    else:
+        padding = security_const.kSecPaddingPKCS1
+
+    result = Security.SecKeyDecrypt(private_key.sec_key_ref, padding, ciphertext, len(ciphertext), buffer, output_length)
     handle_sec_error(result)
 
-    return bytes_from_buffer(buffer, deref(output_length))
+    output = bytes_from_buffer(buffer, deref(output_length))
+
+    if osx_version_info < (10, 8):
+        output = remove_pkcs1v15_encryption_padding(key_length, output)
+
+    return output
 
 
 def rsa_oaep_encrypt(certificate_or_public_key, data):

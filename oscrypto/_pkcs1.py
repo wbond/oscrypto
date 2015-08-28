@@ -252,3 +252,69 @@ def mgf1(hash_algorithm, seed, mask_length):
         output += hash_func(seed + b).digest()
 
     return output[0:mask_length]
+
+
+def remove_pkcs1v15_encryption_padding(key_length, plaintext):
+    """
+    Removes PKCS#1 v1.5 padding from a decrypted message using constant time
+    operations
+
+    :param plaintext:
+        A byte string to unpad
+
+    :return:
+        The unpadded plaintext as a byte string
+    """
+
+    if not isinstance(plaintext, byte_cls):
+        raise ValueError('plaintext must be a byte string, not %s' % plaintext.__class__.__name__)
+
+    if not isinstance(key_length, int_types):
+        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+
+    if key_length < 64:
+        raise ValueError('key_length must be 64 or more - is %s' % repr(key_length))
+
+    if len(plaintext) != key_length:
+        raise ValueError('Error decrypting')
+
+    error = 0
+    trash = 0  #pylint: disable=W0612
+    padding_end = 0
+
+    # Uses bitwise operations on an error variable and another trash variable
+    # to perform constant time error checking/token scanning on the plaintext
+    for i in range(0, len(plaintext)):
+        byte = plaintext[i:i+1]
+        byte_num = ord(byte)
+
+        # First byte should be \x00
+        if i == 0:
+            error |= byte_num
+
+        # Second byte should be \x02
+        elif i == 1:
+            error |= int((byte_num | 2) != 2)
+
+        # Bytes 3-10 should not be \x00
+        elif i < 10:
+            error |= int((byte_num ^ 0) == 0)
+
+        # Byte 11 or after that is zero is end of padding
+        else:
+            non_zero = byte_num | 0
+            if padding_end == 0:
+                if non_zero:
+                    trash |= i
+                else:
+                    padding_end |= i
+            else:
+                if non_zero:
+                    trash |= i
+                else:
+                    trash |= i
+
+    if error != 0:
+        raise ValueError('Error decrypting')
+
+    return plaintext[padding_end+1:]

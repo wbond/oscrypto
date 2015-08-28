@@ -239,7 +239,7 @@ class TLSSocket(object):
 
         try:
             if osx_version_info < (10, 8):
-                session_context_pointer = new('SSLContextRef *')
+                session_context_pointer = new(Security, 'SSLContextRef *')
                 result = Security.SSLNewContext(False, session_context_pointer)
                 handle_sec_error(result)
                 session_context = unwrap(session_context_pointer)
@@ -273,7 +273,7 @@ class TLSSocket(object):
 
             # Ensure requested protocol support is set for the session
             if osx_version_info < (10, 8):
-                for protocol in ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2']:
+                for protocol in ['SSLv2', 'SSLv3', 'TLSv1']:
                     protocol_const = _PROTOCOL_STRING_CONST_MAP[protocol]
                     enabled = protocol in self._session._protocols  #pylint: disable=W0212
                     result = Security.SSLSetProtocolVersionEnabled(
