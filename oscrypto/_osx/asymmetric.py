@@ -914,7 +914,13 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         'sha512': 64
     }.get(hash_algorithm, 0)
 
-    plaintext = _encrypt(certificate_or_public_key, signature, Security.kSecPaddingNoneKey)
+    key_length = certificate_or_public_key.byte_size
+    buffer = buffer_from_bytes(key_length)
+    output_length = new(Security, 'size_t *', key_length)
+    result = Security.SecKeyEncrypt(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingNone, signature, len(signature), buffer, output_length)
+    handle_sec_error(result)
+
+    plaintext = bytes_from_buffer(buffer, deref(output_length))
     if not verify_pss_padding(hash_algorithm, hash_length, certificate_or_public_key.bit_size, data, plaintext):
         raise SignatureError('Signature is invalid')
 
@@ -1166,7 +1172,14 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
     }.get(hash_algorithm, 0)
 
     encoded_data = add_pss_padding(hash_algorithm, hash_length, private_key.bit_size, data)
-    return _decrypt(private_key, encoded_data, Security.kSecPaddingNoneKey)
+
+    key_length = private_key.byte_size
+    buffer = buffer_from_bytes(key_length)
+    output_length = new(Security, 'size_t *', key_length)
+    result = Security.SecKeyDecrypt(private_key.sec_key_ref, security_const.kSecPaddingNone, encoded_data, len(encoded_data), buffer, output_length)
+    handle_sec_error(result)
+
+    return bytes_from_buffer(buffer, deref(output_length))
 
 
 def dsa_sign(private_key, data, hash_algorithm):
