@@ -34,19 +34,19 @@ else:
 
 
 _PROTOCOL_STRING_CONST_MAP = {
-    'SSL 2.0': security_const.kSSLProtocol2,
-    'SSL 3.0': security_const.kSSLProtocol3,
-    'TLS 1.0': security_const.kTLSProtocol1,
-    'TLS 1.1': security_const.kTLSProtocol11,
-    'TLS 1.2': security_const.kTLSProtocol12,
+    'SSLv2': security_const.kSSLProtocol2,
+    'SSLv3': security_const.kSSLProtocol3,
+    'TLSv1': security_const.kTLSProtocol1,
+    'TLSv1.1': security_const.kTLSProtocol11,
+    'TLSv1.2': security_const.kTLSProtocol12,
 }
 
 _PROTOCOL_CONST_STRING_MAP = {
-    security_const.kSSLProtocol2: 'SSL 2.0',
-    security_const.kSSLProtocol3: 'SSL 3.0',
-    security_const.kTLSProtocol1: 'TLS 1.0',
-    security_const.kTLSProtocol11: 'TLS 1.1',
-    security_const.kTLSProtocol12: 'TLS 1.2',
+    security_const.kSSLProtocol2: 'SSLv2',
+    security_const.kSSLProtocol3: 'SSLv3',
+    security_const.kTLSProtocol1: 'TLSv1',
+    security_const.kTLSProtocol11: 'TLSv1.1',
+    security_const.kTLSProtocol12: 'TLSv1.2',
 }
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
@@ -70,12 +70,12 @@ class TLSSession(object):
             A unicode string or set of unicode strings representing allowable
             protocols to negotiate with the server:
 
-             - "TLS 1.2"
-             - "TLS 1.1"
-             - "TLS 1.0"
-             - "SSL 3.0"
+             - "TLSv1.2"
+             - "TLSv1.1"
+             - "TLSv1"
+             - "SSLv3"
 
-            Default is: {"TLS 1.0", "TLS 1.1", "TLS 1.2"}
+            Default is: {"TLSv1", "TLSv1.1", "TLSv1.2"}
 
         :param manual_validation:
             If certificate and certificate path validation should be skipped
@@ -93,16 +93,16 @@ class TLSSession(object):
         self._manual_validation = manual_validation
 
         if protocol is None:
-            protocol = set(['TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
+            protocol = set(['TLSv1', 'TLSv1.1', 'TLSv1.2'])
 
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
             raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
 
-        unsupported_protocols = protocol - set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
+        unsupported_protocols = protocol - set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'])
         if unsupported_protocols:
-            raise ValueError('protocol must contain only the unicode strings "SSL 3.0", "TLS 1.0", "TLS 1.1", "TLS 1.2", not %s' % repr(unsupported_protocols))
+            raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
 
         self._protocols = protocol
 
@@ -273,7 +273,7 @@ class TLSSocket(object):
 
             # Ensure requested protocol support is set for the session
             if osx_version_info < (10, 8):
-                for protocol in ['SSL 2.0', 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2']:
+                for protocol in ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2']:
                     protocol_const = _PROTOCOL_STRING_CONST_MAP[protocol]
                     enabled = protocol in self._session._protocols  #pylint: disable=W0212
                     result = Security.SSLSetProtocolVersionEnabled(
@@ -854,7 +854,7 @@ class TLSSocket(object):
     @property
     def protocol(self):
         """
-        A unicode string of: "TLS 1.2", "TLS 1.1", "TLS 1.0", "SSL 3.0"
+        A unicode string of: "TLSv1.2", "TLSv1.1", "TLSv1", "SSLv3"
         """
 
         return self._protocol

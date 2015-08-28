@@ -52,12 +52,12 @@ class TLSSession(object):
             A unicode string or set of unicode strings representing allowable
             protocols to negotiate with the server:
 
-             - "TLS 1.2"
-             - "TLS 1.1"
-             - "TLS 1.0"
-             - "SSL 3.0"
+             - "TLSv1.2"
+             - "TLSv1.1"
+             - "TLSv1"
+             - "SSLv3"
 
-            Default is: {"TLS 1.0", "TLS 1.1", "TLS 1.2"}
+            Default is: {"TLSv1", "TLSv1.1", "TLSv1.2"}
 
         :param manual_validation:
             If certificate and certificate path validation should be skipped
@@ -75,16 +75,16 @@ class TLSSession(object):
         self._manual_validation = manual_validation
 
         if protocol is None:
-            protocol = set(['TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
+            protocol = set(['TLSv1', 'TLSv1.1', 'TLSv1.2'])
 
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
             raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
 
-        unsupported_protocols = protocol - set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
+        unsupported_protocols = protocol - set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'])
         if unsupported_protocols:
-            raise ValueError('protocol must contain only the unicode strings "SSL 3.0", "TLS 1.0", "TLS 1.1", "TLS 1.2", not %s' % repr(unsupported_protocols))
+            raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
 
         self._protocols = protocol
 
@@ -96,10 +96,10 @@ class TLSSession(object):
         """
 
         protocol_values = {
-            'SSL 3.0': secur32_const.SP_PROT_SSL3_CLIENT,
-            'TLS 1.0': secur32_const.SP_PROT_TLS1_CLIENT,
-            'TLS 1.1': secur32_const.SP_PROT_TLS1_1_CLIENT,
-            'TLS 1.2': secur32_const.SP_PROT_TLS1_2_CLIENT,
+            'SSLv3': secur32_const.SP_PROT_SSL3_CLIENT,
+            'TLSv1': secur32_const.SP_PROT_TLS1_CLIENT,
+            'TLSv1.1': secur32_const.SP_PROT_TLS1_1_CLIENT,
+            'TLSv1.2': secur32_const.SP_PROT_TLS1_2_CLIENT,
         }
         protocol_bit_mask = 0
         for key, value in protocol_values.items():
@@ -442,14 +442,14 @@ class TLSSocket(object):
             connection_info = unwrap(connection_info_pointer)
 
             self._protocol = {
-                secur32_const.SP_PROT_SSL2_CLIENT: 'SSL 2.0',
-                secur32_const.SP_PROT_SSL3_CLIENT: 'SSL 3.0',
-                secur32_const.SP_PROT_TLS1_CLIENT: 'TLS 1.0',
-                secur32_const.SP_PROT_TLS1_1_CLIENT: 'TLS 1.1',
-                secur32_const.SP_PROT_TLS1_2_CLIENT: 'TLS 1.2',
+                secur32_const.SP_PROT_SSL2_CLIENT: 'SSLv2',
+                secur32_const.SP_PROT_SSL3_CLIENT: 'SSLv3',
+                secur32_const.SP_PROT_TLS1_CLIENT: 'TLSv1',
+                secur32_const.SP_PROT_TLS1_1_CLIENT: 'TLSv1.1',
+                secur32_const.SP_PROT_TLS1_2_CLIENT: 'TLSv1.2',
             }.get(native(int, connection_info.dwProtocol), str_cls(connection_info.dwProtocol))
 
-            if self._protocol in set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2']):
+            if self._protocol in set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2']):
                 session_info = parse_session_info(handshake_server_bytes, handshake_client_bytes)
                 self._cipher_suite = session_info['cipher_suite']
                 self._compression = session_info['compression']
@@ -984,7 +984,7 @@ class TLSSocket(object):
     @property
     def protocol(self):
         """
-        A unicode string of: "TLS 1.2", "TLS 1.1", "TLS 1.0", "SSL 3.0"
+        A unicode string of: "TLSv1.2", "TLSv1.1", "TLSv1", "SSLv3"
         """
 
         return self._protocol

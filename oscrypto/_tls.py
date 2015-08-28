@@ -44,11 +44,11 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
         # Ensure we are working with a ServerHello message
         if server_tls_record[0:1] == b'\x02':
             protocol = {
-                b'\x03\x00': "SSL 3.0",
-                b'\x03\x01': "TLS 1.0",
-                b'\x03\x02': "TLS 1.1",
-                b'\x03\x03': "TLS 1.2",
-                b'\x03\x04': "TLS 1.3",
+                b'\x03\x00': "SSLv3",
+                b'\x03\x01': "TLSv1",
+                b'\x03\x02': "TLSv1.1",
+                b'\x03\x03': "TLSv1.2",
+                b'\x03\x04': "TLSv1.3",
             }[server_tls_record[4:6]]
 
             session_id_length = int_from_bytes(server_tls_record[38:39])

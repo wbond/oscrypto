@@ -31,11 +31,11 @@ else:
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 _PROTOCOL_MAP = {
-    'SSL 2.0': libssl_const.SSL_OP_NO_SSLv2,
-    'SSL 3.0': libssl_const.SSL_OP_NO_SSLv3,
-    'TLS 1.0': libssl_const.SSL_OP_NO_TLSv1,
-    'TLS 1.1': libssl_const.SSL_OP_NO_TLSv1_1,
-    'TLS 1.2': libssl_const.SSL_OP_NO_TLSv1_2,
+    'SSLv2': libssl_const.SSL_OP_NO_SSLv2,
+    'SSLv3': libssl_const.SSL_OP_NO_SSLv3,
+    'TLSv1': libssl_const.SSL_OP_NO_TLSv1,
+    'TLSv1.1': libssl_const.SSL_OP_NO_TLSv1_1,
+    'TLSv1.2': libssl_const.SSL_OP_NO_TLSv1_2,
 }
 
 
@@ -57,12 +57,12 @@ class TLSSession(object):
             A unicode string or set of unicode strings representing allowable
             protocols to negotiate with the server:
 
-             - "TLS 1.2"
-             - "TLS 1.1"
-             - "TLS 1.0"
-             - "SSL 3.0"
+             - "TLSv1.2"
+             - "TLSv1.1"
+             - "TLSv1"
+             - "SSLv3"
 
-            Default is: {"TLS 1.0", "TLS 1.1", "TLS 1.2"}
+            Default is: {"TLSv1", "TLSv1.1", "TLSv1.2"}
 
         :param manual_validation:
             If certificate and certificate path validation should be skipped
@@ -80,17 +80,17 @@ class TLSSession(object):
         self._manual_validation = manual_validation
 
         if protocol is None:
-            protocol = set(['TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
+            protocol = set(['TLSv1', 'TLSv1.1', 'TLSv1.2'])
 
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
             raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
 
-        valid_protocols = set(['SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2'])
+        valid_protocols = set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'])
         unsupported_protocols = protocol - valid_protocols
         if unsupported_protocols:
-            raise ValueError('protocol must contain only the unicode strings "SSL 3.0", "TLS 1.0", "TLS 1.1", "TLS 1.2", not %s' % repr(unsupported_protocols))
+            raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
 
         self._protocols = protocol
 
@@ -118,7 +118,7 @@ class TLSSession(object):
             result = libssl.SSL_CTX_set_cipher_list(ssl_ctx, b'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA')
             handle_openssl_error(result)
 
-            disabled_protocols = set(['SSL 2.0'])
+            disabled_protocols = set(['SSLv2'])
             disabled_protocols |= (valid_protocols - self._protocols)
             for disabled_protocol in disabled_protocols:
                 libssl.SSL_CTX_ctrl(
@@ -743,7 +743,7 @@ class TLSSocket(object):
     @property
     def protocol(self):
         """
-        A unicode string of: "TLS 1.2", "TLS 1.1", "TLS 1.0", "SSL 3.0"
+        A unicode string of: "TLSv1.2", "TLSv1.1", "TLSv1", "SSLv3"
         """
 
         return self._protocol
