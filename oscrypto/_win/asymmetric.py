@@ -962,7 +962,12 @@ def load_pkcs12(source, password=None):
 
 def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Verifies an RSASSA-PKCS-v1.5 signature
+    Verifies an RSASSA-PKCS-v1.5 signature.
+
+    When the hash_algorithm is "raw", the operation is identical to RSA
+    public key decryption. That is: the data is not hashed and no ASN.1
+    structure with an algorithm identifier of the hash algorithm is placed in
+    the encrypted byte string.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -974,7 +979,7 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
 
     :raises:
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
@@ -1093,7 +1098,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
 
     :param rsa_pss_padding:
         If PSS padding should be used for RSA keys
@@ -1114,21 +1119,32 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in set(['md5', 'sha1', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+    valid_hash_algorithms = set(['md5', 'sha1', 'sha256', 'sha384', 'sha512'])
+    if certificate_or_public_key.algorithm == 'rsa' and not rsa_pss_padding:
+        valid_hash_algorithms |= set(['raw'])
+
+    if hash_algorithm not in valid_hash_algorithms:
+        valid_hash_algorithms_error = '"md5", "sha1", "sha256", "sha384", "sha512"'
+        if certificate_or_public_key.algorithm == 'rsa' and not rsa_pss_padding:
+            valid_hash_algorithms_error += ', "raw"'
+        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
 
     if certificate_or_public_key.algorithm != 'rsa' and rsa_pss_padding != False:
         raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % certificate_or_public_key.algorithm.upper())
 
-    hash_constant = {
-        'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
-        'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
-        'sha256': bcrypt_const.BCRYPT_SHA256_ALGORITHM,
-        'sha384': bcrypt_const.BCRYPT_SHA384_ALGORITHM,
-        'sha512': bcrypt_const.BCRYPT_SHA512_ALGORITHM
-    }[hash_algorithm]
-
-    digest = getattr(hashlib, hash_algorithm)(data).digest()
+    if hash_algorithm == 'raw':
+        if len(data) > certificate_or_public_key.byte_size - 11:
+            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (certificate_or_public_key.byte_size, len(data)))
+        digest = data
+    else:
+        hash_constant = {
+            'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
+            'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
+            'sha256': bcrypt_const.BCRYPT_SHA256_ALGORITHM,
+            'sha384': bcrypt_const.BCRYPT_SHA384_ALGORITHM,
+            'sha512': bcrypt_const.BCRYPT_SHA512_ALGORITHM
+        }[hash_algorithm]
+        digest = getattr(hashlib, hash_algorithm)(data).digest()
 
     padding_info = null()
     flags = 0
@@ -1155,8 +1171,11 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
             padding_info_struct = unwrap(padding_info_struct_pointer)
             # This has to be assigned to a variable to prevent cffi from gc'ing it
-            hash_buffer = buffer_from_unicode(hash_constant)
-            padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+            if hash_algorithm == 'raw':
+                padding_info_struct.pszAlgId = null()
+            else:
+                hash_buffer = buffer_from_unicode(hash_constant)
+                padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
     else:
         # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
@@ -1172,7 +1191,12 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
 def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     """
-    Generates an RSASSA-PKCS-v1.5 signature
+    Generates an RSASSA-PKCS-v1.5 signature.
+
+    When the hash_algorithm is "raw", the operation is identical to RSA
+    private key encryption. That is: the data is not hashed and no ASN.1
+    structure with an algorithm identifier of the hash algorithm is placed in
+    the encrypted byte string.
 
     :param private_key:
         The PrivateKey to generate the signature with
@@ -1181,7 +1205,7 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1296,7 +1320,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
 
     :param rsa_pss_padding:
         If PSS padding should be used for RSA keys
@@ -1316,21 +1340,33 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in set(['md5', 'sha1', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+    valid_hash_algorithms = set(['md5', 'sha1', 'sha256', 'sha384', 'sha512'])
+    if private_key.algorithm == 'rsa' and not rsa_pss_padding:
+        valid_hash_algorithms |= set(['raw'])
+
+    if hash_algorithm not in valid_hash_algorithms:
+        valid_hash_algorithms_error = '"md5", "sha1", "sha256", "sha384", "sha512"'
+        if private_key.algorithm == 'rsa' and not rsa_pss_padding:
+            valid_hash_algorithms_error += ', "raw"'
+        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
 
     if private_key.algorithm != 'rsa' and rsa_pss_padding != False:
         raise ValueError('PSS padding may only be used with RSA keys - signing via a %s key was requested' % private_key.algorithm.upper())
 
-    hash_constant = {
-        'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
-        'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
-        'sha256': bcrypt_const.BCRYPT_SHA256_ALGORITHM,
-        'sha384': bcrypt_const.BCRYPT_SHA384_ALGORITHM,
-        'sha512': bcrypt_const.BCRYPT_SHA512_ALGORITHM
-    }[hash_algorithm]
+    if hash_algorithm == 'raw':
+        if len(data) > private_key.byte_size - 11:
+            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (private_key.byte_size, len(data)))
+        digest = data
+    else:
+        hash_constant = {
+            'md5': bcrypt_const.BCRYPT_MD5_ALGORITHM,
+            'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
+            'sha256': bcrypt_const.BCRYPT_SHA256_ALGORITHM,
+            'sha384': bcrypt_const.BCRYPT_SHA384_ALGORITHM,
+            'sha512': bcrypt_const.BCRYPT_SHA512_ALGORITHM
+        }[hash_algorithm]
 
-    digest = getattr(hashlib, hash_algorithm)(data).digest()
+        digest = getattr(hashlib, hash_algorithm)(data).digest()
 
     padding_info = null()
     flags = 0
@@ -1357,8 +1393,11 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
             padding_info_struct = unwrap(padding_info_struct_pointer)
             # This has to be assigned to a variable to prevent cffi from gc'ing it
-            hash_buffer = buffer_from_unicode(hash_constant)
-            padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
+            if hash_algorithm == 'raw':
+                padding_info_struct.pszAlgId = null()
+            else:
+                hash_buffer = buffer_from_unicode(hash_constant)
+                padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
     if private_key.algorithm == 'dsa' and private_key.bit_size > 1024 and hash_algorithm in set(['md5', 'sha1']):
