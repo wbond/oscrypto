@@ -1,0 +1,47 @@
+# coding: utf-8
+from __future__ import unicode_literals, division, absolute_import, print_function
+
+from .._ffi import FFIEngineError
+
+# Initialize OpenSSL
+from ._libcrypto import libcrypto_version_info
+
+try:
+    #pylint: disable=W0611
+    from ._libssl_cffi import libssl
+except (FFIEngineError):
+    from ._libssl_ctypes import libssl
+
+
+
+libssl.SSL_library_init()
+# Enables SHA2 algorithms on 0.9.8n and older
+#if libcrypto_version_info < (1, 0):
+    #libssl.OPENSSL_add_all_algorithms_noconf()
+
+
+class libssl_const():
+    SSL_CTRL_OPTIONS = 32
+    SSL_CTRL_SET_SESS_CACHE_MODE = 44
+
+    SSL_VERIFY_NONE = 0
+    SSL_VERIFY_PEER = 1
+
+    SSL_ST_OK = 3
+
+    SSL_ERROR_WANT_READ = 2
+    SSL_ERROR_WANT_WRITE = 3
+    SSL_ERROR_ZERO_RETURN = 6
+
+    SSL_OP_NO_SSLv2 = 0x01000000
+    SSL_OP_NO_SSLv3 = 0x02000000
+    SSL_OP_NO_TLSv1 = 0x04000000
+    SSL_OP_NO_TLSv1_2 = 0x08000000
+    SSL_OP_NO_TLSv1_1 = 0x10000000
+
+    SSL_SESS_CACHE_CLIENT = 0x0001
+
+    SSL_R_NO_SHARED_CIPHER = 193
+
+    SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+    TLSEXT_NAMETYPE_host_name = 0
