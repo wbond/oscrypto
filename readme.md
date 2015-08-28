@@ -18,8 +18,7 @@ Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
 should, or should not use, please see [Learning](docs/readme.md#learning).
 
- - Exporting PEM-formatted CA certs from the operating system (for OpenSSL-based
-   code)
+ - TLSv1.x (and SSLv3) socket wrappers
  - Generating public/private key pairs:
    - RSA (1024, 2048, 3072, 4096 bit)
    - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
@@ -49,6 +48,8 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - PBKDF2
    - PBKDF1
    - PKCS#12 KDF
+ - Exporting PEM-formatted CA certs from the operating system (for OpenSSL-based
+   code)
  - Random byte generation
 
 The feature set was largely driven by the technologies used related to
@@ -59,10 +60,8 @@ schemes are part of X.509 signatures.
 For modern cryptography not tied to an existing system, please see the
 [Modern Cryptography](docs/readme.md#learning) section of the docs.
 
-*Please note that this library does not provide TLS or SSL functionality.*
-Additionally, modern block modes such as CTR and GCM are not currently
-implemented. CTR mode could be added, but GCM mode does not exist in OpenSSL
-0.9.8.
+*Please note that this library does not inlcude modern block modes such as CTR
+and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 
 *oscrypto* is part of the modularcrypto family of Python packages:
 
