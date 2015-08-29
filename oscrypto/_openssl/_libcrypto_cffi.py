@@ -61,6 +61,7 @@ ffi.cdef("""
 
     unsigned long ERR_get_error(void);
     char *ERR_error_string(unsigned long e, char *buf);
+    unsigned long ERR_peek_error(void);
 
     void OPENSSL_config(const char *config_name);
 

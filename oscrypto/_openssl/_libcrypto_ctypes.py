@@ -63,6 +63,9 @@ try:
     libcrypto.ERR_get_error.argtypes = []
     libcrypto.ERR_get_error.restype = c_ulong
 
+    libcrypto.ERR_peek_error.argtypes = []
+    libcrypto.ERR_peek_error.restype = c_ulong
+
     libcrypto.ERR_error_string.argtypes = [c_ulong, c_char_p]
     libcrypto.ERR_error_string.restype = c_char_p
 

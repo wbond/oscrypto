@@ -10,7 +10,7 @@ import numbers
 from asn1crypto import x509
 
 from ._libssl import libssl, libssl_const
-from ._libcrypto import libcrypto, handle_openssl_error
+from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
 from .._ffi import null, unwrap, bytes_from_buffer, buffer_from_bytes, array_from_pointer, is_null, native, buffer_pointer
 from .._errors import object_name
 from ..errors import TLSError
@@ -307,6 +307,9 @@ class TLSSocket(object):
                     raise TLSError('Unable to negotiate secure connection - no shared cipher suite')
 
                 else:
+                    info = peek_openssl_error()
+                    if info == (20, 144, 134):
+                        raise TLSError('Server certificate verification failed')
                     handle_openssl_error(0)
 
             session_info = parse_session_info(
