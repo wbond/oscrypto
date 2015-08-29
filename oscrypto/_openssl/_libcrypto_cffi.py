@@ -47,7 +47,7 @@ ffi.cdef("""
     typedef ... EVP_CIPHER;
     typedef ... ENGINE;
     typedef uintptr_t EVP_PKEY;
-    typedef ... X509;
+    typedef uintptr_t X509;
     typedef uintptr_t RSA;
     typedef uintptr_t DSA;
     typedef uintptr_t EC_KEY;
