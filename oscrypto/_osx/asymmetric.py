@@ -873,19 +873,6 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
     if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
 
-    if hash_algorithm == 'raw':
-        if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-            raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
-
-        if not isinstance(data, byte_cls):
-            raise TypeError('data must be a byte string, not %s' % object_name(data))
-
-        result = Security.SecKeyRawVerify(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), signature, len(signature))
-        if result == security_const.errSecVerifyFailed:
-            raise SignatureError('Signature is invalid')
-        handle_sec_error(result)
-        return
-
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
 
@@ -1033,8 +1020,25 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+    valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
+    if certificate_or_public_key.algorithm == 'rsa':
+        valid_hash_algorithms |= set(['raw'])
+
+    if hash_algorithm not in valid_hash_algorithms:
+        valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
+        if certificate_or_public_key.algorithm == 'rsa':
+            valid_hash_algorithms_error += ', "raw"'
+        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
+
+    if certificate_or_public_key.algorithm == 'rsa' and hash_algorithm == 'raw':
+        if len(data) > certificate_or_public_key.byte_size - 11:
+            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (certificate_or_public_key.byte_size, len(data)))
+
+        result = Security.SecKeyRawVerify(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), signature, len(signature))
+        if result == security_const.errSecVerifyFailed:
+            raise SignatureError('Signature is invalid')
+        handle_sec_error(result)
+        return
 
     cf_signature = None
     cf_data = None
@@ -1128,21 +1132,6 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
 
     if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
-
-    if hash_algorithm == 'raw':
-        if not isinstance(private_key, PrivateKey):
-            raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
-
-        if not isinstance(data, byte_cls):
-            raise TypeError('data must be a byte string, not %s' % object_name(data))
-
-        key_length = private_key.byte_size
-        buffer = buffer_from_bytes(key_length)
-        output_length = new(Security, 'size_t *', key_length)
-        result = Security.SecKeyRawSign(private_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), buffer, output_length)
-        handle_sec_error(result)
-
-        return bytes_from_buffer(buffer, deref(output_length))
 
     return _sign(private_key, data, hash_algorithm)
 
@@ -1284,8 +1273,27 @@ def _sign(private_key, data, hash_algorithm):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+    valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
+    if private_key.algorithm == 'rsa':
+        valid_hash_algorithms |= set(['raw'])
+
+    if hash_algorithm not in valid_hash_algorithms:
+        valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
+        if private_key.algorithm == 'rsa':
+            valid_hash_algorithms_error += ', "raw"'
+        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
+
+    if private_key.algorithm == 'rsa' and hash_algorithm == 'raw':
+        if len(data) > private_key.byte_size - 11:
+            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (private_key.byte_size, len(data)))
+
+        key_length = private_key.byte_size
+        buffer = buffer_from_bytes(key_length)
+        output_length = new(Security, 'size_t *', key_length)
+        result = Security.SecKeyRawSign(private_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), buffer, output_length)
+        handle_sec_error(result)
+
+        return bytes_from_buffer(buffer, deref(output_length))
 
     cf_signature = None
     cf_data = None
