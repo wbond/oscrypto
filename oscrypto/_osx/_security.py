@@ -64,6 +64,9 @@ class security_const():
     errSSLClosedGraceful = -9805
     errSSLClosedNoNotify = -9816
     errSSLClosedAbort = -9806
+    errSSLXCertChainInvalid = -9807
+    errSSLCertExpired = -9814
+    errSSLCertNotYetValid = -9815
 
     errSecVerifyFailed = -67808
     errSecNoTrustSettings = -25263

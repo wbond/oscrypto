@@ -351,6 +351,8 @@ class TLSSocket(object):
             result = Security.SSLHandshake(session_context)
             while result == security_const.errSSLWouldBlock:
                 result = Security.SSLHandshake(session_context)
+            if result in set([security_const.errSSLXCertChainInvalid, security_const.errSSLCertExpired, security_const.errSSLCertNotYetValid]):
+                raise TLSError('Server certificate verification failed')
             if result != security_const.errSSLWouldBlock:
                 handle_sec_error(result)
 
