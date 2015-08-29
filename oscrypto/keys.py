@@ -301,7 +301,7 @@ def _unarmor_pem_openssl_private(headers, data, password):
         return data
 
     if enc_iv_hex:
-        enc_iv = binascii.unhexlify(enc_iv_hex)
+        enc_iv = binascii.unhexlify(enc_iv_hex.encode('ascii'))
     enc_algo = enc_algo.lower()
 
     enc_key_length = {
