@@ -12,6 +12,7 @@ from ._libcrypto import libcrypto, libcrypto_const, libcrypto_version_info, hand
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, AsymmetricKeyError
 from .._errors import object_name
+from ..util import constant_compare
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -769,7 +770,12 @@ def _decrypt(private_key, ciphertext, padding):
 
 def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
-    Verifies an RSASSA-PKCS-v1.5 signature
+    Verifies an RSASSA-PKCS-v1.5 signature.
+
+    When the hash_algorithm is "raw", the operation is identical to RSA
+    public key decryption. That is: the data is not hashed and no ASN.1
+    structure with an algorithm identifier of the hash algorithm is placed in
+    the encrypted byte string.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -781,7 +787,8 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384",
+        "sha512" or "raw"
 
     :raises:
         oscrypto.errors.SignatureError - when the signature is determined to be invalid
@@ -921,11 +928,44 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+    valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
+    if certificate_or_public_key.algorithm == 'rsa' and not rsa_pss_padding:
+        valid_hash_algorithms |= set(['raw'])
+
+    if hash_algorithm not in valid_hash_algorithms:
+        valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
+        if certificate_or_public_key.algorithm == 'rsa' and not rsa_pss_padding:
+            valid_hash_algorithms_error += ', "raw"'
+        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
 
     if certificate_or_public_key.algorithm != 'rsa' and rsa_pss_padding:
         raise ValueError('PSS padding can only be used with RSA keys - the key provided is a %s key' % certificate_or_public_key.algorithm.upper())
+
+    if certificate_or_public_key.algorithm == 'rsa' and hash_algorithm == 'raw':
+        if len(data) > certificate_or_public_key.byte_size - 11:
+            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (certificate_or_public_key.byte_size, len(data)))
+
+        rsa = None
+
+        try:
+            rsa = libcrypto.EVP_PKEY_get1_RSA(certificate_or_public_key.evp_pkey)
+            if is_null(rsa):
+                handle_openssl_error(0)
+
+            buffer_size = libcrypto.EVP_PKEY_size(certificate_or_public_key.evp_pkey)
+            decrypted_buffer = buffer_from_bytes(buffer_size)
+            decrypted_length = libcrypto.RSA_public_decrypt(len(signature), signature, decrypted_buffer, rsa, libcrypto_const.RSA_PKCS1_PADDING)
+            handle_openssl_error(decrypted_length)
+
+            decrypted_bytes = bytes_from_buffer(decrypted_buffer, decrypted_length)
+
+            if not constant_compare(data, decrypted_bytes):
+                raise SignatureError('Signature is invalid')
+            return
+
+        finally:
+            if rsa:
+                libcrypto.RSA_free(rsa)
 
     evp_md_ctx = None
     rsa = None
@@ -1055,7 +1095,12 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
 def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
     """
-    Generates an RSASSA-PKCS-v1.5 signature
+    Generates an RSASSA-PKCS-v1.5 signature.
+
+    When the hash_algorithm is "raw", the operation is identical to RSA
+    private key encryption. That is: the data is not hashed and no ASN.1
+    structure with an algorithm identifier of the hash algorithm is placed in
+    the encrypted byte string.
 
     :param private_key:
         The PrivateKey to generate the signature with
@@ -1064,7 +1109,8 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384",
+        "sha512" or "raw"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1199,11 +1245,41 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if not isinstance(data, byte_cls):
         raise TypeError('data must be a byte string, not %s' % object_name(data))
 
-    if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+    valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
+    if private_key.algorithm == 'rsa' and not rsa_pss_padding:
+        valid_hash_algorithms |= set(['raw'])
+
+    if hash_algorithm not in valid_hash_algorithms:
+        valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
+        if private_key.algorithm == 'rsa' and not rsa_pss_padding:
+            valid_hash_algorithms_error += ', "raw"'
+        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
 
     if private_key.algorithm != 'rsa' and rsa_pss_padding:
         raise ValueError('PSS padding can only be used with RSA keys - the key provided is a %s key' % private_key.algorithm.upper())
+
+    if private_key.algorithm == 'rsa' and hash_algorithm == 'raw':
+        if len(data) > private_key.byte_size - 11:
+            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (private_key.byte_size, len(data)))
+
+        rsa = None
+
+        try:
+            rsa = libcrypto.EVP_PKEY_get1_RSA(private_key.evp_pkey)
+            if is_null(rsa):
+                handle_openssl_error(0)
+
+            buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
+
+            signature_buffer = buffer_from_bytes(buffer_size)
+            signature_length = libcrypto.RSA_private_encrypt(len(data), data, signature_buffer, rsa, libcrypto_const.RSA_PKCS1_PADDING)
+            handle_openssl_error(signature_length)
+
+            return bytes_from_buffer(signature_buffer, signature_length)
+
+        finally:
+            if rsa:
+                libcrypto.RSA_free(rsa)
 
     evp_md_ctx = None
     rsa = None

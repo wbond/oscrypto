@@ -136,6 +136,15 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_verify_fail(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.rsa_pkcs1v15_verify(public, signature, original_data + b'1', 'sha1')
+
     def test_rsa_pss_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -144,6 +153,15 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pss_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_pss_verify_fail(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_pss_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.rsa_pss_verify(public, signature, original_data + b'1', 'sha1')
+
     def test_rsa_raw_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -151,6 +169,15 @@ class AsymmetricTests(unittest.TestCase):
             signature = f.read()
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'raw')
+
+    def test_rsa_raw_verify_fail(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_signature_raw'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.rsa_pkcs1v15_verify(public, signature, original_data + b'1', 'raw')
 
     def test_dsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
