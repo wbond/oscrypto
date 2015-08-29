@@ -111,6 +111,9 @@ class TLSSession(object):
                 null()
             )
 
+            result = libssl.SSL_CTX_set_default_verify_paths(ssl_ctx)
+            handle_openssl_error(result)
+
             verify_mode = libssl_const.SSL_VERIFY_NONE if manual_validation else libssl_const.SSL_VERIFY_PEER
             libssl.SSL_CTX_set_verify(ssl_ctx, verify_mode, null())
 

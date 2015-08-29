@@ -76,6 +76,12 @@ try:
     libssl.SSL_CTX_set_verify.argtypes = [P_SSL_CTX, c_int, POINTER(verify_callback)]
     libssl.SSL_CTX_set_verify.restype = None
 
+    libssl.SSL_CTX_set_default_verify_paths.argtypes = [P_SSL_CTX]
+    libssl.SSL_CTX_set_default_verify_paths.restype = c_int
+
+    libssl.SSL_CTX_load_verify_locations.argtypes = [P_SSL_CTX, c_char_p, c_char_p]
+    libssl.SSL_CTX_load_verify_locations.restype = c_int
+
     libssl.SSL_CTX_set_cipher_list.argtypes = [P_SSL_CTX, c_char_p]
     libssl.SSL_CTX_set_cipher_list.restype = c_int
 

@@ -60,6 +60,9 @@ ffi.cdef("""
     long SSL_CTX_set_timeout(SSL_CTX *ctx, long t);
     void SSL_CTX_set_verify(SSL_CTX *ctx, int mode,
                     int (*verify_callback)(int, X509_STORE_CTX *));
+    int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
+    int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile,
+                    const char *CApath);
     int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
     long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
     void SSL_CTX_free(SSL_CTX *a);
