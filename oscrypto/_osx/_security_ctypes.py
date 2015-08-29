@@ -108,9 +108,6 @@ try:
     Security.SecTrustSettingsCopyCertificates.argtypes = [SecTrustSettingsDomain, POINTER(CFArrayRef)]
     Security.SecTrustSettingsCopyCertificates.restype = OSStatus
 
-    Security.SecCertificateCopyNormalizedSubjectContent.argtypes = [SecCertificateRef, POINTER(CFErrorRef)]
-    Security.SecCertificateCopyNormalizedSubjectContent.restype = CFDataRef
-
     Security.SecTrustSettingsCopyTrustSettings.argtypes = [SecCertificateRef, SecTrustSettingsDomain, POINTER(CFArrayRef)]
     Security.SecTrustSettingsCopyTrustSettings.restype = OSStatus
 

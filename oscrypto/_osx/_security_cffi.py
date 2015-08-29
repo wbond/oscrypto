@@ -69,7 +69,6 @@ ffi.cdef("""
     OSStatus SecTrustCopyAnchorCertificates(CFArrayRef *anchors);
     CFDataRef SecCertificateCopyData(SecCertificateRef certificate);
     OSStatus SecTrustSettingsCopyCertificates(SecTrustSettingsDomain domain, CFArrayRef *certArray);
-    CFDataRef SecCertificateCopyNormalizedSubjectContent(SecCertificateRef certificate, CFErrorRef *error);
     OSStatus SecTrustSettingsCopyTrustSettings(SecCertificateRef certRef, SecTrustSettingsDomain domain, CFArrayRef *trustSettings);
     CFDictionaryRef SecPolicyCopyProperties(SecPolicyRef policyRef);
     CFTypeID SecPolicyGetTypeID(void);

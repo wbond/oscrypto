@@ -3,6 +3,8 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
+from asn1crypto import x509
+
 from .._ffi import new, unwrap, null
 from ._core_foundation import CoreFoundation, CFHelpers
 from ._security import Security, security_const, handle_sec_error
@@ -42,9 +44,8 @@ def extract_from_system():
         der_cert = CFHelpers.cf_data_to_bytes(data_pointer)
         CoreFoundation.CFRelease(data_pointer)
 
-        data_pointer = Security.SecCertificateCopyNormalizedSubjectContent(cert_pointer, null())
-        der_subject = CFHelpers.cf_data_to_bytes(data_pointer)
-        CoreFoundation.CFRelease(data_pointer)
+        cert = x509.Certificate.load(der_cert)
+        der_subject = cert.subject.dump()
 
         certificates[der_subject] = der_cert
 
@@ -62,10 +63,6 @@ def extract_from_system():
         length = CoreFoundation.CFArrayGetCount(cert_trust_settings_pointer)
         for index in range(0, length):
             cert_pointer = CoreFoundation.CFArrayGetValueAtIndex(cert_trust_settings_pointer, index)
-
-            data_pointer = Security.SecCertificateCopyNormalizedSubjectContent(cert_pointer, null())
-            der_subject = CFHelpers.cf_data_to_bytes(data_pointer)
-            CoreFoundation.CFRelease(data_pointer)
 
             trust_settings_pointer_pointer = new(CoreFoundation, 'CFArrayRef *')
             res = Security.SecTrustSettingsCopyTrustSettings(cert_pointer, domain, trust_settings_pointer_pointer)
@@ -120,13 +117,21 @@ def extract_from_system():
 
                 settings.append(settings_dict)
 
-            if settings and der_subject in certificates:
-                for setting in settings:
-                    # The absence of this key means the trust setting is for the
-                    # cert in general, not just for one usage of the cert
-                    if 'kSecTrustSettingsPolicy' not in setting:
-                        if setting['kSecTrustSettingsResult'] in ['kSecTrustSettingsResultInvalid', 'kSecTrustSettingsResultDeny']:
-                            del certificates[der_subject]
+            if settings:
+                data_pointer = Security.SecCertificateCopyData(cert_pointer)
+                der_cert = CFHelpers.cf_data_to_bytes(data_pointer)
+                CoreFoundation.CFRelease(data_pointer)
+
+                cert = x509.Certificate.load(der_cert)
+                der_subject = cert.subject.dump()
+
+                if der_subject in certificates:
+                    for setting in settings:
+                        # The absence of this key means the trust setting is for the
+                        # cert in general, not just for one usage of the cert
+                        if 'kSecTrustSettingsPolicy' not in setting:
+                            if setting['kSecTrustSettingsResult'] in ['kSecTrustSettingsResultInvalid', 'kSecTrustSettingsResultDeny']:
+                                del certificates[der_subject]
 
             CoreFoundation.CFRelease(trust_settings_pointer)
 
