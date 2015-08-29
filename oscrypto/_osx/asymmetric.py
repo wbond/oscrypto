@@ -53,6 +53,15 @@ class PrivateKey():
         return self.asn1.algorithm
 
     @property
+    def curve(self):
+        """
+        :return:
+            A unicode string of EC curve name
+        """
+
+        return self.asn1.curve[1]
+
+    @property
     def bit_size(self):
         """
         :return:
@@ -124,6 +133,15 @@ class Certificate():
         """
 
         return self.public_key.algorithm
+
+    @property
+    def curve(self):
+        """
+        :return:
+            A unicode string of EC curve name
+        """
+
+        return self.public_key.curve
 
     @property
     def bit_size(self):

@@ -28,6 +28,45 @@ def _win_version_pair():
 
 class AsymmetricTests(unittest.TestCase):
 
+    def test_cert_attributes(self):
+        cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test.crt'))
+        self.assertEqual(2048, cert.bit_size)
+        self.assertEqual(256, cert.byte_size)
+        self.assertEqual('rsa', cert.algorithm)
+
+    def test_public_key_attributes(self):
+        pub_key = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-rsa.key'))
+        self.assertEqual(2048, pub_key.bit_size)
+        self.assertEqual(256, pub_key.byte_size)
+        self.assertEqual('rsa', pub_key.algorithm)
+
+    def test_private_key_attributes(self):
+        private_key = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        self.assertEqual(2048, private_key.bit_size)
+        self.assertEqual(256, private_key.byte_size)
+        self.assertEqual('rsa', private_key.algorithm)
+
+    def test_cert_ec_attributes(self):
+        cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
+        self.assertEqual(256, cert.bit_size)
+        self.assertEqual(32, cert.byte_size)
+        self.assertEqual('secp256r1', cert.curve)
+        self.assertEqual('ec', cert.algorithm)
+
+    def test_public_key_ec_attributes(self):
+        pub_key = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
+        self.assertEqual(256, pub_key.bit_size)
+        self.assertEqual(32, pub_key.byte_size)
+        self.assertEqual('secp256r1', pub_key.curve)
+        self.assertEqual('ec', pub_key.algorithm)
+
+    def test_private_key_ec_attributes(self):
+        private_key = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
+        self.assertEqual(256, private_key.bit_size)
+        self.assertEqual(32, private_key.byte_size)
+        self.assertEqual('secp256r1', private_key.curve)
+        self.assertEqual('ec', private_key.algorithm)
+
     def test_dump_public(self):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         pem_serialized = asymmetric.dump_public_key(public)
