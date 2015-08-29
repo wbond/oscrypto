@@ -26,12 +26,12 @@ register_ffi(libssl, ffi)
 
 ffi.cdef("""
     typedef ... SSL_METHOD;
-    typedef ... SSL_CTX;
+    typedef uintptr_t SSL_CTX;
     typedef ... SSL_SESSION;
-    typedef ... SSL;
+    typedef uintptr_t SSL;
     typedef ... BIO_METHOD;
-    typedef ... BIO;
-    tyoedef ... X509;
+    typedef uintptr_t BIO;
+    typedef uintptr_t X509;
     typedef ... X509_STORE_CTX;
 
     typedef int (*stack_cmp_func)(const void *a, const void *b);
