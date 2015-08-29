@@ -116,6 +116,9 @@ try:
     secur32.AcquireCredentialsHandleW.argtypes = [POINTER(SEC_WCHAR), POINTER(SEC_WCHAR), ULONG, POINTER(LUID), c_void_p, SEC_GET_KEY_FN, c_void_p, POINTER(CredHandle), POINTER(TimeStamp)]
     secur32.AcquireCredentialsHandleW.restype = SECURITY_STATUS
 
+    secur32.FreeCredentialsHandle.argtypes = [POINTER(CredHandle)]
+    secur32.FreeCredentialsHandle.restype = SECURITY_STATUS
+
     secur32.InitializeSecurityContextW.argtypes = [POINTER(CredHandle), POINTER(CtxtHandle), POINTER(SEC_WCHAR), ULONG, ULONG, ULONG, POINTER(SecBufferDesc), ULONG, POINTER(CtxtHandle), POINTER(SecBufferDesc), POINTER(ULONG), POINTER(TimeStamp)]
     secur32.InitializeSecurityContextW.restype = SECURITY_STATUS
 

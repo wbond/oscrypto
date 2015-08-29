@@ -101,6 +101,7 @@ ffi.cdef("""
     } SecPkgContext_ConnectionInfo;
 
     SECURITY_STATUS AcquireCredentialsHandleW(SEC_WCHAR *pszPrincipal, SEC_WCHAR *pszPackage, ULONG fCredentialUse, LUID *pvLogonID, void *pAuthData, SEC_GET_KEY_FN pGetKeyFn, void *pvGetKeyArgument, CredHandle *phCredential, TimeStamp *ptsExpiry);
+    SECURITY_STATUS FreeCredentialsHandle(CredHandle *phCredential);
     SECURITY_STATUS InitializeSecurityContextW(CredHandle *phCredential, CtxtHandle *phContext, SEC_WCHAR *pszTargetName, ULONG fContextReq, ULONG Reserved1, ULONG TargetDataRep, SecBufferDesc *pInput, ULONG Reserved2, CtxtHandle *phNewContext, SecBufferDesc *pOutput, ULONG *pfContextAttr, TimeStamp *ptsExpiry);
     SECURITY_STATUS FreeContextBuffer(void *pvContextBuffer);
     SECURITY_STATUS ApplyControlToken(CtxtHandle *phContext, SecBufferDesc *pInput);

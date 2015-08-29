@@ -168,6 +168,12 @@ class TLSSession(object):
 
         self._credentials_handle = cred_handle_pointer
 
+    def __del__(self):
+        if self._credentials_handle:
+            result = secur32.FreeCredentialsHandle(self._credentials_handle)
+            handle_error(result)
+            self._credentials_handle = None
+
 
 class TLSSocket(object):
     """
@@ -1031,3 +1037,14 @@ class TLSSocket(object):
             self._raise_closed()
 
         return self._socket
+
+    def __del__(self):
+        try:
+            self.shutdown()
+
+        finally:
+            # Just in case we ran into an exception, double check that we
+            # have freed the allocated memory
+            if self._context_handle_pointer:
+                secur32.DeleteSecurityContext(self._context_handle_pointer)
+                self._context_handle_pointer = None

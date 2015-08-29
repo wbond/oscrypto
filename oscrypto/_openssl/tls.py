@@ -136,6 +136,16 @@ class TLSSession(object):
                 libssl.SSL_CTX_free(ssl_ctx)
             raise
 
+    def __del__(self):
+        if self._ssl_ctx:
+            libssl.SSL_CTX_free(self._ssl_ctx)
+            self._ssl_ctx = None
+
+        if self._ssl_session:
+            libssl.SSL_SESSION_free(self._ssl_session)
+            self._ssl_session = None
+
+
 class TLSSocket(object):
     """
     A wrapper around a socket.socket that adds TLS
@@ -796,3 +806,17 @@ class TLSSocket(object):
             self._raise_closed()
 
         return self._socket
+
+    def __del__(self):
+        try:
+            self.shutdown()
+
+        finally:
+            # Just in case we ran into an exception, double check that we
+            # have freed the allocated memory
+            if self._ssl:
+                libssl.SSL_free(self._ssl)
+                self._ssl = None
+                # BIOs are freed by SSL_free()
+                self._rbio = None
+                self._wbio = None

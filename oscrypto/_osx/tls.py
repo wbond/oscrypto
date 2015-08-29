@@ -729,8 +729,9 @@ class TLSSocket(object):
         result = Security.SSLClose(self._session_context)
         handle_sec_error(result)
 
-        self._local_closed = True
         self._session_context = None
+
+        self._local_closed = True
 
         try:
             self._socket.shutdown(socket_.SHUT_RDWR)
@@ -901,3 +902,15 @@ class TLSSocket(object):
             self._raise_closed()
 
         return self._socket
+
+    def __del__(self):
+        try:
+            self.shutdown()
+
+        finally:
+            # Just in case we ran into an exception, double check that we
+            # have freed the allocated memory
+            if self._session_context:
+                result = Security.SSLClose(self._session_context)
+                handle_sec_error(result)
+                self._session_context = None
