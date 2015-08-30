@@ -1151,21 +1151,13 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
     if certificate_or_public_key.algorithm == 'rsa':
         if rsa_pss_padding:
-            hash_length = {
-                'md5': 16,
-                'sha1': 20,
-                'sha256': 32,
-                'sha384': 48,
-                'sha512': 64
-            }[hash_algorithm]
-
             flags = bcrypt_const.BCRYPT_PAD_PSS
             padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PSS_PADDING_INFO')
             padding_info_struct = unwrap(padding_info_struct_pointer)
             # This has to be assigned to a variable to prevent cffi from gc'ing it
             hash_buffer = buffer_from_unicode(hash_constant)
             padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
-            padding_info_struct.cbSalt = hash_length
+            padding_info_struct.cbSalt = len(digest)
         else:
             flags = bcrypt_const.BCRYPT_PAD_PKCS1
             padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
@@ -1183,7 +1175,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
         signature = Signature.load(signature).to_bcrypt()
 
     res = bcrypt.BCryptVerifySignature(certificate_or_public_key.bcrypt_key_handle, padding_info, digest, len(digest), signature, len(signature), flags)
-    if res == bcrypt_const.STATUS_INVALID_SIGNATURE:
+    if res == bcrypt_const.STATUS_INVALID_SIGNATURE or (rsa_pss_padding and res == bcrypt_const.STATUS_INVALID_PARAMETER):
         raise SignatureError('Signature is invalid')
 
     handle_error(res)
