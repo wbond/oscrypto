@@ -93,15 +93,6 @@ try:
             ('cbBlockSize', ULONG),
         ]
 
-    class CERT_CONTEXT(Structure):
-        _fields_ = [
-            ("dwCertEncodingType", DWORD),
-            ("pbCertEncoded", c_void_p),
-            ("cbCertEncoded", DWORD),
-            ("pCertInfo", c_void_p),
-            ("hCertStore", HCERTSTORE)
-        ]
-
     class SecPkgContext_ConnectionInfo(Structure):
         _fields_ = [
             ('dwProtocol', DWORD),
@@ -152,7 +143,6 @@ setattr(secur32, 'SecBufferDesc', SecBufferDesc)
 setattr(secur32, 'SecPkgContext_StreamSizes', SecPkgContext_StreamSizes)
 setattr(secur32, 'SecPkgContext_ConnectionInfo', SecPkgContext_ConnectionInfo)
 setattr(secur32, 'SCHANNEL_CRED', SCHANNEL_CRED)
-setattr(secur32, 'CERT_CONTEXT', CERT_CONTEXT)
 
 
 def get_error():

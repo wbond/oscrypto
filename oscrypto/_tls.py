@@ -1,10 +1,14 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from asn1crypto.util import int_from_bytes
+import re
+from datetime import datetime
+
+from asn1crypto.util import int_from_bytes, timezone
 from asn1crypto.x509 import Certificate
 
 from ._cipher_suites import CIPHER_SUITE_MAP
+from .errors import TLSVerificationError, TLSError
 
 
 def extract_chain(server_handshake_bytes):
@@ -205,3 +209,141 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
         "session_id": session_id,
         "session_ticket": session_ticket,
     }
+
+
+def raise_hostname(certificate, hostname):
+    """
+    Raises a TLSVerificationError due to a hostname mismatch
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', hostname) or hostname.find(':') != -1
+    if is_ip:
+        hostname_type = 'IP address %s' % hostname
+    else:
+        hostname_type = 'domain name %s' % hostname
+    message = 'Server certificate verification failed - %s does not match' % hostname_type
+    valid_ips = ', '.join(certificate.valid_ips)
+    valid_domains = ', '.join(certificate.valid_domains)
+    if valid_domains:
+        message += ' valid domains: %s' % valid_domains
+    if valid_domains and valid_ips:
+        message += ' or'
+    if valid_ips:
+        message += ' valid IP addresses: %s' % valid_ips
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_verification(certificate):
+    """
+    Raises a generic TLSVerificationError
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    message = 'Server certificate verification failed'
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_client_auth(certificate):
+    """
+    Raises a TLSVerificationError indicating client authentication is required
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    message = 'Server certificate verification failed - client authentication required'
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_no_issuer(certificate):
+    """
+    Raises a TLSVerificationError due to no issuer certificate found in trust
+    roots
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    message = 'Server certificate verification failed - certificate issuer not found in trusted root certificate store'
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_self_signed(certificate):
+    """
+    Raises a TLSVerificationError due to a self-signed certificate
+    roots
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    message = 'Server certificate verification failed - certificate is self-signed'
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_expired_not_yet_valid(certificate):
+    """
+    Raises a TLSVerificationError due to certificate being expired, or not yet
+    being valid
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    validity = certificate['tbs_certificate']['validity']
+    not_after = validity['not_after'].native
+    not_before = validity['not_before'].native
+
+    now = datetime.now(timezone.utc)
+
+    if not_before > now:
+        message = 'Server certificate verification failed - certificate not valid until %s' % not_before.strftime('%Y-%m-%d %H:%M:%SZ')
+    elif not_after < now:
+        message = 'Server certificate verification failed - certificate expired %s' % not_after.strftime('%Y-%m-%d %H:%M:%SZ')
+
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_handshake():
+    """
+    Raises a TLSError due to a handshake error
+
+    :raises:
+        TLSError
+    """
+
+    raise TLSError('TLS handshake failure')
+
+
+def raise_dh_params():
+    """
+    Raises a TLSError due to weak DH params
+
+    :raises:
+        TLSError
+    """
+
+    raise TLSError('TLS handshake failure - weak DH parameters')

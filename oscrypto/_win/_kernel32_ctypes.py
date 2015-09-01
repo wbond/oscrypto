@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 import ctypes
-from ctypes import windll, wintypes, POINTER, c_longlong
+from ctypes import windll, wintypes, POINTER, c_longlong, Structure
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
 
@@ -28,11 +28,21 @@ try:
     kernel32.QueryPerformanceCounter.argtypes = [POINTER(LARGE_INTEGER)]
     kernel32.QueryPerformanceCounter.restype = wintypes.BOOL
 
+    class FILETIME(Structure):
+        _fields_ = [
+            ("dwLowDateTime", wintypes.DWORD),
+            ("dwHighDateTime", wintypes.DWORD),
+        ]
+
+    kernel32.GetSystemTimeAsFileTime.argtypes = [POINTER(FILETIME)]
+    kernel32.GetSystemTimeAsFileTime.restype = None
+
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
 
 setattr(kernel32, 'LARGE_INTEGER', LARGE_INTEGER)
+setattr(kernel32, 'FILETIME', FILETIME)
 
 
 def get_error():

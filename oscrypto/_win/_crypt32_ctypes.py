@@ -8,6 +8,7 @@ from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_char_p
 from ctypes.wintypes import DWORD
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
+from ._kernel32 import kernel32
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -24,7 +25,13 @@ except (OSError) as e:
     raise
 
 HCERTSTORE = wintypes.HANDLE
+HCERTCHAINENGINE = wintypes.HANDLE
+HCRYPTPROV = wintypes.HANDLE
 PBYTE = c_char_p
+if sys.maxsize > 2**32:
+    ULONG_PTR = ctypes.c_uint64
+else:
+    ULONG_PTR = ctypes.c_ulong
 
 try:
     class CRYPTOAPI_BLOB(Structure):
@@ -42,13 +49,6 @@ try:
         _fields_ = [
             ("pszObjId", wintypes.LPSTR),
             ("Parameters", CRYPT_OBJID_BLOB),
-        ]
-
-
-    class FILETIME(Structure):
-        _fields_ = [
-            ("dwLowDateTime", DWORD),
-            ("dwHighDateTime", DWORD),
         ]
 
 
@@ -74,8 +74,8 @@ try:
             ("SerialNumber", CRYPT_INTEGER_BLOB),
             ("SignatureAlgorithm", CRYPT_ALGORITHM_IDENTIFIER),
             ("Issuer", CERT_NAME_BLOB),
-            ("NotBefore", FILETIME),
-            ("NotAfter", FILETIME),
+            ("NotBefore", kernel32.FILETIME),
+            ("NotAfter", kernel32.FILETIME),
             ("Subject", CERT_NAME_BLOB),
             ("SubjectPublicKeyInfo", CERT_PUBLIC_KEY_INFO),
             ("IssuerUniqueId", CRYPT_BIT_BLOB),
@@ -101,11 +101,107 @@ try:
     class CERT_ENHKEY_USAGE(Structure):
         _fields_ = [
             ('cUsageIdentifier', DWORD),
-            ('rgpszUsageIdentifier', POINTER(wintypes.LPSTR)),
+            ('rgpszUsageIdentifier', POINTER(wintypes.BYTE)),
         ]
 
-
     PCERT_ENHKEY_USAGE = POINTER(CERT_ENHKEY_USAGE)
+
+    class CERT_TRUST_STATUS(Structure):
+        _fields_ = [
+            ('dwErrorStatus', DWORD),
+            ('dwInfoStatus', DWORD),
+        ]
+
+    class CERT_CHAIN_ELEMENT(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('pCertContext', PCERT_CONTEXT),
+            ('TrustStatus', CERT_TRUST_STATUS),
+            ('pRevocationInfo', c_void_p),
+            ('pIssuanceUsage', PCERT_ENHKEY_USAGE),
+            ('pApplicationUsage', PCERT_ENHKEY_USAGE),
+            ('pwszExtendedErrorInfo', wintypes.LPCWSTR),
+        ]
+
+    PCERT_CHAIN_ELEMENT = POINTER(CERT_CHAIN_ELEMENT)
+
+    class CERT_SIMPLE_CHAIN(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('TrustStatus', CERT_TRUST_STATUS),
+            ('cElement', DWORD),
+            ('rgpElement', POINTER(PCERT_CHAIN_ELEMENT)),
+            ('pTrustListInfo', c_void_p),
+            ('fHasRevocationFreshnessTime', wintypes.BOOL),
+            ('dwRevocationFreshnessTime', DWORD),
+        ]
+
+    PCERT_SIMPLE_CHAIN = POINTER(CERT_SIMPLE_CHAIN)
+
+    class CERT_CHAIN_CONTEXT(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('TrustStatus', CERT_TRUST_STATUS),
+            ('cChain', DWORD),
+            ('rgpChain', POINTER(PCERT_SIMPLE_CHAIN)),
+            ('cLowerQualityChainContext', DWORD),
+            ('rgpLowerQualityChainContext', c_void_p),
+            ('fHasRevocationFreshnessTime', wintypes.BOOL),
+            ('dwRevocationFreshnessTime', DWORD),
+        ]
+
+    PCERT_CHAIN_CONTEXT = POINTER(CERT_CHAIN_CONTEXT)
+
+    class CERT_USAGE_MATCH(Structure):
+        _fields_ = [
+            ('dwType', DWORD),
+            ('Usage', CERT_ENHKEY_USAGE),
+        ]
+
+    class CERT_CHAIN_PARA(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('RequestedUsage', CERT_USAGE_MATCH),
+        ]
+
+    class CERT_CHAIN_POLICY_PARA(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('dwFlags', DWORD),
+            ('pvExtraPolicyPara', c_void_p),
+        ]
+
+    class SSL_EXTRA_CERT_CHAIN_POLICY_PARA(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('dwAuthType', DWORD),
+            ('fdwChecks', DWORD),
+            ('pwszServerName', wintypes.LPCWSTR),
+        ]
+
+    class CERT_CHAIN_POLICY_STATUS(Structure):
+        _fields_ = [
+            ('cbSize', DWORD),
+            ('dwError', DWORD),
+            ('lChainIndex', wintypes.LONG),
+            ('lElementIndex', wintypes.LONG),
+            ('pvExtraPolicyStatus', c_void_p),
+        ]
+
+    crypt32.CertOpenStore.argtypes = [wintypes.LPCSTR, DWORD, HCRYPTPROV, DWORD, c_void_p]
+    crypt32.CertOpenStore.restype = HCERTSTORE
+
+    crypt32.CertAddEncodedCertificateToStore.argtypes = [HCERTSTORE, DWORD, PBYTE, DWORD, DWORD, POINTER(PCERT_CONTEXT)]
+    crypt32.CertAddEncodedCertificateToStore.restype = wintypes.BOOL
+
+    crypt32.CertGetCertificateChain.argtypes = [HCERTCHAINENGINE, PCERT_CONTEXT, POINTER(kernel32.FILETIME), HCERTSTORE, POINTER(CERT_CHAIN_PARA), DWORD, c_void_p, POINTER(PCERT_CHAIN_CONTEXT)]
+    crypt32.CertGetCertificateChain.restype = wintypes.BOOL
+
+    crypt32.CertVerifyCertificateChainPolicy.argtypes = [ULONG_PTR, PCERT_CHAIN_CONTEXT, POINTER(CERT_CHAIN_POLICY_PARA), POINTER(CERT_CHAIN_POLICY_STATUS)]
+    crypt32.CertVerifyCertificateChainPolicy.restype = wintypes.BOOL
+
+    crypt32.CertFreeCertificateChain.argtypes = [PCERT_CHAIN_CONTEXT]
+    crypt32.CertFreeCertificateChain.restype = None
 
     crypt32.CertOpenSystemStoreW.argtypes = [wintypes.HANDLE, wintypes.LPCWSTR]
     crypt32.CertOpenSystemStoreW.restype = HCERTSTORE
@@ -123,7 +219,16 @@ except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
 
+setattr(crypt32, 'FILETIME', kernel32.FILETIME)
 setattr(crypt32, 'CERT_ENHKEY_USAGE', CERT_ENHKEY_USAGE)
+setattr(crypt32, 'CERT_CONTEXT', CERT_CONTEXT)
+setattr(crypt32, 'PCERT_CONTEXT', PCERT_CONTEXT)
+setattr(crypt32, 'CERT_USAGE_MATCH', CERT_USAGE_MATCH)
+setattr(crypt32, 'CERT_CHAIN_PARA', CERT_CHAIN_PARA)
+setattr(crypt32, 'CERT_CHAIN_POLICY_PARA', CERT_CHAIN_POLICY_PARA)
+setattr(crypt32, 'SSL_EXTRA_CERT_CHAIN_POLICY_PARA', SSL_EXTRA_CERT_CHAIN_POLICY_PARA)
+setattr(crypt32, 'CERT_CHAIN_POLICY_STATUS', CERT_CHAIN_POLICY_STATUS)
+setattr(crypt32, 'PCERT_CHAIN_CONTEXT', PCERT_CHAIN_CONTEXT)
 
 
 def get_error():

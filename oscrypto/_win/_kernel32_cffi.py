@@ -24,6 +24,13 @@ if cffi.__version_info__ >= (0, 9):
 ffi.cdef("""
     typedef long long LARGE_INTEGER;
     BOOL QueryPerformanceCounter(LARGE_INTEGER *lpPerformanceCount);
+
+    typedef struct _FILETIME {
+        DWORD dwLowDateTime;
+        DWORD dwHighDateTime;
+    } FILETIME;
+
+    void GetSystemTimeAsFileTime(FILETIME *lpSystemTimeAsFileTime);
 """)
 
 

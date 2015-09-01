@@ -9,13 +9,27 @@ import numbers
 
 from asn1crypto import x509
 
-from .._ffi import new, null, is_null, struct, unwrap, bytes_from_buffer, write_to_buffer, deref, native, buffer_from_bytes, ref, cast
+from .._ffi import new, null, is_null, struct, unwrap, bytes_from_buffer, write_to_buffer, deref, native, buffer_from_bytes, ref, cast, sizeof, buffer_from_unicode
 from ._secur32 import secur32, secur32_const, handle_error
-from ._crypt32 import crypt32
+from ._crypt32 import crypt32, crypt32_const, handle_error as handle_crypt32_error
+from ._kernel32 import kernel32
 from .._errors import object_name
-from ..errors import TLSError, TLSVerificationError
-from .._tls import parse_session_info, extract_chain, get_dh_params_length
-from .asymmetric import load_certificate
+from ..errors import TLSError
+from .._tls import (
+    extract_chain,
+    get_dh_params_length,
+    parse_session_info,
+    raise_client_auth,
+    raise_dh_params,
+    raise_expired_not_yet_valid,
+    raise_handshake,
+    raise_hostname,
+    raise_no_issuer,
+    raise_self_signed,
+    raise_verification,
+)
+from .asymmetric import load_certificate, Certificate
+from ..keys import parse_certificate
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -45,9 +59,10 @@ class TLSSession(object):
     _protocols = None
     _ciphers = None
     _manual_validation = None
+    _extra_trust_roots = None
     _credentials_handle = None
 
-    def __init__(self, protocol=None, manual_validation=False):
+    def __init__(self, protocol=None, manual_validation=False, extra_trust_roots=None):
         """
         :param protocol:
             A unicode string or set of unicode strings representing allowable
@@ -63,6 +78,14 @@ class TLSSession(object):
         :param manual_validation:
             If certificate and certificate path validation should be skipped
             and left to the developer to implement
+
+        :param extra_trust_roots:
+            A list containing one or more certificates to be treated as trust
+            roots, in one of the following formats:
+             - A byte string of the DER encoded certificate
+             - A unicode string of the certificate filename
+             - An asn1crypto.x509.Certificate object
+             - An oscrypto.asymmetric.Certificate object
 
         :raises:
             ValueError - when any of the parameters contain an invalid value
@@ -88,6 +111,20 @@ class TLSSession(object):
             raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
 
         self._protocols = protocol
+
+        self._extra_trust_roots = []
+        if extra_trust_roots:
+            for extra_trust_root in extra_trust_roots:
+                if isinstance(extra_trust_root, Certificate):
+                    extra_trust_root = extra_trust_root.asn1
+                elif isinstance(extra_trust_root, byte_cls):
+                    extra_trust_root = parse_certificate(extra_trust_root)
+                elif isinstance(extra_trust_root, str_cls):
+                    with open(extra_trust_root, 'rb') as f:
+                        extra_trust_root = parse_certificate(f.read())
+                elif not isinstance(extra_trust_root, x509.Certificate):
+                    raise ValueError('extra_trust_roots must be a list of byte strings, unicode strings, asn1crypto.x509.Certificate objects or oscrypto.asymmetric.Certificate objects, not %s' % object_name(extra_trust_root))
+                self._extra_trust_roots.append(extra_trust_root)
 
         self._obtain_credentials()
 
@@ -128,7 +165,7 @@ class TLSSession(object):
             alg_array[index] = alg
 
         flags = secur32_const.SCH_USE_STRONG_CRYPTO
-        if not self._manual_validation:
+        if not self._manual_validation and not self._extra_trust_roots:
             flags |= secur32_const.SCH_CRED_AUTO_CRED_VALIDATION
         else:
             flags |= secur32_const.SCH_CRED_MANUAL_CRED_VALIDATION
@@ -310,6 +347,166 @@ class TLSSocket(object):
 
         return (sec_buffer_desc_pointer, buffers)
 
+    def _extra_trust_root_validation(self):
+        """
+        Manually invoked windows certificate chain builder and verification
+        step when there are extra trust roots to include in the search process
+        """
+
+        store = None
+        cert_chain_context_pointer = None
+
+        try:
+            # We set up an in-memory store to pass as an extra store to grab
+            # certificates from when performing the verification
+            store = crypt32.CertOpenStore(
+                crypt32_const.CERT_STORE_PROV_MEMORY,
+                crypt32_const.X509_ASN_ENCODING,
+                null(),
+                0,
+                null()
+            )
+            if is_null(store):
+                handle_crypt32_error(0)
+
+            cert_hashes = set()
+            for cert in self._session._extra_trust_roots:  #pylint: disable=W0212
+                cert_data = cert.dump()
+                result = crypt32.CertAddEncodedCertificateToStore(
+                    store,
+                    crypt32_const.X509_ASN_ENCODING,
+                    cert_data,
+                    len(cert_data),
+                    crypt32_const.CERT_STORE_ADD_USE_EXISTING,
+                    null()
+                )
+                if not result:
+                    handle_crypt32_error(0)
+                cert_hashes.add(cert.sha256)
+
+            cert_context_pointer_pointer = new(crypt32, 'PCERT_CONTEXT *')
+            result = secur32.QueryContextAttributesW(
+                self._context_handle_pointer,
+                secur32_const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
+                cert_context_pointer_pointer
+            )
+            handle_error(result)
+
+            cert_context_pointer = unwrap(cert_context_pointer_pointer)
+            cert_context_pointer = cast(crypt32, 'PCERT_CONTEXT', cert_context_pointer)
+
+            now_pointer = new(kernel32, 'FILETIME *')
+            kernel32.GetSystemTimeAsFileTime(now_pointer)
+            now_pointer = cast(crypt32, 'FILETIME *', now_pointer)
+
+            usage_identifiers = new(crypt32, 'char *[3]')
+            usage_identifiers[0] = cast(crypt32, 'char *', crypt32_const.PKIX_KP_SERVER_AUTH)
+            usage_identifiers[1] = cast(crypt32, 'char *', crypt32_const.SERVER_GATED_CRYPTO)
+            usage_identifiers[2] = cast(crypt32, 'char *', crypt32_const.SGC_NETSCAPE)
+
+            cert_enhkey_usage_pointer = struct(crypt32, 'CERT_ENHKEY_USAGE')
+            cert_enhkey_usage = unwrap(cert_enhkey_usage_pointer)
+            cert_enhkey_usage.cUsageIdentifier = 3
+            cert_enhkey_usage.rgpszUsageIdentifier = cast(crypt32, 'char *', usage_identifiers)
+
+            cert_usage_match_pointer = struct(crypt32, 'CERT_USAGE_MATCH')
+            cert_usage_match = unwrap(cert_usage_match_pointer)
+            cert_usage_match.dwType = crypt32_const.USAGE_MATCH_TYPE_OR
+            cert_usage_match.Usage = cert_enhkey_usage
+
+            cert_chain_para_pointer = struct(crypt32, 'CERT_CHAIN_PARA')
+            cert_chain_para = unwrap(cert_chain_para_pointer)
+            cert_chain_para.RequestedUsage = cert_usage_match
+            cert_chain_para_size = sizeof(crypt32, cert_chain_para)
+            cert_chain_para.cbSize = cert_chain_para_size
+
+            cert_chain_context_pointer_pointer = new(crypt32, 'PCERT_CHAIN_CONTEXT *')
+            result = crypt32.CertGetCertificateChain(
+                null(),
+                cert_context_pointer,
+                now_pointer,
+                store,
+                cert_chain_para_pointer,
+                crypt32_const.CERT_CHAIN_CACHE_END_CERT | crypt32_const.CERT_CHAIN_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT,
+                null(),
+                cert_chain_context_pointer_pointer
+            )
+            handle_crypt32_error(result)
+
+            cert_chain_policy_para_flags = crypt32_const.CERT_CHAIN_POLICY_IGNORE_ALL_REV_UNKNOWN_FLAGS
+
+            cert_chain_context_pointer = unwrap(cert_chain_context_pointer_pointer)
+
+            # Unwrap the chain and if the final element in the chain is one of
+            # extra trust roots, set flags so that we trust the certificate even
+            # though it is not in the Trusted Roots store
+            cert_chain_context = unwrap(cert_chain_context_pointer)
+            num_chains = native(int, cert_chain_context.cChain)
+            if num_chains == 1:
+                first_simple_chain_pointer = unwrap(cert_chain_context.rgpChain)
+                first_simple_chain = unwrap(first_simple_chain_pointer)
+                num_elements = native(int, first_simple_chain.cElement)
+                last_element_pointer = first_simple_chain.rgpElement[num_elements-1]
+                last_element = unwrap(last_element_pointer)
+                last_element_cert = unwrap(last_element.pCertContext)
+                last_element_cert_data = bytes_from_buffer(last_element_cert.pbCertEncoded, native(int, last_element_cert.cbCertEncoded))
+                last_cert = x509.Certificate.load(last_element_cert_data)
+                if last_cert.sha256 in cert_hashes:
+                    cert_chain_policy_para_flags |= crypt32_const.CERT_CHAIN_POLICY_ALLOW_UNKNOWN_CA_FLAG
+
+            ssl_extra_cert_chain_policy_para_pointer = struct(crypt32, 'SSL_EXTRA_CERT_CHAIN_POLICY_PARA')
+            ssl_extra_cert_chain_policy_para = unwrap(ssl_extra_cert_chain_policy_para_pointer)
+            ssl_extra_cert_chain_policy_para.cbSize = sizeof(crypt32, ssl_extra_cert_chain_policy_para)
+            ssl_extra_cert_chain_policy_para.dwAuthType = crypt32_const.AUTHTYPE_CLIENT
+            ssl_extra_cert_chain_policy_para.fdwChecks = 0
+            ssl_extra_cert_chain_policy_para.pwszServerName = cast(crypt32, 'wchar_t *', buffer_from_unicode(self._hostname))
+
+            cert_chain_policy_para_pointer = struct(crypt32, 'CERT_CHAIN_POLICY_PARA')
+            cert_chain_policy_para = unwrap(cert_chain_policy_para_pointer)
+            cert_chain_policy_para.cbSize = sizeof(crypt32, cert_chain_policy_para)
+            cert_chain_policy_para.dwFlags = cert_chain_policy_para_flags
+            cert_chain_policy_para.pvExtraPolicyPara = cast(crypt32, 'void *', ssl_extra_cert_chain_policy_para_pointer)
+
+            cert_chain_policy_status_pointer = struct(crypt32, 'CERT_CHAIN_POLICY_STATUS')
+            cert_chain_policy_status = unwrap(cert_chain_policy_status_pointer)
+            cert_chain_policy_status.cbSize = sizeof(crypt32, cert_chain_policy_status)
+
+            result = crypt32.CertVerifyCertificateChainPolicy(
+                crypt32_const.CERT_CHAIN_POLICY_SSL,
+                cert_chain_context_pointer,
+                cert_chain_policy_para_pointer,
+                cert_chain_policy_status_pointer
+            )
+            handle_crypt32_error(result)
+
+            error = cert_chain_policy_status.dwError
+            if error:
+                cert_context = unwrap(cert_context_pointer)
+                cert_data = bytes_from_buffer(cert_context.pbCertEncoded, native(int, cert_context.cbCertEncoded))
+                cert = x509.Certificate.load(cert_data)
+
+                if error == crypt32_const.CERT_E_EXPIRED:
+                    raise_expired_not_yet_valid(cert)
+                if error == crypt32_const.CERT_E_UNTRUSTEDROOT:
+                    oscrypto_cert = load_certificate(cert)
+                    if oscrypto_cert.self_signed:
+                        raise_self_signed(cert)
+                    else:
+                        raise_no_issuer(cert)
+                if error == crypt32_const.CERT_E_CN_NO_MATCH:
+                    raise_hostname(cert, self._hostname)
+
+                if error == crypt32_const.TRUST_E_CERT_SIGNATURE:
+                    raise_handshake()
+
+                raise_verification(cert)
+
+        finally:
+            if store:
+                crypt32.CertCloseStore(store, 0)
+            if cert_chain_context_pointer:
+                crypt32.CertFreeCertificateChain(cert_chain_context_pointer)
+
     def _handshake(self, renegotiate=False):
         """
         Perform an initial TLS handshake, or a renegotiation
@@ -418,49 +615,31 @@ class TLSSocket(object):
                     continue
 
                 if result == secur32_const.SEC_E_ILLEGAL_MESSAGE:
-                    raise TLSError('TLS handshake failure')
+                    raise_handshake()
 
                 if result == secur32_const.SEC_E_WRONG_PRINCIPAL:
                     chain = extract_chain(handshake_server_bytes)
-                    cert = chain[0]
-
-                    is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', self._hostname) or self._hostname.find(':') != -1
-                    if is_ip:
-                        hostname_type = 'IP address %s' % self._hostname
-                    else:
-                        hostname_type = 'domain name %s' % self._hostname
-                    message = 'Server certificate verification failed - %s does not match' % hostname_type
-                    valid_ips = ', '.join(cert.valid_ips)
-                    valid_domains = ', '.join(cert.valid_domains)
-                    if valid_domains:
-                        message += ' valid domains: %s' % valid_domains
-                    if valid_domains and valid_ips:
-                        message += ' or'
-                    if valid_ips:
-                        message += ' valid IP addresses: %s' % valid_ips
-                    raise TLSVerificationError(message, cert)
+                    raise_hostname(chain[0], self._hostname)
 
                 if result == secur32_const.SEC_E_CERT_EXPIRED:
                     chain = extract_chain(handshake_server_bytes)
-                    cert = chain[0]
-                    tbs_cert = cert['tbs_certificate']
-                    message = 'Server certificate verification failed - certificate expired %s' % tbs_cert['validity']['not_after'].native.strftime('%Y-%m-%d %H:%M:%SZ')
-                    raise TLSVerificationError(message, cert)
+                    raise_expired_not_yet_valid(chain[0])
 
                 if result == secur32_const.SEC_E_UNTRUSTED_ROOT:
                     chain = extract_chain(handshake_server_bytes)
                     cert = chain[0]
                     oscrypto_cert = load_certificate(cert)
-                    message = 'Server certificate verification failed'
                     if not oscrypto_cert.self_signed:
-                        message += ' - certificate issuer not found in trusted root certificate store'
-                    else:
-                        message += ' - certificate is self-signed'
-                    raise TLSVerificationError(message, cert)
+                        raise_no_issuer(cert)
+                    raise_self_signed(cert)
 
                 if result == secur32_const.SEC_E_INTERNAL_ERROR:
                     if get_dh_params_length(handshake_server_bytes) < 1024:
-                        raise TLSError('TLS handshake failure - weak DH parameters')
+                        raise_dh_params()
+
+                if result == secur32_const.SEC_I_INCOMPLETE_CREDENTIALS:
+                    chain = extract_chain(handshake_server_bytes)
+                    raise_client_auth(chain[0])
 
                 if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
@@ -531,6 +710,9 @@ class TLSSocket(object):
                 self._message_size = native(int, stream_sizes.cbMaximumMessage)
                 self._trailer_size = native(int, stream_sizes.cbTrailer)
                 self._buffer_size = self._header_size + self._message_size + self._trailer_size
+
+            if self._session._extra_trust_roots:  #pylint: disable=W0212
+                self._extra_trust_root_validation()
 
         finally:
             if out_buffers:
@@ -948,7 +1130,7 @@ class TLSSocket(object):
         TLS session
         """
 
-        cert_context_pointer_pointer = new(secur32, 'CERT_CONTEXT **')
+        cert_context_pointer_pointer = new(crypt32, 'CERT_CONTEXT **')
         result = secur32.QueryContextAttributesW(
             self._context_handle_pointer,
             secur32_const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
@@ -957,7 +1139,7 @@ class TLSSocket(object):
         handle_error(result, TLSError)
 
         cert_context_pointer = unwrap(cert_context_pointer_pointer)
-        cert_context_pointer = cast(secur32, 'CERT_CONTEXT *', cert_context_pointer)
+        cert_context_pointer = cast(crypt32, 'CERT_CONTEXT *', cert_context_pointer)
         cert_context = unwrap(cert_context_pointer)
 
         cert_data = bytes_from_buffer(cert_context.pbCertEncoded, native(int, cert_context.cbCertEncoded))
