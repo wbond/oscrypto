@@ -183,7 +183,7 @@ class Certificate(PublicKey):
                     raise OSError('Unable to verify the signature of the certificate since it uses the unsupported algorithm %s' % signature_algo)
 
                 try:
-                    verify_func(self.public_key, self.asn1['signature_value'].native, self.asn1['tbs_certificate'].dump(), hash_algo)
+                    verify_func(self, self.asn1['signature_value'].native, self.asn1['tbs_certificate'].dump(), hash_algo)
                     self._self_signed = True
                 except (SignatureError):  #pylint: disable=W0704
                     pass

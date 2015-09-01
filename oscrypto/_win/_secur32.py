@@ -18,12 +18,15 @@ else:
     str_cls = str
 
 
-def handle_error(result):
+def handle_error(result, exception_class=None):
     """
     Extracts the last Windows error message into a python unicode string
 
     :param result:
         A function result, 0 or None indicates failure
+
+    :param exception_class:
+        The exception class to use for the exception if an error occurred
 
     :return:
         A unicode string error message
@@ -46,7 +49,10 @@ def handle_error(result):
     if not isinstance(error_string, str_cls):
         error_string = _try_decode(error_string)
 
-    raise OSError(('SECURITY_STATUS error 0x%0.2X: ' % result) + error_string)
+    if exception_class is None:
+        exception_class = OSError
+
+    raise exception_class(('SECURITY_STATUS error 0x%0.2X: ' % result) + error_string)
 
 
 class secur32_const():
@@ -70,6 +76,13 @@ class secur32_const():
     SEC_E_OUT_OF_SEQUENCE = 0x8009031
     SEC_E_MESSAGE_ALTERED = 0x8009030F
     SEC_E_CONTEXT_EXPIRED = 0x80090317
+
+    SEC_E_WRONG_PRINCIPAL = 0x80090322 # Domain name mismatch
+    SEC_E_UNTRUSTED_ROOT = 0x80090325
+    SEC_E_CERT_EXPIRED = 0x80090328
+    SEC_E_ILLEGAL_MESSAGE = 0x80090326 # Handshake error
+    SEC_E_INTERNAL_ERROR = 0x80090304 # Occurs when DH params are too small
+    SEC_E_BUFFER_TOO_SMALL = 0x80090321
 
     ISC_REQ_REPLAY_DETECT = 4
     ISC_REQ_SEQUENCE_DETECT = 8

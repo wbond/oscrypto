@@ -3,6 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 import unittest
+import re
 
 
 _non_local = {'patched': False}
@@ -17,6 +18,7 @@ def patch():
 
     unittest.TestCase.assertIsInstance = _assert_is_instance
     unittest.TestCase.assertRaises = _assert_raises
+    unittest.TestCase.assertRaisesRegexp = _assert_raises_regexp
     unittest.TestCase.assertLess = _assert_less
     unittest.TestCase.assertIn = _assert_in
     _non_local['patched'] = True
@@ -47,6 +49,16 @@ def _assert_raises(self, excClass, callableObj=None, *args, **kwargs):
         return context
     with context:
         callableObj(*args, **kwargs)
+
+
+def _assert_raises_regexp(self, expected_exception, expected_regexp, callable_obj=None, *args, **kwargs):
+    if expected_regexp is not None:
+        expected_regexp = re.compile(expected_regexp)
+    context = _AssertRaisesContext(expected_exception, self, expected_regexp)
+    if callable_obj is None:
+        return context
+    with context:
+        callable_obj(*args, **kwargs)
 
 
 class _AssertRaisesContext(object):

@@ -13,8 +13,9 @@ from .._ffi import new, null, is_null, struct, unwrap, bytes_from_buffer, write_
 from ._secur32 import secur32, secur32_const, handle_error
 from ._crypt32 import crypt32
 from .._errors import object_name
-from ..errors import TLSError
-from .._tls import parse_session_info
+from ..errors import TLSError, TLSVerificationError
+from .._tls import parse_session_info, extract_chain, get_dh_params_length
+from .asymmetric import load_certificate
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -372,7 +373,7 @@ class TLSSocket(object):
                 null()
             )
             if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
-                handle_error(result)
+                handle_error(result, TLSError)
 
             if not renegotiate:
                 temp_context_handle_pointer = second_handle
@@ -416,8 +417,53 @@ class TLSSocket(object):
                 if result == secur32_const.SEC_E_INCOMPLETE_MESSAGE:
                     continue
 
+                if result == secur32_const.SEC_E_ILLEGAL_MESSAGE:
+                    raise TLSError('TLS handshake failure')
+
+                if result == secur32_const.SEC_E_WRONG_PRINCIPAL:
+                    chain = extract_chain(handshake_server_bytes)
+                    cert = chain[0]
+
+                    is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', self._hostname) or self._hostname.find(':') != -1
+                    if is_ip:
+                        hostname_type = 'IP address %s' % self._hostname
+                    else:
+                        hostname_type = 'domain name %s' % self._hostname
+                    message = 'Server certificate verification failed - %s does not match' % hostname_type
+                    valid_ips = ', '.join(cert.valid_ips)
+                    valid_domains = ', '.join(cert.valid_domains)
+                    if valid_domains:
+                        message += ' valid domains: %s' % valid_domains
+                    if valid_domains and valid_ips:
+                        message += ' or'
+                    if valid_ips:
+                        message += ' valid IP addresses: %s' % valid_ips
+                    raise TLSVerificationError(message, cert)
+
+                if result == secur32_const.SEC_E_CERT_EXPIRED:
+                    chain = extract_chain(handshake_server_bytes)
+                    cert = chain[0]
+                    tbs_cert = cert['tbs_certificate']
+                    message = 'Server certificate verification failed - certificate expired %s' % tbs_cert['validity']['not_after'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                    raise TLSVerificationError(message, cert)
+
+                if result == secur32_const.SEC_E_UNTRUSTED_ROOT:
+                    chain = extract_chain(handshake_server_bytes)
+                    cert = chain[0]
+                    oscrypto_cert = load_certificate(cert)
+                    message = 'Server certificate verification failed'
+                    if not oscrypto_cert.self_signed:
+                        message += ' - certificate issuer not found in trusted root certificate store'
+                    else:
+                        message += ' - certificate is self-signed'
+                    raise TLSVerificationError(message, cert)
+
+                if result == secur32_const.SEC_E_INTERNAL_ERROR:
+                    if get_dh_params_length(handshake_server_bytes) < 1024:
+                        raise TLSError('TLS handshake failure - weak DH parameters')
+
                 if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
-                    handle_error(result)
+                    handle_error(result, TLSError)
 
                 if out_buffers[0].cbBuffer > 0:
                     token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
@@ -443,7 +489,7 @@ class TLSSocket(object):
                 secur32_const.SECPKG_ATTR_CONNECTION_INFO,
                 connection_info_pointer
             )
-            handle_error(result)
+            handle_error(result, TLSError)
 
             connection_info = unwrap(connection_info_pointer)
 
@@ -610,7 +656,7 @@ class TLSSocket(object):
                 return self.read(max_length)
 
             elif result != secur32_const.SEC_E_OK:
-                handle_error(result)
+                handle_error(result, TLSError)
 
             extra_amount = None
             for buf in (buf0, buf1, buf2, buf3):
@@ -790,7 +836,7 @@ class TLSSocket(object):
             )
 
             if result != secur32_const.SEC_E_OK:
-                handle_error(result)
+                handle_error(result, TLSError)
 
             to_send = native(int, self._encrypt_buffers[0].cbBuffer) + native(int, self._encrypt_buffers[1].cbBuffer) + native(int, self._encrypt_buffers[2].cbBuffer)
             self._socket.send(bytes_from_buffer(self._encrypt_data_buffer, to_send))
@@ -844,7 +890,7 @@ class TLSSocket(object):
                 sec_buffer_desc.pBuffers = buffers
 
                 result = secur32.ApplyControlToken(self._context_handle_pointer, sec_buffer_desc_pointer)
-                handle_error(result)
+                handle_error(result, TLSError)
 
             out_sec_buffer_desc_pointer, out_buffers = self._create_buffers(2)
             out_buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
@@ -867,7 +913,7 @@ class TLSSocket(object):
                 null()
             )
             if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_E_CONTEXT_EXPIRED, secur32_const.SEC_I_CONTINUE_NEEDED]):
-                handle_error(result)
+                handle_error(result, TLSError)
 
             token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
             self._socket.send(token)
@@ -908,7 +954,7 @@ class TLSSocket(object):
             secur32_const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
             cert_context_pointer_pointer
         )
-        handle_error(result)
+        handle_error(result, TLSError)
 
         cert_context_pointer = unwrap(cert_context_pointer_pointer)
         cert_context_pointer = cast(secur32, 'CERT_CONTEXT *', cert_context_pointer)
