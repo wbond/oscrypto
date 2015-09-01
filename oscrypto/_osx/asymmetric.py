@@ -111,6 +111,7 @@ class Certificate():
     sec_certificate_ref = None
     asn1 = None
     _public_key = None
+    _self_signed = None
 
     def __init__(self, sec_certificate_ref, asn1):
         """
@@ -185,6 +186,37 @@ class Certificate():
             self._public_key = PublicKey(sec_public_key_ref, self.asn1['tbs_certificate']['subject_public_key_info'])
 
         return self._public_key
+
+    @property
+    def self_signed(self):
+        """
+        :return:
+            A boolean - if the certificate is self-signed
+        """
+
+        if self._self_signed is None:
+            self._self_signed = False
+            if self.asn1.self_signed:
+
+                signature_algo = self.asn1['signature_algorithm'].signature_algo
+                hash_algo = self.asn1['signature_algorithm'].hash_algo
+
+                if signature_algo == 'rsassa_pkcs1v15':
+                    verify_func = rsa_pkcs1v15_verify
+                elif signature_algo == 'dsa':
+                    verify_func = dsa_verify
+                elif signature_algo == 'ecdsa':
+                    verify_func = ecdsa_verify
+                else:
+                    raise OSError('Unable to verify the signature of the certificate since it uses the unsupported algorithm %s' % signature_algo)
+
+                try:
+                    verify_func(self.public_key, self.asn1['signature_value'].native, self.asn1['tbs_certificate'].dump(), hash_algo)
+                    self._self_signed = True
+                except (SignatureError):  #pylint: disable=W0704
+                    pass
+
+        return self._self_signed
 
     def __del__(self):
         if self._public_key:
