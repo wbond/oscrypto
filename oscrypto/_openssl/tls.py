@@ -13,8 +13,19 @@ from ._libssl import libssl, libssl_const
 from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
 from .._ffi import null, unwrap, bytes_from_buffer, buffer_from_bytes, array_from_pointer, is_null, native, buffer_pointer
 from .._errors import object_name
-from ..errors import TLSError, TLSVerificationError
-from .._tls import parse_session_info, extract_chain, get_dh_params_length
+from ..errors import TLSError
+from .._tls import (
+    extract_chain,
+    get_dh_params_length,
+    parse_session_info,
+    raise_dh_params,
+    raise_expired_not_yet_valid,
+    raise_handshake,
+    raise_hostname,
+    raise_no_issuer,
+    raise_self_signed,
+    raise_verification,
+)
 from .asymmetric import load_certificate
 
 if sys.version_info < (3,):
@@ -325,41 +336,34 @@ class TLSSocket(object):
                     info = peek_openssl_error()
 
                     if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
-                        raise TLSError('TLS handshake failure')
+                        raise_handshake()
 
                     if info == (20, libssl_const.SSL_F_SSL3_GET_SERVER_CERTIFICATE, libssl_const.SSL_R_CERTIFICATE_VERIFY_FAILED):
                         verify_result = libssl.SSL_get_verify_result(ssl)
                         chain = extract_chain(handshake_server_bytes)
 
                         self_signed = False
-                        expired = False
-                        not_yet_valid = False
+                        time_invalid = False
                         no_issuer = False
-                        tbs_cert = None
                         cert = None
 
                         if chain:
                             cert = chain[0]
-                            tbs_cert = cert['tbs_certificate']
                             oscrypto_cert = load_certificate(cert)
                             self_signed = oscrypto_cert.self_signed
 
                             if verify_result in set([libssl_const.X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, libssl_const.X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN, libssl_const.X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY]):
                                 no_issuer = not self_signed
 
-                            expired = verify_result == libssl_const.X509_V_ERR_CERT_HAS_EXPIRED
-                            not_yet_valid = verify_result == libssl_const.X509_V_ERR_CERT_NOT_YET_VALID
+                            time_invalid = verify_result in set([libssl_const.X509_V_ERR_CERT_HAS_EXPIRED, libssl_const.X509_V_ERR_CERT_NOT_YET_VALID])
 
-                        message = 'Server certificate verification failed'
-                        if expired:
-                            message += ' - certificate expired %s' % tbs_cert['validity']['not_after'].native.strftime('%Y-%m-%d %H:%M:%SZ')
-                        elif not_yet_valid:
-                            message += ' - certificate not valid until %s' % tbs_cert['validity']['not_before'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                        if time_invalid:
+                            raise_expired_not_yet_valid(cert)
                         elif no_issuer:
-                            message += ' - certificate issuer not found in trusted root certificate store'
+                            raise_no_issuer()
                         elif self_signed:
-                            message += ' - certificate is self-signed'
-                        raise TLSVerificationError(message, cert)
+                            raise_self_signed()
+                        raise_verification()
 
                     handle_openssl_error(0, TLSError)
 
@@ -380,7 +384,7 @@ class TLSSocket(object):
                     ssl = None
                     rbio = None
                     wbio = None
-                    raise TLSError('TLS handshake failure - weak DH parameters')
+                    raise_dh_params()
 
             # When saving the session for future requests, we use
             # SSL_get1_session() variant to increase the reference count. This
@@ -395,21 +399,7 @@ class TLSSocket(object):
             # OpenSSL does not do hostname or IP address checking in the end
             # entity certificate, so we must perform that check
             if not self.certificate.is_valid_domain_ip(self._hostname):
-                is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', self._hostname) or self._hostname.find(':') != -1
-                if is_ip:
-                    hostname_type = 'IP address %s' % self._hostname
-                else:
-                    hostname_type = 'domain name %s' % self._hostname
-                message = 'Server certificate verification failed - %s does not match' % hostname_type
-                valid_ips = ', '.join(self.certificate.valid_ips)
-                valid_domains = ', '.join(self.certificate.valid_domains)
-                if valid_domains:
-                    message += ' valid domains: %s' % valid_domains
-                if valid_domains and valid_ips:
-                    message += ' or'
-                if valid_ips:
-                    message += ' valid IP addresses: %s' % valid_ips
-                raise TLSVerificationError(message, self.certificate)
+                raise_hostname(self.certificate, self._hostname)
 
         except (OSError, socket_.error):
             if ssl:

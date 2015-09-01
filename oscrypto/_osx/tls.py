@@ -15,10 +15,20 @@ from ._security import Security, osx_version_info, handle_sec_error, security_co
 from ._core_foundation import CoreFoundation, handle_cf_error, CFHelpers
 from .._ffi import new, null, unwrap, bytes_from_buffer, deref, buffer_from_bytes, callback, write_to_buffer, pointer_set, array_from_pointer, cast, array_set
 from .._errors import object_name
-from ..errors import TLSError, TLSVerificationError
 from .._cipher_suites import CIPHER_SUITE_MAP
 from .util import rand_bytes
-from .._tls import parse_session_info, extract_chain
+from ..errors import TLSError
+from .._tls import (
+    extract_chain,
+    parse_session_info,
+    raise_dh_params,
+    raise_expired_not_yet_valid,
+    raise_handshake,
+    raise_hostname,
+    raise_no_issuer,
+    raise_self_signed,
+    raise_verification,
+)
 from .asymmetric import load_certificate
 
 if sys.version_info < (3,):
@@ -377,13 +387,11 @@ class TLSSocket(object):
                 expired = False
                 not_yet_valid = False
                 no_issuer = False
-                tbs_cert = None
                 cert = None
                 bad_hostname = False
 
                 if chain:
                     cert = chain[0]
-                    tbs_cert = cert['tbs_certificate']
                     oscrypto_cert = load_certificate(cert)
                     self_signed = oscrypto_cert.self_signed
                     no_issuer = not self_signed and result_code == security_const.CSSMERR_TP_NOT_TRUSTED
@@ -391,37 +399,25 @@ class TLSSocket(object):
                     not_yet_valid = result_code == security_const.CSSMERR_TP_CERT_NOT_VALID_YET
                     bad_hostname = result_code == security_const.CSSMERR_APPLETP_HOSTNAME_MISMATCH
 
-                message = 'Server certificate verification failed'
                 if bad_hostname:
-                    is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', self._hostname) or self._hostname.find(':') != -1
-                    if is_ip:
-                        hostname_type = 'IP address %s' % self._hostname
-                    else:
-                        hostname_type = 'domain name %s' % self._hostname
-                    message += '%s does not match' % hostname_type
-                    valid_ips = ', '.join(cert.valid_ips)
-                    valid_domains = ', '.join(cert.valid_domains)
-                    if valid_domains:
-                        message += ' valid domains: %s' % valid_domains
-                    if valid_domains and valid_ips:
-                        message += ' or'
-                    if valid_ips:
-                        message += ' valid IP addresses: %s' % valid_ips
-                elif expired:
-                    message += ' - certificate expired %s' % tbs_cert['validity']['not_after'].native.strftime('%Y-%m-%d %H:%M:%SZ')
-                elif not_yet_valid:
-                    message += ' - certificate not valid until %s' % tbs_cert['validity']['not_before'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                    raise_hostname(cert, self._hostname)
+
+                elif expired or not_yet_valid:
+                    raise_expired_not_yet_valid(cert)
+
                 elif no_issuer:
-                    message += ' - certificate issuer not found in trusted root certificate store'
+                    raise_no_issuer(cert)
+
                 elif self_signed:
-                    message += ' - certificate is self-signed'
-                raise TLSVerificationError(message, cert)
+                    raise_self_signed(cert)
+
+                raise_verification(cert)
 
             if result == security_const.errSSLPeerHandshakeFail:
-                raise TLSError('TLS handshake failure')
+                raise_handshake()
 
             if result == security_const.errSSLWeakPeerEphemeralDHKey:
-                raise TLSError('TLS handshake failure - weak DH parameters')
+                raise_dh_params()
 
             if result != security_const.errSSLWouldBlock:
                 handle_sec_error(result, TLSError)
