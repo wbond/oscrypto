@@ -358,7 +358,7 @@ class TLSSocket(object):
                         elif no_issuer:
                             message += ' - certificate issuer not found in trusted root certificate store'
                         elif self_signed:
-                            message += ' - certificate is self signed'
+                            message += ' - certificate is self-signed'
                         raise TLSVerificationError(message, cert)
 
                     handle_openssl_error(0, TLSError)
