@@ -12,13 +12,16 @@ except (FFIEngineError):
 
 
 
-def handle_sec_error(error):
+def handle_sec_error(error, exception_class=None):
     """
     Checks a Security OSStatus error code and throws an exception if there is an
     error to report
 
     :param error:
         An OSStatus
+
+    :param exception_class:
+        The exception class to use for the exception if an error occurred
 
     :raises:
         OSError - when the OSStatus contains an error
@@ -31,7 +34,10 @@ def handle_sec_error(error):
     output = CFHelpers.cf_string_to_unicode(cf_error_string)
     CoreFoundation.CFRelease(cf_error_string)
 
-    raise OSError(output)
+    if exception_class is None:
+        exception_class = OSError
+
+    raise exception_class(output)
 
 
 def _extract_policy_properties(value):
@@ -64,9 +70,21 @@ class security_const():
     errSSLClosedGraceful = -9805
     errSSLClosedNoNotify = -9816
     errSSLClosedAbort = -9806
+
     errSSLXCertChainInvalid = -9807
     errSSLCertExpired = -9814
     errSSLCertNotYetValid = -9815
+    errSSLUnknownRootCert = -9812
+    errSSLNoRootCert = -9813
+    errSSLHostNameMismatch = -9843
+    errSSLPeerHandshakeFail = -9824
+    errSSLWeakPeerEphemeralDHKey = -9850
+
+    CSSMERR_APPLETP_HOSTNAME_MISMATCH = -2147408896
+    CSSMERR_TP_CERT_EXPIRED = -2147409654
+    CSSMERR_TP_CERT_NOT_VALID_YET = -2147409653
+    CSSMERR_TP_CERT_REVOKED = -2147409652
+    CSSMERR_TP_NOT_TRUSTED = -2147409622
 
     errSecVerifyFailed = -67808
     errSecNoTrustSettings = -25263

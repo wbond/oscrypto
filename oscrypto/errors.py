@@ -38,3 +38,16 @@ class TLSError(socket.error):
     """
 
     pass
+
+
+class TLSVerificationError(TLSError):
+
+    """
+    A server certificate verification error happened during a TLS handshake
+    """
+
+    certificate = None
+
+    def __init__(self, message, certificate):
+        self.certificate = certificate
+        TLSError.__init__(self, message)

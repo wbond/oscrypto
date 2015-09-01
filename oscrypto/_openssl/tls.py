@@ -13,8 +13,9 @@ from ._libssl import libssl, libssl_const
 from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
 from .._ffi import null, unwrap, bytes_from_buffer, buffer_from_bytes, array_from_pointer, is_null, native, buffer_pointer
 from .._errors import object_name
-from ..errors import TLSError
-from .._tls import parse_session_info
+from ..errors import TLSError, TLSVerificationError
+from .._tls import parse_session_info, extract_chain, get_dh_params_length
+from .asymmetric import load_certificate
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -302,28 +303,65 @@ class TLSSocket(object):
             handshake_server_bytes = b''
             handshake_client_bytes = b''
 
+            self._ssl = ssl
+            self._rbio = rbio
+            self._wbio = wbio
+
             while True:
-                result = libssl.SSL_do_handshake(ssl)
-                handshake_client_bytes += self._raw_write(wbio)
+                result = libssl.SSL_do_handshake(self._ssl)
+                handshake_client_bytes += self._raw_write(self._wbio)
 
                 if result == 1:
                     break
 
                 error = libssl.SSL_get_error(ssl, result)
                 if error == libssl_const.SSL_ERROR_WANT_READ:
-                    handshake_server_bytes += self._raw_read(rbio)
+                    handshake_server_bytes += self._raw_read(self._rbio)
 
                 elif error == libssl_const.SSL_ERROR_WANT_WRITE:
-                    handshake_client_bytes += self._raw_write(wbio)
-
-                elif error == libssl_const.SSL_R_NO_SHARED_CIPHER:
-                    raise TLSError('Unable to negotiate secure connection - no shared cipher suite')
+                    handshake_client_bytes += self._raw_write(self._wbio)
 
                 else:
                     info = peek_openssl_error()
-                    if info == (20, 144, 134):
-                        raise TLSError('Server certificate verification failed')
-                    handle_openssl_error(0)
+
+                    if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
+                        raise TLSError('TLS handshake failure')
+
+                    if info == (20, libssl_const.SSL_F_SSL3_GET_SERVER_CERTIFICATE, libssl_const.SSL_R_CERTIFICATE_VERIFY_FAILED):
+                        verify_result = libssl.SSL_get_verify_result(ssl)
+                        chain = extract_chain(handshake_server_bytes)
+
+                        self_signed = False
+                        expired = False
+                        not_yet_valid = False
+                        no_issuer = False
+                        tbs_cert = None
+                        cert = None
+
+                        if chain:
+                            cert = chain[0]
+                            tbs_cert = cert['tbs_certificate']
+                            oscrypto_cert = load_certificate(cert)
+                            self_signed = oscrypto_cert.self_signed
+
+                            if verify_result in set([libssl_const.X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, libssl_const.X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN, libssl_const.X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY]):
+                                no_issuer = not self_signed
+
+                            expired = verify_result == libssl_const.X509_V_ERR_CERT_HAS_EXPIRED
+                            not_yet_valid = verify_result == libssl_const.X509_V_ERR_CERT_NOT_YET_VALID
+
+                        message = 'Server certificate verification failed'
+                        if expired:
+                            message += ' - certificate expired %s' % tbs_cert['validity']['not_after'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                        elif not_yet_valid:
+                            message += ' - certificate not valid until %s' % tbs_cert['validity']['not_before'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                        elif no_issuer:
+                            message += ' - certificate issuer not found in trusted root certificate store'
+                        elif self_signed:
+                            message += ' - certificate is self signed'
+                        raise TLSVerificationError(message, cert)
+
+                    handle_openssl_error(0, TLSError)
 
             session_info = parse_session_info(
                 handshake_server_bytes,
@@ -335,9 +373,14 @@ class TLSSocket(object):
             self._session_id = session_info['session_id']
             self._session_ticket = session_info['session_ticket']
 
-            self._ssl = ssl
-            self._rbio = rbio
-            self._wbio = wbio
+            if self._cipher_suite.find('_DHE_') != -1:
+                dh_params_length = get_dh_params_length(handshake_server_bytes)
+                if dh_params_length < 1024:
+                    self.close()
+                    ssl = None
+                    rbio = None
+                    wbio = None
+                    raise TLSError('TLS handshake failure - weak DH parameters')
 
             # When saving the session for future requests, we use
             # SSL_get1_session() variant to increase the reference count. This
@@ -349,7 +392,26 @@ class TLSSocket(object):
                     libssl.SSL_SESSION_free(self._session._ssl_session)  #pylint: disable=W0212
                 self._session._ssl_session = libssl.SSL_get1_session(ssl)  #pylint: disable=W0212
 
-        except (OSError):
+            # OpenSSL does not do hostname or IP address checking in the end
+            # entity certificate, so we must perform that check
+            if not self.certificate.is_valid_domain_ip(self._hostname):
+                is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', self._hostname) or self._hostname.find(':') != -1
+                if is_ip:
+                    hostname_type = 'IP address %s' % self._hostname
+                else:
+                    hostname_type = 'domain name %s' % self._hostname
+                message = 'Server certificate verification failed - %s does not match' % hostname_type
+                valid_ips = ', '.join(self.certificate.valid_ips)
+                valid_domains = ', '.join(self.certificate.valid_domains)
+                if valid_domains:
+                    message += ' valid domains: %s' % valid_domains
+                if valid_domains and valid_ips:
+                    message += ' or'
+                if valid_ips:
+                    message += ' valid IP addresses: %s' % valid_ips
+                raise TLSVerificationError(message, self.certificate)
+
+        except (OSError, socket_.error):
             if ssl:
                 libssl.SSL_free(ssl)
             # The BIOs are freed by SSL_free(), so we only need to free
@@ -359,6 +421,10 @@ class TLSSocket(object):
                     libssl.BIO_free(rbio)
                 if wbio:
                     libssl.BIO_free(wbio)
+
+            self._ssl = None
+            self._rbio = None
+            self._wbio = None
 
             raise
 
@@ -462,7 +528,7 @@ class TLSSocket(object):
                     return b''
 
                 else:
-                    handle_openssl_error(0)
+                    handle_openssl_error(0, TLSError)
 
             output += bytes_from_buffer(self._read_buffer, result)
 
@@ -603,7 +669,7 @@ class TLSSocket(object):
                     return
 
                 else:
-                    handle_openssl_error(0)
+                    handle_openssl_error(0, TLSError)
 
             data = data[result:]
             data_len = len(data)
@@ -649,7 +715,7 @@ class TLSSocket(object):
                     continue
 
                 else:
-                    handle_openssl_error(0)
+                    handle_openssl_error(0, TLSError)
 
         self._local_closed = True
 
@@ -681,7 +747,7 @@ class TLSSocket(object):
 
         stack_pointer = libssl.SSL_get_peer_cert_chain(self._ssl)
         if is_null(stack_pointer):
-            handle_openssl_error(0)
+            handle_openssl_error(0, TLSError)
 
         stack = unwrap(stack_pointer)
 

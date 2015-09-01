@@ -63,6 +63,7 @@ ffi.cdef("""
     int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
     int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile,
                     const char *CApath);
+    long SSL_get_verify_result(const SSL *ssl);
     int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
     long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
     void SSL_CTX_free(SSL_CTX *a);

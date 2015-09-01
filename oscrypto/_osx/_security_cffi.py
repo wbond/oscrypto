@@ -106,6 +106,7 @@ ffi.cdef("""
     OSStatus SSLGetNegotiatedProtocolVersion(SSLContextRef context, SSLProtocol *protocol);
 
     OSStatus SSLCopyPeerTrust(SSLContextRef context, SecTrustRef *trust);
+    OSStatus SecTrustGetCssmResultCode(SecTrustRef trust, OSStatus *resultCode);
     CFIndex SecTrustGetCertificateCount(SecTrustRef trust);
     SecCertificateRef SecTrustGetCertificateAtIndex(SecTrustRef trust, CFIndex ix);
 

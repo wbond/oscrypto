@@ -15,10 +15,11 @@ from ._security import Security, osx_version_info, handle_sec_error, security_co
 from ._core_foundation import CoreFoundation, handle_cf_error, CFHelpers
 from .._ffi import new, null, unwrap, bytes_from_buffer, deref, buffer_from_bytes, callback, write_to_buffer, pointer_set, array_from_pointer, cast, array_set
 from .._errors import object_name
-from ..errors import TLSError
+from ..errors import TLSError, TLSVerificationError
 from .._cipher_suites import CIPHER_SUITE_MAP
 from .util import rand_bytes
-from .._tls import parse_session_info
+from .._tls import parse_session_info, extract_chain
+from .asymmetric import load_certificate
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -134,10 +135,8 @@ class TLSSocket(object):
     _session_id = None
     _session_ticket = None
 
-    _chunks_read = None
+    _done_handshake = None
     _server_hello = None
-
-    _chunks_written = None
     _client_hello = None
 
     _local_closed = False
@@ -195,10 +194,8 @@ class TLSSocket(object):
             controlling the protocols and validation performed
         """
 
-        self._chunks_read = 0
+        self._done_handshake = False
         self._server_hello = b''
-
-        self._chunks_written = 0
         self._client_hello = b''
 
         self._decrypted_bytes = b''
@@ -351,10 +348,83 @@ class TLSSocket(object):
             result = Security.SSLHandshake(session_context)
             while result == security_const.errSSLWouldBlock:
                 result = Security.SSLHandshake(session_context)
-            if result in set([security_const.errSSLXCertChainInvalid, security_const.errSSLCertExpired, security_const.errSSLCertNotYetValid]):
-                raise TLSError('Server certificate verification failed')
-            if result != security_const.errSSLWouldBlock:
+
+            self._done_handshake = True
+
+            # In testing, only errSSLXCertChainInvalid was ever returned for
+            # all of these different situations, however we include the others
+            # for completeness. To get the real reason we have to use the
+            # certificate from the handshake and use the deprecated function
+            # SecTrustGetCssmResultCode().
+            if result in set([security_const.errSSLXCertChainInvalid, security_const.errSSLCertExpired, security_const.errSSLCertNotYetValid, security_const.errSSLUnknownRootCert, security_const.errSSLNoRootCert, security_const.errSSLHostNameMismatch]):
+                trust_ref_pointer = new(Security, 'SecTrustRef *')
+                result = Security.SSLCopyPeerTrust(
+                    session_context,
+                    trust_ref_pointer
+                )
                 handle_sec_error(result)
+
+                trust_ref = unwrap(trust_ref_pointer)
+
+                result_code_pointer = new(Security, 'OSStatus *')
+                result = Security.SecTrustGetCssmResultCode(trust_ref, result_code_pointer)
+
+                result_code = deref(result_code_pointer)
+
+                chain = extract_chain(self._server_hello)
+
+                self_signed = False
+                expired = False
+                not_yet_valid = False
+                no_issuer = False
+                tbs_cert = None
+                cert = None
+                bad_hostname = False
+
+                if chain:
+                    cert = chain[0]
+                    tbs_cert = cert['tbs_certificate']
+                    oscrypto_cert = load_certificate(cert)
+                    self_signed = oscrypto_cert.self_signed
+                    no_issuer = not self_signed and result_code == security_const.CSSMERR_TP_NOT_TRUSTED
+                    expired = result_code == security_const.CSSMERR_TP_CERT_EXPIRED
+                    not_yet_valid = result_code == security_const.CSSMERR_TP_CERT_NOT_VALID_YET
+                    bad_hostname = result_code == security_const.CSSMERR_APPLETP_HOSTNAME_MISMATCH
+
+                message = 'Server certificate verification failed'
+                if bad_hostname:
+                    is_ip = re.match('^\\d+\\.\\d+\\.\\d+\\.\\d+$', self._hostname) or self._hostname.find(':') != -1
+                    if is_ip:
+                        hostname_type = 'IP address %s' % self._hostname
+                    else:
+                        hostname_type = 'domain name %s' % self._hostname
+                    message += '%s does not match' % hostname_type
+                    valid_ips = ', '.join(cert.valid_ips)
+                    valid_domains = ', '.join(cert.valid_domains)
+                    if valid_domains:
+                        message += ' valid domains: %s' % valid_domains
+                    if valid_domains and valid_ips:
+                        message += ' or'
+                    if valid_ips:
+                        message += ' valid IP addresses: %s' % valid_ips
+                elif expired:
+                    message += ' - certificate expired %s' % tbs_cert['validity']['not_after'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                elif not_yet_valid:
+                    message += ' - certificate not valid until %s' % tbs_cert['validity']['not_before'].native.strftime('%Y-%m-%d %H:%M:%SZ')
+                elif no_issuer:
+                    message += ' - certificate issuer not found in trusted root certificate store'
+                elif self_signed:
+                    message += ' - certificate is self signed'
+                raise TLSVerificationError(message, cert)
+
+            if result == security_const.errSSLPeerHandshakeFail:
+                raise TLSError('TLS handshake failure')
+
+            if result == security_const.errSSLWeakPeerEphemeralDHKey:
+                raise TLSError('TLS handshake failure - weak DH parameters')
+
+            if result != security_const.errSSLWouldBlock:
+                handle_sec_error(result, TLSError)
 
             self._session_context = session_context
 
@@ -387,7 +457,7 @@ class TLSSocket(object):
             self._session_id = session_info['session_id']
             self._session_ticket = session_info['session_ticket']
 
-        except (OSError):
+        except (OSError, socket_.error):
             if session_context:
                 if osx_version_info < (10, 8):
                     result = Security.SSLDisposeContext(session_context)
@@ -431,9 +501,8 @@ class TLSSocket(object):
                 return security_const.errSSLClosedNoNotify
             return security_const.errSSLClosedAbort
 
-        if self._chunks_read < 3:
+        if not self._done_handshake:
             self._server_hello += data
-        self._chunks_read += 1
 
         write_to_buffer(data_buffer, data)
         pointer_set(data_length_pointer, len(data))
@@ -464,9 +533,8 @@ class TLSSocket(object):
         data_length = deref(data_length_pointer)
         data = bytes_from_buffer(data_buffer, data_length)
 
-        if self._chunks_written < 1:
+        if not self._done_handshake:
             self._client_hello += data
-        self._chunks_written += 1
 
         error = None
         try:
@@ -544,7 +612,7 @@ class TLSSocket(object):
             processed_pointer
         )
         if result and result not in set([security_const.errSSLWouldBlock, security_const.errSSLClosedGraceful]):
-            handle_sec_error(result)
+            handle_sec_error(result, TLSError)
 
         bytes_read = deref(processed_pointer)
         output = self._decrypted_bytes + bytes_from_buffer(read_buffer, bytes_read)
@@ -696,7 +764,7 @@ class TLSSocket(object):
                 data_len,
                 processed_pointer
             )
-            handle_sec_error(result)
+            handle_sec_error(result, TLSError)
 
             bytes_written = deref(processed_pointer)
             data = data[bytes_written:]
@@ -729,7 +797,7 @@ class TLSSocket(object):
             return
 
         result = Security.SSLClose(self._session_context)
-        handle_sec_error(result)
+        handle_sec_error(result, TLSError)
 
         self._session_context = None
 

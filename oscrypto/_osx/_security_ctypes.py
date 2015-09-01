@@ -198,6 +198,9 @@ try:
     Security.SSLCopyPeerTrust.argtypes = [SSLContextRef, POINTER(SecTrustRef)]
     Security.SSLCopyPeerTrust.restype = OSStatus
 
+    Security.SecTrustGetCssmResultCode.argtypes = [SecTrustRef, POINTER(OSStatus)]
+    Security.SecTrustGetCssmResultCode.restype = OSStatus
+
     Security.SecTrustGetCertificateCount.argtypes = [SecTrustRef]
     Security.SecTrustGetCertificateCount.restype = CFIndex
 
@@ -240,6 +243,7 @@ try:
     setattr(Security, 'SSLProtocol', SSLProtocol)
     setattr(Security, 'SSLCipherSuite', SSLCipherSuite)
     setattr(Security, 'SecTrustRef', SecTrustRef)
+    setattr(Security, 'OSStatus', OSStatus)
 
     setattr(Security, 'SecAccessRef', SecAccessRef)
     setattr(Security, 'SecKeyRef', SecKeyRef)
