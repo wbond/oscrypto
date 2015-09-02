@@ -21,10 +21,12 @@ from .._tls import (
     parse_session_info,
     raise_client_auth,
     raise_dh_params,
+    raise_disconnection,
     raise_expired_not_yet_valid,
     raise_handshake,
     raise_hostname,
     raise_no_issuer,
+    raise_protocol_error,
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
@@ -591,6 +593,8 @@ class TLSSocket(object):
 
             while result != secur32_const.SEC_E_OK:
                 bytes_read = self._socket.recv(8192)
+                if bytes_read == b'' and self._socket.gettimeout() is None:
+                    raise_disconnection()
                 handshake_server_bytes += bytes_read
                 self._received_bytes += bytes_read
 
@@ -644,6 +648,9 @@ class TLSSocket(object):
 
                 if result == crypt32_const.TRUST_E_CERT_SIGNATURE:
                     raise_weak_signature(cert)
+
+                if result == secur32_const.SEC_E_INVALID_TOKEN:
+                    raise_protocol_error(handshake_server_bytes)
 
                 if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
