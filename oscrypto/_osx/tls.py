@@ -540,6 +540,10 @@ class TLSSocket(object):
                     result = CoreFoundation.CFRelease(session_context)
                     handle_cf_error(result)
 
+            self._read_callback_pointer = None
+            self._write_callback_pointer = None
+            self._session_context = None
+
             raise
 
     def _read_callback(self, connection_id, data_buffer, data_length_pointer):  #pylint: disable=W0613
@@ -873,6 +877,15 @@ class TLSSocket(object):
         result = Security.SSLClose(self._session_context)
         handle_sec_error(result, TLSError)
 
+        if osx_version_info < (10, 8):
+            result = Security.SSLDisposeContext(self._session_context)
+            handle_sec_error(result)
+        else:
+            result = CoreFoundation.CFRelease(self._session_context)
+            handle_cf_error(result)
+
+        self._read_callback_pointer = None
+        self._write_callback_pointer = None
         self._session_context = None
 
         self._local_closed = True
@@ -1057,4 +1070,12 @@ class TLSSocket(object):
             if self._session_context:
                 result = Security.SSLClose(self._session_context)
                 handle_sec_error(result)
+
+                if osx_version_info < (10, 8):
+                    result = Security.SSLDisposeContext(self._session_context)
+                    handle_sec_error(result)
+                else:
+                    result = CoreFoundation.CFRelease(self._session_context)
+                    handle_cf_error(result)
+
                 self._session_context = None
