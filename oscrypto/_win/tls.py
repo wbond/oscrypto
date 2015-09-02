@@ -27,6 +27,7 @@ from .._tls import (
     raise_no_issuer,
     raise_self_signed,
     raise_verification,
+    raise_weak_signature,
 )
 from .asymmetric import load_certificate, Certificate
 from ..keys import parse_certificate
@@ -497,7 +498,7 @@ class TLSSocket(object):
                     raise_hostname(cert, self._hostname)
 
                 if error == crypt32_const.TRUST_E_CERT_SIGNATURE:
-                    raise_handshake()
+                    raise_weak_signature(cert)
 
                 raise_verification(cert)
 
@@ -640,6 +641,9 @@ class TLSSocket(object):
                 if result == secur32_const.SEC_I_INCOMPLETE_CREDENTIALS:
                     chain = extract_chain(handshake_server_bytes)
                     raise_client_auth(chain[0])
+
+                if result == crypt32_const.TRUST_E_CERT_SIGNATURE:
+                    raise_weak_signature(cert)
 
                 if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
