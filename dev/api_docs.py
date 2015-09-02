@@ -174,9 +174,17 @@ def walk_ast(node, code_lines, sections, md_chunks):
                     if is_constructor:
                         key = ('class', node.name)
 
+                        class_docstring = ast.get_docstring(node)
+                        class_description = textwrap.dedent(class_docstring).strip()
+                        if class_description:
+                            class_description_md = "> %s\n>" % (class_description.replace("\n", "\n> "))
+                        else:
+                            class_description_md = ''
+
                         md_chunk = textwrap.dedent("""
                             ### `%s()` class
 
+                            %s
                             > ##### constructor
                             >
                             > > ```python
@@ -186,9 +194,12 @@ def walk_ast(node, code_lines, sections, md_chunks):
                             %s
                         """).strip() % (
                             node.name,
+                            class_description_md,
                             definition,
                             description_md
                         )
+
+                        md_chunk = md_chunk.replace('\n\n\n', '\n\n')
 
                     else:
                         key = method_key
@@ -208,6 +219,9 @@ def walk_ast(node, code_lines, sections, md_chunks):
                             description_md
                         )
 
+                    if md_chunk[-5:] == '\n> >\n':
+                        md_chunk = md_chunk[0:-5]
+
                 else:
                     key = attribute_key
 
@@ -224,7 +238,7 @@ def walk_ast(node, code_lines, sections, md_chunks):
                         description_md
                     )
 
-                md_chunks[key] = md_chunk
+                md_chunks[key] = md_chunk.rstrip()
 
     elif isinstance(node, _ast.If):
         for subast in node.body:
@@ -291,6 +305,12 @@ def run():
             end += added_lines
             new_lines = md_chunk.split('\n')
             added_lines += len(new_lines) - (end - start)
+
+            # Ensure a newline above each class header
+            if start > 0 and md_lines[start][0:4] == '### ' and md_lines[start-1][0:1] == '>':
+                added_lines += 1
+                new_lines.insert(0, '')
+
             md_lines[start:end] = new_lines
             return added_lines
 
