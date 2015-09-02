@@ -11,14 +11,13 @@ libraries utilized:
 
  - Windows: Cryptography API Next Generation (CNG), Cryptography API
  - OS X: Security.framework, CommonCrypto
- - Linux: OpenSSL
- - OpenBSD: LibreSSL
+ - Linux/BSD: OpenSSL/LibreSSL
 
 Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
 should, or should not use, please see [Learning](docs/readme.md#learning).
 
- - TLSv1.x socket wrappers
+ - [TLSv1.x socket wrappers](docs/tls.md)
    - Certificate verification performed by OS trust roots
    - Custom CA certificate support
    - SNI support
@@ -26,12 +25,9 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - Modern cipher suites (RC4, DES, anon and NULL ciphers disabled)
    - Weak DH parameters and certificate signatures rejected
    - SSLv3 disabled by default, SSLv2 unimplemented
- - Generating public/private key pairs:
-   - RSA (1024, 2048, 3072, 4096 bit)
-   - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
-     Windows 8)
-   - EC (secp256r1, secp384r1, secp521r1 curves)
- - Encryption/decryption using:
+ - [Exporting OS trust roots](docs/trust_list.md)
+   - PEM-formatted CA certs from the OS for OpenSSL-based code
+ - [Encryption/decryption](docs/symmetric.md)
    - AES (128, 192, 256), CBC mode, PKCS7 padding
    - AES (128, 192, 256), CBC mode, no padding
    - TripleDES 3-key, CBC mode, PKCS5 padding
@@ -41,23 +37,26 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - RC4 (40-128)
    - RSA PKCSv1.5
    - RSA OAEP (SHA1 only)
- - Signing and verification using:
+ - [Generating public/private key pairs](docs/asymmetric.md)
+   - RSA (1024, 2048, 3072, 4096 bit)
+   - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
+     Windows 8)
+   - EC (secp256r1, secp384r1, secp521r1 curves)
+ - [Signing and verification](docs/asymmetric.md)
    - RSA PKCSv1.5
    - RSA PSS
    - DSA
    - EC
- - Loading and normalizing DER and PEM formatted:
+ - [Loading and normalizing DER and PEM formatted keys](docs/keys.md)
    - RSA, DSA and EC Public keys
    - RSA, DSA and EC Private keys
    - X.509 Certificates
    - PKCS#12 archives (`.pfx`/`.p12`)
- - Key derivation:
+ - [Key derivation](docs/kdf.md)
    - PBKDF2
    - PBKDF1
    - PKCS#12 KDF
- - Exporting PEM-formatted CA certs from the operating system (for OpenSSL-based
-   code)
- - Random byte generation
+ - [Random byte generation](docs/util.md)
 
 The feature set was largely driven by the technologies used related to
 generating and validating X.509 certificates. The various CBC encryption schemes
