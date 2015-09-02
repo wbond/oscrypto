@@ -7,6 +7,7 @@ import socket as socket_
 import select
 import numbers
 import errno
+import weakref
 
 from asn1crypto import x509
 from asn1crypto.util import int_to_bytes
@@ -66,6 +67,118 @@ _PROTOCOL_CONST_STRING_MAP = {
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 _cipher_blacklist_regex = re.compile('anon|PSK|SEED|RC4|MD5|NULL|CAMELLIA|ARIA|SRP|KRB5|EXPORT|(?<!3)DES|IDEA')
+_connection_refs = weakref.WeakValueDictionary()
+_socket_refs = {}
+
+
+def _read_callback(connection_id, data_buffer, data_length_pointer):
+    """
+    Callback called by Secure Transport to actually read the socket
+
+    :param connection_id:
+        An integer identifing the connection
+
+    :param data_buffer:
+        A char pointer FFI type to write the data to
+
+    :param data_length_pointer:
+        A size_t pointer FFI type of the amount of data to read. Will be
+        overwritten with the amount of data read on return.
+
+    :return:
+        An integer status code of the result - 0 for success
+    """
+
+    self = _connection_refs.get(connection_id)
+    if not self:
+        socket = _socket_refs.get(connection_id)
+
+    if not self and not socket:
+        print('Nothing to do!')
+        return 0
+
+    recv = self._socket.recv if self else socket.recv
+
+    bytes_requested = deref(data_length_pointer)
+
+    error = None
+    data = b''
+    try:
+        while len(data) < bytes_requested:
+            data += recv(bytes_requested - len(data))
+    except (socket_.error) as e:
+        error = e.errno
+
+    if error is not None and error != errno.EAGAIN:
+        if error == errno.ECONNRESET:
+            return security_const.errSSLClosedNoNotify
+        return security_const.errSSLClosedAbort
+
+    if self and not self._done_handshake:
+        self._server_hello += data
+
+    write_to_buffer(data_buffer, data)
+    pointer_set(data_length_pointer, len(data))
+
+    if len(data) != bytes_requested:
+        return security_const.errSSLWouldBlock
+
+    return 0
+
+
+def _write_callback(connection_id, data_buffer, data_length_pointer):
+    """
+    Callback called by Secure Transport to actually write to the socket
+
+    :param connection_id:
+        An integer identifing the connection
+
+    :param data_buffer:
+        A char pointer FFI type containing the data to write
+
+    :param data_length_pointer:
+        A size_t pointer FFI type of the amount of data to write. Will be
+        overwritten with the amount of data actually written on return.
+
+    :return:
+        An integer status code of the result - 0 for success
+    """
+
+    self = _connection_refs.get(connection_id)
+    if not self:
+        socket = _socket_refs.get(connection_id)
+
+    if not self and not socket:
+        print('Nothing to do!')
+        return 0
+
+    data_length = deref(data_length_pointer)
+    data = bytes_from_buffer(data_buffer, data_length)
+
+    if self and not self._done_handshake:
+        self._client_hello += data
+
+    send = self._socket.send if self else socket.send
+
+    error = None
+    try:
+        sent = send(data)
+    except (socket_.error) as e:
+        error = e.errno
+
+    if error is not None and error != errno.EAGAIN:
+        if error == errno.ECONNRESET:
+            return security_const.errSSLClosedNoNotify
+        return security_const.errSSLClosedAbort
+
+    if sent != data_length:
+        pointer_set(data_length_pointer, sent)
+        return security_const.errSSLWouldBlock
+
+    return 0
+
+_read_callback_pointer = callback(Security, 'SSLReadFunc', _read_callback)
+_write_callback_pointer = callback(Security, 'SSLWriteFunc', _write_callback)
 
 
 class TLSSession(object):
@@ -156,8 +269,6 @@ class TLSSocket(object):
     _session = None
 
     _session_context = None
-    _read_callback_pointer = None
-    _write_callback_pointer = None
 
     _decrypted_bytes = None
 
@@ -177,6 +288,7 @@ class TLSSocket(object):
     _client_hello = None
 
     _local_closed = False
+    _connection_id = None
 
     @classmethod
     def wrap(cls, socket, hostname, session=None):
@@ -285,16 +397,17 @@ class TLSSocket(object):
                     security_const.kSSLStreamType
                 )
 
-            self._read_callback_pointer = callback(Security, 'SSLReadFunc', self._read_callback)
-            self._write_callback_pointer = callback(Security, 'SSLWriteFunc', self._write_callback)
             result = Security.SSLSetIOFuncs(
                 session_context,
-                self._read_callback_pointer,
-                self._write_callback_pointer
+                _read_callback_pointer,
+                _write_callback_pointer
             )
             handle_sec_error(result)
 
-            result = Security.SSLSetConnection(session_context, id(self) % 2147483647)
+            self._connection_id = id(self) % 2147483647
+            _connection_refs[self._connection_id] = self
+            _socket_refs[self._connection_id] = self._socket
+            result = Security.SSLSetConnection(session_context, self._connection_id)
             handle_sec_error(result)
 
             utf8_domain = self._hostname.encode('utf-8')
@@ -540,96 +653,10 @@ class TLSSocket(object):
                     result = CoreFoundation.CFRelease(session_context)
                     handle_cf_error(result)
 
-            self._read_callback_pointer = None
-            self._write_callback_pointer = None
             self._session_context = None
+            self.close()
 
             raise
-
-    def _read_callback(self, connection_id, data_buffer, data_length_pointer):  #pylint: disable=W0613
-        """
-        Callback called by Secure Transport to actually read the socket
-
-        :param connection_id:
-            An integer identifing the connection
-
-        :param data_buffer:
-            A char pointer FFI type to write the data to
-
-        :param data_length_pointer:
-            A size_t pointer FFI type of the amount of data to read. Will be
-            overwritten with the amount of data read on return.
-
-        :return:
-            An integer status code of the result - 0 for success
-        """
-
-        bytes_requested = deref(data_length_pointer)
-
-        error = None
-        data = b''
-        try:
-            while len(data) < bytes_requested:
-                data += self._socket.recv(bytes_requested - len(data))
-        except (socket_.error) as e:
-            error = e.errno
-
-        if error is not None and error != errno.EAGAIN:
-            if error == errno.ECONNRESET:
-                return security_const.errSSLClosedNoNotify
-            return security_const.errSSLClosedAbort
-
-        if not self._done_handshake:
-            self._server_hello += data
-
-        write_to_buffer(data_buffer, data)
-        pointer_set(data_length_pointer, len(data))
-
-        if len(data) != bytes_requested:
-            return security_const.errSSLWouldBlock
-
-        return 0
-
-    def _write_callback(self, connection_id, data_buffer, data_length_pointer):  #pylint: disable=W0613
-        """
-        Callback called by Secure Transport to actually write to the socket
-
-        :param connection_id:
-            An integer identifing the connection
-
-        :param data_buffer:
-            A char pointer FFI type containing the data to write
-
-        :param data_length_pointer:
-            A size_t pointer FFI type of the amount of data to write. Will be
-            overwritten with the amount of data actually written on return.
-
-        :return:
-            An integer status code of the result - 0 for success
-        """
-
-        data_length = deref(data_length_pointer)
-        data = bytes_from_buffer(data_buffer, data_length)
-
-        if not self._done_handshake:
-            self._client_hello += data
-
-        error = None
-        try:
-            sent = self._socket.send(data)
-        except (socket_.error) as e:
-            error = e.errno
-
-        if error is not None and error != errno.EAGAIN:
-            if error == errno.ECONNRESET:
-                return security_const.errSSLClosedNoNotify
-            return security_const.errSSLClosedAbort
-
-        if sent != data_length:
-            pointer_set(data_length_pointer, sent)
-            return security_const.errSSLWouldBlock
-
-        return 0
 
     def read(self, max_length):
         """
@@ -884,8 +911,6 @@ class TLSSocket(object):
             result = CoreFoundation.CFRelease(self._session_context)
             handle_cf_error(result)
 
-        self._read_callback_pointer = None
-        self._write_callback_pointer = None
         self._session_context = None
 
         self._local_closed = True
@@ -900,9 +925,19 @@ class TLSSocket(object):
         Shuts down the TLS session and socket and forcibly closes it
         """
 
-        self.shutdown()
-        self._socket.close()
-        self._socket = None
+        try:
+            self.shutdown()
+
+        finally:
+            if self._socket:
+                try:
+                    self._socket.close()
+                except (socket_.error):  #pylint: disable=W0704
+                    pass
+            self._socket = None
+
+            if self._connection_id in _socket_refs:
+                del _socket_refs[self._connection_id]
 
     def _read_certificates(self):
         """
@@ -1061,21 +1096,4 @@ class TLSSocket(object):
         return self._socket
 
     def __del__(self):
-        try:
-            self.shutdown()
-
-        finally:
-            # Just in case we ran into an exception, double check that we
-            # have freed the allocated memory
-            if self._session_context:
-                result = Security.SSLClose(self._session_context)
-                handle_sec_error(result)
-
-                if osx_version_info < (10, 8):
-                    result = Security.SSLDisposeContext(self._session_context)
-                    handle_sec_error(result)
-                else:
-                    result = CoreFoundation.CFRelease(self._session_context)
-                    handle_cf_error(result)
-
-                self._session_context = None
+        self.close()
