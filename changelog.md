@@ -1,5 +1,16 @@
 # changelog
 
+## 0.11.0
+
+ - Added TLS functionality
+ - Added Python 2.6 support
+ - Added `asymmetric.Certificate.self_signed`
+ - Added "raw" RSA signing/verification to `asymmetric.rsa_pkcs1v15_sign()` and
+   `asymmetric.rsa_pkcs1v15_verify()` functions
+ - Fixes for compatibility bugs with OS X 10.7
+ - Fixes for compatibility bugs with pypy3
+ - Fixes for compatibility bugs with cffi 0.8.6
+
 ## 0.10.0
 
  - `oscrypto.public_key` renamed to `oscrypto.asymmetric`
