@@ -46,6 +46,13 @@ ffi.cdef("""
         void *copyDescription;
         void *equal;
     } CFDictionaryValueCallBacks;
+    typedef struct {
+        CFIndex version;
+        void *retain;
+        void *release;
+        void *copyDescription;
+        void *equal;
+    } CFArrayCallBacks;
 
     CFIndex CFDataGetLength(CFDataRef theData);
     const char *CFDataGetBytePtr(CFDataRef theData);
@@ -74,6 +81,7 @@ ffi.cdef("""
     CFTypeID CFStringGetTypeID(void);
     CFTypeID CFDataGetTypeID(void);
 
+    CFArrayRef CFArrayCreate(CFAllocatorRef allocator, const void **values, CFIndex numValues, const CFArrayCallBacks *callBacks);
     CFIndex CFArrayGetCount(CFArrayRef theArray);
     CFTypeRef CFArrayGetValueAtIndex(CFArrayRef theArray, CFIndex idx);
     CFNumberType CFNumberGetType(CFNumberRef number);
@@ -82,6 +90,7 @@ ffi.cdef("""
     CFTypeID CFGetTypeID(CFTypeRef cf);
 
     CFAllocatorRef kCFAllocatorDefault;
+    CFArrayCallBacks kCFTypeArrayCallBacks;
     CFBooleanRef kCFBooleanTrue;
     CFDictionaryKeyCallBacks kCFTypeDictionaryKeyCallBacks;
     CFDictionaryValueCallBacks kCFTypeDictionaryValueCallBacks;
@@ -303,6 +312,26 @@ class CFHelpers():
             length,
             ffi.addressof(CoreFoundation.kCFTypeDictionaryKeyCallBacks),
             ffi.addressof(CoreFoundation.kCFTypeDictionaryValueCallBacks)
+        )
+
+    @staticmethod
+    def cf_array_from_list(values):
+        """
+        Creates a CFArrayRef object from a list of CF* type objects.
+
+        :param values:
+            A list of CF* type object
+
+        :return:
+            A CFArrayRef
+        """
+
+        length = len(values)
+        return CoreFoundation.CFArrayCreate(
+            CoreFoundation.kCFAllocatorDefault,
+            values,
+            length,
+            ffi.addressof(CoreFoundation.kCFTypeArrayCallBacks)
         )
 
     @staticmethod

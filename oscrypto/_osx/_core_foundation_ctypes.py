@@ -40,6 +40,7 @@ CFErrorRef = POINTER(CFError)
 CFAllocatorRef = c_void_p
 CFDictionaryKeyCallBacks = c_void_p
 CFDictionaryValueCallBacks = c_void_p
+CFArrayCallBacks = c_void_p
 
 pointer_p = POINTER(c_void_p)
 
@@ -98,6 +99,9 @@ try:
     CoreFoundation.CFDataGetTypeID.argtypes = []
     CoreFoundation.CFDataGetTypeID.restype = CFTypeID
 
+    CoreFoundation.CFArrayCreate.argtypes = [CFAllocatorRef, POINTER(c_void_p), CFIndex, CFArrayCallBacks]
+    CoreFoundation.CFArrayCreate.restype = CFArrayRef
+
     CoreFoundation.CFArrayGetCount.argtypes = [CFArrayRef]
     CoreFoundation.CFArrayGetCount.restype = CFIndex
 
@@ -121,6 +125,7 @@ try:
 
     kCFTypeDictionaryKeyCallBacks = c_void_p.in_dll(CoreFoundation, 'kCFTypeDictionaryKeyCallBacks')
     kCFTypeDictionaryValueCallBacks = c_void_p.in_dll(CoreFoundation, 'kCFTypeDictionaryValueCallBacks')
+    kCFTypeArrayCallBacks = c_void_p.in_dll(CoreFoundation, 'kCFTypeArrayCallBacks')
 
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
@@ -352,6 +357,27 @@ class CFHelpers():
             length,
             kCFTypeDictionaryKeyCallBacks,
             kCFTypeDictionaryValueCallBacks
+        )
+
+    @staticmethod
+    def cf_array_from_list(values):
+        """
+        Creates a CFArrayRef object from a list of CF* type objects.
+
+        :param values:
+            A list of CF* type object
+
+        :return:
+            A CFArrayRef
+        """
+
+        length = len(values)
+        values = (CFTypeRef * length)(*values)
+        return CoreFoundation.CFArrayCreate(
+            CoreFoundation.kCFAllocatorDefault,
+            _cast_pointer_p(byref(values)),
+            length,
+            kCFTypeArrayCallBacks
         )
 
     @staticmethod

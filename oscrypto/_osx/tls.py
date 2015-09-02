@@ -19,8 +19,10 @@ from .._cipher_suites import CIPHER_SUITE_MAP
 from .util import rand_bytes
 from ..errors import TLSError
 from .._tls import (
+    detect_client_auth_request,
     extract_chain,
     parse_session_info,
+    raise_client_auth,
     raise_dh_params,
     raise_expired_not_yet_valid,
     raise_handshake,
@@ -28,8 +30,10 @@ from .._tls import (
     raise_no_issuer,
     raise_self_signed,
     raise_verification,
+    raise_weak_signature,
 )
-from .asymmetric import load_certificate
+from .asymmetric import load_certificate, Certificate
+from ..keys import parse_certificate
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -73,9 +77,10 @@ class TLSSession(object):
     _protocols = None
     _ciphers = None
     _manual_validation = None
+    _extra_trust_roots = None
     _peer_id = None
 
-    def __init__(self, protocol=None, manual_validation=False):
+    def __init__(self, protocol=None, manual_validation=False, extra_trust_roots=None):
         """
         :param protocol:
             A unicode string or set of unicode strings representing allowable
@@ -91,6 +96,14 @@ class TLSSession(object):
         :param manual_validation:
             If certificate and certificate path validation should be skipped
             and left to the developer to implement
+
+        :param extra_trust_roots:
+            A list containing one or more certificates to be treated as trust
+            roots, in one of the following formats:
+             - A byte string of the DER encoded certificate
+             - A unicode string of the certificate filename
+             - An asn1crypto.x509.Certificate object
+             - An oscrypto.asymmetric.Certificate object
 
         :raises:
             ValueError - when any of the parameters contain an invalid value
@@ -116,6 +129,20 @@ class TLSSession(object):
             raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
 
         self._protocols = protocol
+
+        self._extra_trust_roots = []
+        if extra_trust_roots:
+            for extra_trust_root in extra_trust_roots:
+                if isinstance(extra_trust_root, Certificate):
+                    extra_trust_root = extra_trust_root.asn1
+                elif isinstance(extra_trust_root, byte_cls):
+                    extra_trust_root = parse_certificate(extra_trust_root)
+                elif isinstance(extra_trust_root, str_cls):
+                    with open(extra_trust_root, 'rb') as f:
+                        extra_trust_root = parse_certificate(f.read())
+                elif not isinstance(extra_trust_root, x509.Certificate):
+                    raise ValueError('extra_trust_roots must be a list of byte strings, unicode strings, asn1crypto.x509.Certificate objects or oscrypto.asymmetric.Certificate objects, not %s' % object_name(extra_trust_root))
+                self._extra_trust_roots.append(extra_trust_root)
 
         self._peer_id = rand_bytes(8)
 
@@ -278,6 +305,9 @@ class TLSSocket(object):
             )
             handle_sec_error(result)
 
+            disable_auto_validation = self._session._manual_validation or self._session._extra_trust_roots  #pylint: disable=W0212
+            explicit_validation = (not self._session._manual_validation) and self._session._extra_trust_roots  #pylint: disable=W0212
+
             # Ensure requested protocol support is set for the session
             if osx_version_info < (10, 8):
                 for protocol in ['SSLv2', 'SSLv3', 'TLSv1']:
@@ -290,7 +320,7 @@ class TLSSocket(object):
                     )
                     handle_sec_error(result)
 
-                if self._session._manual_validation:  #pylint: disable=W0212
+                if disable_auto_validation:  #pylint: disable=W0212
                     result = Security.SSLSetEnableCertVerify(session_context, False)
                     handle_sec_error(result)
 
@@ -309,7 +339,7 @@ class TLSSocket(object):
                 )
                 handle_sec_error(result)
 
-                if self._session._manual_validation:  #pylint: disable=W0212
+                if disable_auto_validation:  #pylint: disable=W0212
                     result = Security.SSLSetSessionOption(
                         session_context,
                         security_const.kSSLSessionOptionBreakOnServerAuth,
@@ -355,30 +385,69 @@ class TLSSocket(object):
             result = Security.SSLSetPeerID(session_context, peer_id, len(peer_id))
             handle_sec_error(result)
 
-            result = Security.SSLHandshake(session_context)
-            while result == security_const.errSSLWouldBlock:
-                result = Security.SSLHandshake(session_context)
+            handshake_result = Security.SSLHandshake(session_context)
+            while handshake_result == security_const.errSSLWouldBlock:
+                handshake_result = Security.SSLHandshake(session_context)
 
-            self._done_handshake = True
-
-            # In testing, only errSSLXCertChainInvalid was ever returned for
-            # all of these different situations, however we include the others
-            # for completeness. To get the real reason we have to use the
-            # certificate from the handshake and use the deprecated function
-            # SecTrustGetCssmResultCode().
-            if result in set([security_const.errSSLXCertChainInvalid, security_const.errSSLCertExpired, security_const.errSSLCertNotYetValid, security_const.errSSLUnknownRootCert, security_const.errSSLNoRootCert, security_const.errSSLHostNameMismatch]):
+            if explicit_validation and handshake_result == security_const.errSSLServerAuthCompleted:
                 trust_ref_pointer = new(Security, 'SecTrustRef *')
                 result = Security.SSLCopyPeerTrust(
                     session_context,
                     trust_ref_pointer
                 )
                 handle_sec_error(result)
+                trust_ref = unwrap(trust_ref_pointer)
 
+                ca_cert_refs = []
+                ca_certs = []
+                for cert in self._session._extra_trust_roots:  #pylint: disable=W0212
+                    ca_cert = load_certificate(cert)
+                    ca_certs.append(ca_cert)
+                    ca_cert_refs.append(ca_cert.sec_certificate_ref)
+
+                array_ref = CFHelpers.cf_array_from_list(ca_cert_refs)
+                result = Security.SecTrustSetAnchorCertificates(trust_ref, array_ref)
+                handle_sec_error(result)
+
+                result_pointer = new(Security, 'SecTrustResultType *')
+                result = Security.SecTrustEvaluate(trust_ref, result_pointer)
+                handle_sec_error(result)
+
+                trust_result_code = deref(result_pointer)
+                if trust_result_code not in set([security_const.kSecTrustResultProceed, security_const.kSecTrustResultUnspecified]):
+                    handshake_result = security_const.errSSLXCertChainInvalid
+                else:
+                    handshake_result = Security.SSLHandshake(session_context)
+                    while handshake_result == security_const.errSSLWouldBlock:
+                        handshake_result = Security.SSLHandshake(session_context)
+
+            self._done_handshake = True
+
+            handshake_error_codes = set([
+                security_const.errSSLXCertChainInvalid,
+                security_const.errSSLCertExpired,
+                security_const.errSSLCertNotYetValid,
+                security_const.errSSLUnknownRootCert,
+                security_const.errSSLNoRootCert,
+                security_const.errSSLHostNameMismatch
+            ])
+
+            # In testing, only errSSLXCertChainInvalid was ever returned for
+            # all of these different situations, however we include the others
+            # for completeness. To get the real reason we have to use the
+            # certificate from the handshake and use the deprecated function
+            # SecTrustGetCssmResultCode().
+            if handshake_result in handshake_error_codes:
+                trust_ref_pointer = new(Security, 'SecTrustRef *')
+                result = Security.SSLCopyPeerTrust(
+                    session_context,
+                    trust_ref_pointer
+                )
+                handle_sec_error(result)
                 trust_ref = unwrap(trust_ref_pointer)
 
                 result_code_pointer = new(Security, 'OSStatus *')
                 result = Security.SecTrustGetCssmResultCode(trust_ref, result_code_pointer)
-
                 result_code = deref(result_code_pointer)
 
                 chain = extract_chain(self._server_hello)
@@ -399,6 +468,9 @@ class TLSSocket(object):
                     not_yet_valid = result_code == security_const.CSSMERR_TP_CERT_NOT_VALID_YET
                     bad_hostname = result_code == security_const.CSSMERR_APPLETP_HOSTNAME_MISMATCH
 
+                if chain and chain[0].hash_algo in set(['md5', 'md2']):
+                    raise_weak_signature(chain[0])
+
                 if bad_hostname:
                     raise_hostname(cert, self._hostname)
 
@@ -411,16 +483,22 @@ class TLSSocket(object):
                 elif self_signed:
                     raise_self_signed(cert)
 
+                if detect_client_auth_request(self._server_hello):
+                    raise_client_auth(cert)
+
                 raise_verification(cert)
 
-            if result == security_const.errSSLPeerHandshakeFail:
+            if handshake_result == security_const.errSSLPeerHandshakeFail:
+                if detect_client_auth_request(self._server_hello):
+                    chain = extract_chain(self._server_hello)
+                    raise_client_auth(chain[0])
                 raise_handshake()
 
-            if result == security_const.errSSLWeakPeerEphemeralDHKey:
+            if handshake_result == security_const.errSSLWeakPeerEphemeralDHKey:
                 raise_dh_params()
 
-            if result != security_const.errSSLWouldBlock:
-                handle_sec_error(result, TLSError)
+            if handshake_result != security_const.errSSLWouldBlock:
+                handle_sec_error(handshake_result, TLSError)
 
             self._session_context = session_context
 

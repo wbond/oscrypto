@@ -64,6 +64,8 @@ SecKeychainRef = c_void_p
 SSLContextRef = POINTER(c_void_p)
 SecTrustRef = POINTER(c_void_p)
 SSLConnectionRef = c_uint32
+SecTrustResultType = c_uint32
+SecTrustOptionFlags = c_uint32
 
 try:
     Security.SecRandomCopyBytes.argtypes = [SecRandomRef, c_size_t, c_char_p]
@@ -153,6 +155,12 @@ try:
     Security.SSLSetPeerID.argtypes = [SSLContextRef, c_char_p, c_size_t]
     Security.SSLSetPeerID.restype = OSStatus
 
+    Security.SSLSetCertificateAuthorities.argtypes = [SSLContextRef, CFTypeRef, Boolean]
+    Security.SSLSetCertificateAuthorities.restype = OSStatus
+
+    Security.SecTrustSetOptions.argtypes = [SecTrustRef, SecTrustOptionFlags]
+    Security.SecTrustSetOptions.restype = OSStatus
+
     Security.SSLSetConnection.argtypes = [SSLContextRef, SSLConnectionRef]
     Security.SSLSetConnection.restype = OSStatus
 
@@ -207,6 +215,12 @@ try:
     Security.SecTrustGetCertificateAtIndex.argtypes = [SecTrustRef, CFIndex]
     Security.SecTrustGetCertificateAtIndex.restype = SecCertificateRef
 
+    Security.SecTrustSetAnchorCertificates.argtypes = [SecTrustRef, CFArrayRef]
+    Security.SecTrustSetAnchorCertificates.restype = OSStatus
+
+    Security.SecTrustEvaluate.argtypes = [SecTrustRef, POINTER(SecTrustResultType)]
+    Security.SecTrustEvaluate.restype = OSStatus
+
     if version_info < (10, 8):
         Security.SSLNewContext.argtypes = [Boolean, POINTER(SSLContextRef)]
         Security.SSLNewContext.restype = OSStatus
@@ -243,6 +257,7 @@ try:
     setattr(Security, 'SSLProtocol', SSLProtocol)
     setattr(Security, 'SSLCipherSuite', SSLCipherSuite)
     setattr(Security, 'SecTrustRef', SecTrustRef)
+    setattr(Security, 'SecTrustResultType', SecTrustResultType)
     setattr(Security, 'OSStatus', OSStatus)
 
     setattr(Security, 'SecAccessRef', SecAccessRef)

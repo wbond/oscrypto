@@ -23,7 +23,7 @@ ffi = FFI()
 ffi.cdef("""
     typedef bool Boolean;
     typedef long CFIndex;
-    typedef signed long OSStatus;
+    typedef int32_t OSStatus;
     typedef unsigned long CFTypeID;
     typedef uint32_t SecTrustSettingsDomain;
     typedef uint32_t SecPadding;
@@ -34,6 +34,7 @@ ffi.cdef("""
     typedef uint32_t CSSM_KEYUSE;
     typedef uint32_t SSLProtocol;
     typedef uint32_t SSLCipherSuite;
+    typedef uint32_t SecTrustResultType;
 
     typedef void *CFTypeRef;
     typedef CFTypeRef CFArrayRef;
@@ -109,6 +110,8 @@ ffi.cdef("""
     OSStatus SecTrustGetCssmResultCode(SecTrustRef trust, OSStatus *resultCode);
     CFIndex SecTrustGetCertificateCount(SecTrustRef trust);
     SecCertificateRef SecTrustGetCertificateAtIndex(SecTrustRef trust, CFIndex ix);
+    OSStatus SecTrustSetAnchorCertificates(SecTrustRef trust, CFArrayRef anchorCertificates);
+    OSStatus SecTrustEvaluate(SecTrustRef trust, SecTrustResultType *result);
 
     SecRandomRef kSecRandomDefault;
 

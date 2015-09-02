@@ -55,6 +55,10 @@ class security_const():
     kSecTrustSettingsDomainAdmin = 1
     kSecTrustSettingsDomainSystem = 2
 
+    kSecTrustResultProceed = 1
+    kSecTrustResultUnspecified = 4
+    kSecTrustOptionImplicitAnchors = 0x00000040
+
     kSSLSessionOptionBreakOnServerAuth = 0
 
     kSSLProtocol2 = 1
@@ -79,6 +83,7 @@ class security_const():
     errSSLHostNameMismatch = -9843
     errSSLPeerHandshakeFail = -9824
     errSSLWeakPeerEphemeralDHKey = -9850
+    errSSLServerAuthCompleted = -9841
 
     CSSMERR_APPLETP_HOSTNAME_MISMATCH = -2147408896
     CSSMERR_TP_CERT_EXPIRED = -2147409654
