@@ -37,7 +37,8 @@ and decryption. The following functions comprise the public API:
 >         to generate an IV
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -63,7 +64,8 @@ and decryption. The following functions comprise the public API:
 >         The initialization vector - a byte string 16-bytes long
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -89,7 +91,8 @@ and decryption. The following functions comprise the public API:
 >         to generate an IV
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -116,7 +119,8 @@ and decryption. The following functions comprise the public API:
 >         The initialization vector - a byte string 16-bytes long
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -143,7 +147,8 @@ and decryption. The following functions comprise the public API:
 >         to generate an IV
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -169,7 +174,8 @@ and decryption. The following functions comprise the public API:
 >         The initialization vector - a byte string 8-bytes long
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -196,7 +202,8 @@ and decryption. The following functions comprise the public API:
 >         to generate an IV
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -222,7 +229,8 @@ and decryption. The following functions comprise the public API:
 >         The initialization vector - a byte string 8-bytes long
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -244,7 +252,8 @@ and decryption. The following functions comprise the public API:
 >         The plaintext - a byte string
 >
 >     :raises:
->         ValueError - when the key or data parameter is incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -266,7 +275,8 @@ and decryption. The following functions comprise the public API:
 >         The ciphertext - a byte string
 >
 >     :raises:
->         ValueError - when the key or data parameter is incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -292,7 +302,8 @@ and decryption. The following functions comprise the public API:
 >         to generate an IV
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -318,7 +329,8 @@ and decryption. The following functions comprise the public API:
 >         The initialization vector - a byte string 8 bytes long
 >
 >     :raises:
->         ValueError - when the key, data or iv parameters are incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:

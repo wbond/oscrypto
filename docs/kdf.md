@@ -28,6 +28,10 @@ functions comprise the public API:
 >     :param key_length:
 >         The length of the desired key in bytes
 >
+>     :raises:
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>
 >     :return:
 >         The derived key as a byte string
 >     """
@@ -112,6 +116,10 @@ functions comprise the public API:
 >
 >     :param id_:
 >         The ID of the usage - 1 for key, 2 for iv, 3 for mac
+>
+>     :raises:
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >
 >     :return:
 >         The derived key as a byte string

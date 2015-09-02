@@ -46,6 +46,11 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string - used for "ec" keys. Valid values include "secp256r1",
 >         "secp384r1" and "secp521r1".
 >
+>     :raises:
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
+>
 >     :return:
 >         A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
 >         may be saved by calling .asn1.dump().
@@ -64,7 +69,8 @@ encryption and decryption. The following functions comprise the public API:
 >         asn1crypto.x509.Certificate object
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -84,7 +90,9 @@ encryption and decryption. The following functions comprise the public API:
 >         asn1crypto.keys.PublicKeyInfo object
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         oscrypto.errors.AsymmetricKeyError - when the public key is incompatible with the OS crypto library
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -109,7 +117,9 @@ encryption and decryption. The following functions comprise the public API:
 >         PrivateKeyInfo object.
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         oscrypto.errors.AsymmetricKeyError - when the private key is incompatible with the OS crypto library
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -132,7 +142,9 @@ encryption and decryption. The following functions comprise the public API:
 >         will be encoded using UTF-8.
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         oscrypto.errors.AsymmetricKeyError - when a contained public or private key is incompatible with the OS crypto library
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -256,10 +268,12 @@ encryption and decryption. The following functions comprise the public API:
 >         A byte string of the data the signature is for
 >
 >     :param hash_algorithm:
->         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384",
+>         "sha512" or "raw"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -267,7 +281,12 @@ encryption and decryption. The following functions comprise the public API:
 >     """
 > ```
 >
-> Generates an RSASSA-PKCS-v1.5 signature
+> Generates an RSASSA-PKCS-v1.5 signature.
+>
+> When the hash_algorithm is "raw", the operation is identical to RSA
+> private key encryption. That is: the data is not hashed and no ASN.1
+> structure with an algorithm identifier of the hash algorithm is placed in
+> the encrypted byte string.
 
 ### `rsa_pkcs1v15_verify()` function
 
@@ -284,16 +303,23 @@ encryption and decryption. The following functions comprise the public API:
 >         A byte string of the data the signature is for
 >
 >     :param hash_algorithm:
->         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+>         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384",
+>         "sha512" or "raw"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
->         OSError - when an error is returned by the OS crypto library
 >         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
 >     """
 > ```
 >
-> Verifies an RSASSA-PKCS-v1.5 signature
+> Verifies an RSASSA-PKCS-v1.5 signature.
+>
+> When the hash_algorithm is "raw", the operation is identical to RSA
+> public key decryption. That is: the data is not hashed and no ASN.1
+> structure with an algorithm identifier of the hash algorithm is placed in
+> the encrypted byte string.
 
 ### `rsa_pss_sign()` function
 
@@ -310,7 +336,8 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -341,9 +368,10 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
->         OSError - when an error is returned by the OS crypto library
 >         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
 >     """
 > ```
 >
@@ -365,7 +393,8 @@ encryption and decryption. The following functions comprise the public API:
 >         (in bytes)
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -388,7 +417,8 @@ encryption and decryption. The following functions comprise the public API:
 >         A byte string of the encrypted data
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -411,7 +441,8 @@ encryption and decryption. The following functions comprise the public API:
 >         key length (in bytes)
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -434,8 +465,9 @@ encryption and decryption. The following functions comprise the public API:
 >         A byte string of the encrypted data
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
->         OSError - when an error is returned by the OS X Security Framework
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
 >         A byte string of the original plaintext
@@ -460,7 +492,8 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -488,9 +521,10 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
->         OSError - when an error is returned by the OS crypto library
 >         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
 >     """
 > ```
 >
@@ -511,7 +545,8 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
@@ -539,9 +574,10 @@ encryption and decryption. The following functions comprise the public API:
 >         A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
 >
 >     :raises:
->         ValueError - when any of the parameters are of the wrong type or value
->         OSError - when an error is returned by the OS crypto library
 >         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
 >     """
 > ```
 >

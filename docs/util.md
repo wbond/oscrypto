@@ -15,7 +15,8 @@ The following functions comprise the public API:
 >         The desired number of bytes
 >
 >     :raises:
->         ValueError - when the length parameter is incorrect
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:
