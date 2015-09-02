@@ -20,6 +20,7 @@ md_source_map = {
     'docs/kdf.md': ['oscrypto/kdf.py', 'oscrypto/_openssl/util.py'],
     'docs/keys.md': ['oscrypto/keys.py'],
     'docs/symmetric.md': ['oscrypto/_openssl/symmetric.py'],
+    'docs/tls.md': ['oscrypto/tls.py', 'oscrypto/_openssl/tls.py'],
     'docs/trust_list.md': ['oscrypto/trust_list.py'],
     'docs/util.md': ['oscrypto/util.py', 'oscrypto/_openssl/util.py'],
 }

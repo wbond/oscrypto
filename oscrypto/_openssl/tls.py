@@ -647,7 +647,7 @@ class TLSSocket(object):
         return output[0:end]
 
     def read_line(self):
-        """
+        r"""
         Reads a line from the socket, including the line ending of "\r\n", "\r",
         or "\n"
 

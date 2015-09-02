@@ -18,7 +18,14 @@ Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
 should, or should not use, please see [Learning](docs/readme.md#learning).
 
- - TLSv1.x (and SSLv3) socket wrappers
+ - TLSv1.x socket wrappers
+   - Certificate verification performed by OS trust roots
+   - Custom CA certificate support
+   - SNI support
+   - Session reuse via IDs/tickets
+   - Modern cipher suites (RC4, DES, anon and NULL ciphers disabled)
+   - Weak DH parameters and certificate signatures rejected
+   - SSLv3 disabled by default, SSLv2 unimplemented
  - Generating public/private key pairs:
    - RSA (1024, 2048, 3072, 4096 bit)
    - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
