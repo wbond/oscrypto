@@ -459,6 +459,7 @@ class TLSSocket(object):
             self._ssl = None
             self._rbio = None
             self._wbio = None
+            self.close()
 
             raise
 
@@ -769,9 +770,16 @@ class TLSSocket(object):
         Shuts down the TLS session and socket and forcibly closes it
         """
 
-        self.shutdown()
-        self._socket.close()
-        self._socket = None
+        try:
+            self.shutdown()
+
+        finally:
+            if self._socket:
+                try:
+                    self._socket.close()
+                except (socket_.error):  #pylint: disable=W0704
+                    pass
+                self._socket = None
 
     def _read_certificates(self):
         """
@@ -908,15 +916,4 @@ class TLSSocket(object):
         return self._socket
 
     def __del__(self):
-        try:
-            self.shutdown()
-
-        finally:
-            # Just in case we ran into an exception, double check that we
-            # have freed the allocated memory
-            if self._ssl:
-                libssl.SSL_free(self._ssl)
-                self._ssl = None
-                # BIOs are freed by SSL_free()
-                self._rbio = None
-                self._wbio = None
+        self.close()

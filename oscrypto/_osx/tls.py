@@ -934,7 +934,7 @@ class TLSSocket(object):
                     self._socket.close()
                 except (socket_.error):  #pylint: disable=W0704
                     pass
-            self._socket = None
+                self._socket = None
 
             if self._connection_id in _socket_refs:
                 del _socket_refs[self._connection_id]

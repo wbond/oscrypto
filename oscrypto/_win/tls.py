@@ -718,6 +718,11 @@ class TLSSocket(object):
             if self._session._extra_trust_roots:  #pylint: disable=W0212
                 self._extra_trust_root_validation()
 
+        except (OSError, socket_.error):
+            self.close()
+
+            raise
+
         finally:
             if out_buffers:
                 if not is_null(out_buffers[0].pvBuffer):
@@ -1104,6 +1109,13 @@ class TLSSocket(object):
             token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
             self._socket.send(token)
 
+        finally:
+            if out_buffers:
+                if not is_null(out_buffers[0].pvBuffer):
+                    secur32.FreeContextBuffer(out_buffers[0].pvBuffer)
+                if not is_null(out_buffers[1].pvBuffer):
+                    secur32.FreeContextBuffer(out_buffers[1].pvBuffer)
+
             secur32.DeleteSecurityContext(self._context_handle_pointer)
             self._context_handle_pointer = None
 
@@ -1112,21 +1124,21 @@ class TLSSocket(object):
             except (socket_.error):  #pylint: disable=W0704
                 pass
 
-        finally:
-            if out_buffers:
-                if not is_null(out_buffers[0].pvBuffer):
-                    secur32.FreeContextBuffer(out_buffers[0].pvBuffer)
-                if not is_null(out_buffers[1].pvBuffer):
-                    secur32.FreeContextBuffer(out_buffers[1].pvBuffer)
-
     def close(self):
         """
         Shuts down the TLS session and socket and forcibly closes it
         """
 
-        self.shutdown()
-        self._socket.close()
-        self._socket = None
+        try:
+            self.shutdown()
+
+        finally:
+            if self._socket:
+                try:
+                    self._socket.close()
+                except (socket_.error):  #pylint: disable=W0704
+                    pass
+                self._socket = None
 
     def _read_certificates(self):
         """
@@ -1271,12 +1283,4 @@ class TLSSocket(object):
         return self._socket
 
     def __del__(self):
-        try:
-            self.shutdown()
-
-        finally:
-            # Just in case we ran into an exception, double check that we
-            # have freed the allocated memory
-            if self._context_handle_pointer:
-                secur32.DeleteSecurityContext(self._context_handle_pointer)
-                self._context_handle_pointer = None
+        self.close()
