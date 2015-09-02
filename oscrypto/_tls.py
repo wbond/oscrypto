@@ -368,6 +368,36 @@ def raise_expired_not_yet_valid(certificate):
     raise TLSVerificationError(message, certificate)
 
 
+def raise_disconnection():
+    """
+    Raises a TLSError due to a disconnection
+
+    :raises:
+        TLSError
+    """
+
+    raise TLSError('The remote end closed the connection')
+
+
+def raise_protocol_error(server_handshake_bytes):
+    """
+    Raises a TLSError due to a protocol error
+
+    :param server_handshake_bytes:
+        A byte string of the handshake data received from the server
+
+    :raises:
+        TLSError
+    """
+
+    other_protocol = detect_other_protocol(server_handshake_bytes)
+
+    if other_protocol:
+        raise TLSError('TLS protocol error - server responded using %s' % other_protocol)
+
+    raise TLSError('TLS protocol error - server responded using a different protocol')
+
+
 def raise_handshake():
     """
     Raises a TLSError due to a handshake error
@@ -388,3 +418,35 @@ def raise_dh_params():
     """
 
     raise TLSError('TLS handshake failure - weak DH parameters')
+
+
+def detect_other_protocol(server_handshake_bytes):
+    """
+    Looks at the server handshake bytes to try and detect a different protocol
+
+    :param server_handshake_bytes:
+        A byte string of the handshake data received from the server
+
+    :return:
+        None, or a unicode string of "ftp", "http", "imap", "pop3", "smtp"
+    """
+
+    if server_handshake_bytes[0:5] == b'HTTP/':
+        return 'HTTP'
+
+    if server_handshake_bytes[0:4] == b'220 ':
+        if re.match(b'^[^\r\n]*ftp', server_handshake_bytes, re.I):
+            return 'FTP'
+        else:
+            return 'SMTP'
+
+    if server_handshake_bytes[0:4] == b'220-':
+        return 'FTP'
+
+    if server_handshake_bytes[0:4] == b'+OK ':
+        return 'POP3'
+
+    if server_handshake_bytes[0:4] == b'* OK' or server_handshake_bytes[0:9] == b'* PREAUTH':
+        return 'IMAP'
+
+    return None

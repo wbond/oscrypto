@@ -20,10 +20,12 @@ from .._tls import (
     parse_session_info,
     raise_client_auth,
     raise_dh_params,
+    raise_disconnection,
     raise_expired_not_yet_valid,
     raise_handshake,
     raise_hostname,
     raise_no_issuer,
+    raise_protocol_error,
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
@@ -364,13 +366,21 @@ class TLSSocket(object):
 
                 error = libssl.SSL_get_error(ssl, result)
                 if error == libssl_const.SSL_ERROR_WANT_READ:
-                    handshake_server_bytes += self._raw_read(self._rbio)
+                    chunk = self._raw_read(self._rbio)
+                    if chunk == b'' and self._socket.gettimeout() is None:
+                        if handshake_server_bytes == b'':
+                            raise_disconnection()
+                        raise_protocol_error(handshake_server_bytes)
+                    handshake_server_bytes += chunk
 
                 elif error == libssl_const.SSL_ERROR_WANT_WRITE:
                     handshake_client_bytes += self._raw_write(self._wbio)
 
                 else:
                     info = peek_openssl_error()
+
+                    if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_UNKNOWN_PROTOCOL):
+                        raise_protocol_error(handshake_server_bytes)
 
                     if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
                         raise_handshake()

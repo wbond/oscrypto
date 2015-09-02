@@ -52,6 +52,14 @@ class TLSTests(unittest.TestCase):
         html = connection.read_until(b'</html>')
         self.assertIn(b'</html>', html)
 
+    def test_tls_error_http(self):
+        with self.assertRaisesRegexp(errors.TLSError, 'server responded using HTTP'):
+            tls.TLSSocket('www.google.com', 80)
+
+    def test_tls_error_ftp(self):
+        with self.assertRaisesRegexp(errors.TLSError, 'remote end closed the connection'):
+            tls.TLSSocket('ftp.freebsd.org', 21)
+
     def test_tls_error_missing_issuer(self):
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'certificate issuer not found in trusted root certificate store'):
             tls.TLSSocket('test1.tls-o-matic.com', 443)

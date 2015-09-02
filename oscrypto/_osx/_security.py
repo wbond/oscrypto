@@ -84,6 +84,7 @@ class security_const():
     errSSLPeerHandshakeFail = -9824
     errSSLWeakPeerEphemeralDHKey = -9850
     errSSLServerAuthCompleted = -9841
+    errSSLRecordOverflow = -9847
 
     CSSMERR_APPLETP_HOSTNAME_MISMATCH = -2147408896
     CSSMERR_TP_CERT_EXPIRED = -2147409654

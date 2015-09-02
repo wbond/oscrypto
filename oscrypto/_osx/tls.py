@@ -21,14 +21,17 @@ from .util import rand_bytes
 from ..errors import TLSError
 from .._tls import (
     detect_client_auth_request,
+    detect_other_protocol,
     extract_chain,
     parse_session_info,
     raise_client_auth,
     raise_dh_params,
+    raise_disconnection,
     raise_expired_not_yet_valid,
     raise_handshake,
     raise_hostname,
     raise_no_issuer,
+    raise_protocol_error,
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
@@ -92,12 +95,11 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
     self = _connection_refs.get(connection_id)
     if not self:
         socket = _socket_refs.get(connection_id)
+    else:
+        socket = self._socket
 
     if not self and not socket:
-        print('Nothing to do!')
         return 0
-
-    recv = self._socket.recv if self else socket.recv
 
     bytes_requested = deref(data_length_pointer)
 
@@ -105,7 +107,12 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
     data = b''
     try:
         while len(data) < bytes_requested:
-            data += recv(bytes_requested - len(data))
+            chunk = socket.recv(bytes_requested - len(data))
+            data += chunk
+            if chunk == b'' and socket.gettimeout() is None:
+                if len(data) == 0:
+                    return security_const.errSSLClosedNoNotify
+                break
     except (socket_.error) as e:
         error = e.errno
 
@@ -147,9 +154,10 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
     self = _connection_refs.get(connection_id)
     if not self:
         socket = _socket_refs.get(connection_id)
+    else:
+        socket = self._socket
 
     if not self and not socket:
-        print('Nothing to do!')
         return 0
 
     data_length = deref(data_length_pointer)
@@ -158,11 +166,9 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
     if self and not self._done_handshake:
         self._client_hello += data
 
-    send = self._socket.send if self else socket.send
-
     error = None
     try:
-        sent = send(data)
+        sent = socket.send(data)
     except (socket_.error) as e:
         error = e.errno
 
@@ -609,6 +615,14 @@ class TLSSocket(object):
 
             if handshake_result == security_const.errSSLWeakPeerEphemeralDHKey:
                 raise_dh_params()
+
+            if handshake_result == security_const.errSSLRecordOverflow:
+                raise_protocol_error(self._server_hello)
+
+            if handshake_result in set([security_const.errSSLClosedNoNotify, security_const.errSSLClosedAbort]):
+                if detect_other_protocol(self._server_hello):
+                    raise_protocol_error(self._server_hello)
+                raise_disconnection()
 
             if handshake_result != security_const.errSSLWouldBlock:
                 handle_sec_error(handshake_result, TLSError)
