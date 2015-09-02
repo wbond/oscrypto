@@ -95,7 +95,7 @@ class TLSTests(unittest.TestCase):
 
     def test_tls_error_handshake_error_3(self):
         session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
-        with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failure'):
+        with self.assertRaisesRegexp(errors.TLSError, 'weak certificate signature algorithm'):
             tls.TLSSocket('test9.tls-o-matic.com', 409, session=session)
 
     def test_tls_error_non_web(self):

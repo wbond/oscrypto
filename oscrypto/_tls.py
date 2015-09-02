@@ -55,6 +55,31 @@ def extract_chain(server_handshake_bytes):
     return output
 
 
+def detect_client_auth_request(server_handshake_bytes):
+    """
+    Determines if a CertificateRequest message is sent from the server asking
+    the client for a certificate
+
+    :param server_handshake_bytes:
+        A byte string of the handshake data received from the server
+
+    :return:
+        A boolean - if a client certificate request was found
+    """
+
+    pointer = 0
+    while pointer < len(server_handshake_bytes):
+        record_header = server_handshake_bytes[pointer:pointer+5]
+        record_type = record_header[0:1]
+        record_length = int_from_bytes(record_header[3:])
+        sub_type = server_handshake_bytes[pointer+5:pointer+6]
+        if record_type == b'\x16' and sub_type == b'\x0d':
+            return True
+        pointer += 5 + record_length
+
+    return False
+
+
 def get_dh_params_length(server_handshake_bytes):
     """
     Determines the length of the DH params from the ServerKeyExchange
@@ -251,6 +276,22 @@ def raise_verification(certificate):
     """
 
     message = 'Server certificate verification failed'
+    raise TLSVerificationError(message, certificate)
+
+
+def raise_weak_signature(certificate):
+    """
+    Raises a TLSVerificationError when a certificate uses a weak signature
+    algorithm
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    message = 'Server certificate verification failed - weak certificate signature algorithm'
     raise TLSVerificationError(message, certificate)
 
 

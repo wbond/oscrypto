@@ -32,6 +32,7 @@ ffi.cdef("""
     typedef ... BIO_METHOD;
     typedef uintptr_t BIO;
     typedef uintptr_t X509;
+    typedef ... X509_STORE;
     typedef ... X509_STORE_CTX;
 
     typedef int (*stack_cmp_func)(const void *a, const void *b);
@@ -64,6 +65,8 @@ ffi.cdef("""
     int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile,
                     const char *CApath);
     long SSL_get_verify_result(const SSL *ssl);
+    X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
+    int X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
     int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
     long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
     void SSL_CTX_free(SSL_CTX *a);

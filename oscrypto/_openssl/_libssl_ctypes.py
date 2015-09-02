@@ -22,6 +22,7 @@ P_BIO_METHOD = POINTER(c_void_p)
 P_BIO = POINTER(c_void_p)
 X509 = c_void_p
 P_X509 = POINTER(X509)
+P_X509_STORE = POINTER(c_void_p)
 P_X509_STORE_CTX = POINTER(c_void_p)
 
 try:
@@ -84,6 +85,12 @@ try:
 
     libssl.SSL_get_verify_result.argtypes = [P_SSL]
     libssl.SSL_get_verify_result.restype = c_long
+
+    libssl.SSL_CTX_get_cert_store.argtypes = [P_SSL_CTX]
+    libssl.SSL_CTX_get_cert_store.restype = P_X509_STORE
+
+    libssl.X509_STORE_add_cert.argtypes = [P_X509_STORE, P_X509]
+    libssl.X509_STORE_add_cert.restype = c_int
 
     libssl.SSL_CTX_set_cipher_list.argtypes = [P_SSL_CTX, c_char_p]
     libssl.SSL_CTX_set_cipher_list.restype = c_int

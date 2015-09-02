@@ -11,13 +11,14 @@ from asn1crypto import x509
 
 from ._libssl import libssl, libssl_const
 from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
-from .._ffi import null, unwrap, bytes_from_buffer, buffer_from_bytes, array_from_pointer, is_null, native, buffer_pointer
+from .._ffi import null, unwrap, bytes_from_buffer, buffer_from_bytes, is_null, native, buffer_pointer
 from .._errors import object_name
 from ..errors import TLSError
 from .._tls import (
     extract_chain,
     get_dh_params_length,
     parse_session_info,
+    raise_client_auth,
     raise_dh_params,
     raise_expired_not_yet_valid,
     raise_handshake,
@@ -25,8 +26,10 @@ from .._tls import (
     raise_no_issuer,
     raise_self_signed,
     raise_verification,
+    raise_weak_signature,
 )
-from .asymmetric import load_certificate
+from .asymmetric import load_certificate, Certificate
+from ..keys import parse_certificate
 
 if sys.version_info < (3,):
     str_cls = unicode  #pylint: disable=E0602
@@ -60,10 +63,11 @@ class TLSSession(object):
     _protocols = None
     _ciphers = None
     _manual_validation = None
+    _extra_trust_roots = None
     _ssl_ctx = None
     _ssl_session = None
 
-    def __init__(self, protocol=None, manual_validation=False):
+    def __init__(self, protocol=None, manual_validation=False, extra_trust_roots=None):
         """
         :param protocol:
             A unicode string or set of unicode strings representing allowable
@@ -79,6 +83,14 @@ class TLSSession(object):
         :param manual_validation:
             If certificate and certificate path validation should be skipped
             and left to the developer to implement
+
+        :param extra_trust_roots:
+            A list containing one or more certificates to be treated as trust
+            roots, in one of the following formats:
+             - A byte string of the DER encoded certificate
+             - A unicode string of the certificate filename
+             - An asn1crypto.x509.Certificate object
+             - An oscrypto.asymmetric.Certificate object
 
         :raises:
             ValueError - when any of the parameters contain an invalid value
@@ -105,6 +117,20 @@ class TLSSession(object):
             raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
 
         self._protocols = protocol
+
+        self._extra_trust_roots = []
+        if extra_trust_roots:
+            for extra_trust_root in extra_trust_roots:
+                if isinstance(extra_trust_root, Certificate):
+                    extra_trust_root = extra_trust_root.asn1
+                elif isinstance(extra_trust_root, byte_cls):
+                    extra_trust_root = parse_certificate(extra_trust_root)
+                elif isinstance(extra_trust_root, str_cls):
+                    with open(extra_trust_root, 'rb') as f:
+                        extra_trust_root = parse_certificate(f.read())
+                elif not isinstance(extra_trust_root, x509.Certificate):
+                    raise ValueError('extra_trust_roots must be a list of byte strings, unicode strings, asn1crypto.x509.Certificate objects or oscrypto.asymmetric.Certificate objects, not %s' % object_name(extra_trust_root))
+                self._extra_trust_roots.append(extra_trust_root)
 
         ssl_ctx = None
         try:
@@ -143,9 +169,20 @@ class TLSSession(object):
                     null()
                 )
 
+            if self._extra_trust_roots:
+                x509_store = libssl.SSL_CTX_get_cert_store(ssl_ctx)
+                for cert in self._extra_trust_roots:
+                    oscrypto_cert = load_certificate(cert)
+                    result = libssl.X509_STORE_add_cert(
+                        x509_store,
+                        oscrypto_cert.x509
+                    )
+                    handle_openssl_error(result)
+
         except (Exception):
             if ssl_ctx:
                 libssl.SSL_CTX_free(ssl_ctx)
+            self._ssl_ctx = None
             raise
 
     def __del__(self):
@@ -338,6 +375,10 @@ class TLSSocket(object):
                     if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
                         raise_handshake()
 
+                    if info == (20, libssl_const.SSL_F_SSL3_READ_BYTES, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
+                        chain = extract_chain(handshake_server_bytes)
+                        raise_client_auth(chain[0])
+
                     if info == (20, libssl_const.SSL_F_SSL3_GET_SERVER_CERTIFICATE, libssl_const.SSL_R_CERTIFICATE_VERIFY_FAILED):
                         verify_result = libssl.SSL_get_verify_result(ssl)
                         chain = extract_chain(handshake_server_bytes)
@@ -359,11 +400,11 @@ class TLSSocket(object):
 
                         if time_invalid:
                             raise_expired_not_yet_valid(cert)
-                        elif no_issuer:
-                            raise_no_issuer()
-                        elif self_signed:
-                            raise_self_signed()
-                        raise_verification()
+                        if no_issuer:
+                            raise_no_issuer(cert)
+                        if self_signed:
+                            raise_self_signed(cert)
+                        raise_verification(cert)
 
                     handle_openssl_error(0, TLSError)
 
@@ -395,6 +436,9 @@ class TLSSocket(object):
                 if self._session._ssl_session:  #pylint: disable=W0212
                     libssl.SSL_SESSION_free(self._session._ssl_session)  #pylint: disable=W0212
                 self._session._ssl_session = libssl.SSL_get1_session(ssl)  #pylint: disable=W0212
+
+            if self.certificate.hash_algo in set(['md5', 'md2']):
+                raise_weak_signature(self.certificate)
 
             # OpenSSL does not do hostname or IP address checking in the end
             # entity certificate, so we must perform that check
@@ -742,11 +786,11 @@ class TLSSocket(object):
         stack = unwrap(stack_pointer)
 
         number_certs = native(int, stack.num)
-        x509s = array_from_pointer(libssl, 'X509 *', stack.data, number_certs)
 
         self._intermediates = []
 
-        for index, x509_ in enumerate(x509s):
+        for index in range(0, number_certs):
+            x509_ = stack.data[index]
             buffer_size = libcrypto.i2d_X509(x509_, null())
             cert_buffer = buffer_from_bytes(buffer_size)
             cert_pointer = buffer_pointer(cert_buffer)
