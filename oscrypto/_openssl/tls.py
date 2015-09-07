@@ -379,6 +379,9 @@ class TLSSocket(object):
                 else:
                     info = peek_openssl_error()
 
+                    if info == (20, libssl_const.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM, libssl_const.SSL_R_DH_KEY_TOO_SMALL):
+                        raise_dh_params()
+
                     if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_UNKNOWN_PROTOCOL):
                         raise_protocol_error(handshake_server_bytes)
 
