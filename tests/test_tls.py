@@ -128,11 +128,11 @@ class TLSTests(unittest.TestCase):
             tls.TLSSocket('dh512.badssl.com', 443)
 
     def test_tls_error_handshake_error(self):
-        with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failure'):
+        with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failed'):
             tls.TLSSocket('rc4-md5.badssl.com', 443)
 
     def test_tls_error_handshake_error_2(self):
-        with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failure'):
+        with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failed'):
             tls.TLSSocket('rc4.badssl.com', 443)
 
     def test_tls_extra_trust_roots_no_match(self):

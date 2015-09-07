@@ -418,7 +418,7 @@ def raise_handshake():
         TLSError
     """
 
-    raise TLSError('TLS handshake failure')
+    raise TLSError('TLS handshake failed')
 
 
 def raise_dh_params():
@@ -429,7 +429,7 @@ def raise_dh_params():
         TLSError
     """
 
-    raise TLSError('TLS handshake failure - weak DH parameters')
+    raise TLSError('TLS handshake failed - weak DH parameters')
 
 
 def detect_other_protocol(server_handshake_bytes):
