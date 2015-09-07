@@ -310,6 +310,21 @@ def raise_client_auth(certificate):
     raise TLSVerificationError(message, certificate)
 
 
+def raise_revoked(certificate):
+    """
+    Raises a TLSVerificationError due to the certificate being revoked
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :raises:
+        TLSVerificationError
+    """
+
+    message = 'Server certificate verification failed - certificate has been revoked'
+    raise TLSVerificationError(message, certificate)
+
+
 def raise_no_issuer(certificate):
     """
     Raises a TLSVerificationError due to no issuer certificate found in trust

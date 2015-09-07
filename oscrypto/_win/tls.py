@@ -27,6 +27,7 @@ from .._tls import (
     raise_hostname,
     raise_no_issuer,
     raise_protocol_error,
+    raise_revoked,
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
@@ -430,7 +431,7 @@ class TLSSocket(object):
                 now_pointer,
                 store,
                 cert_chain_para_pointer,
-                crypt32_const.CERT_CHAIN_CACHE_END_CERT | crypt32_const.CERT_CHAIN_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT,
+                crypt32_const.CERT_CHAIN_CACHE_END_CERT | crypt32_const.CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY,
                 null(),
                 cert_chain_context_pointer_pointer
             )
@@ -501,6 +502,9 @@ class TLSSocket(object):
 
                 if error == crypt32_const.TRUST_E_CERT_SIGNATURE:
                     raise_weak_signature(cert)
+
+                if error == crypt32_const.CRYPT_E_REVOKED:
+                    raise_revoked(cert)
 
                 raise_verification(cert)
 

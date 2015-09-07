@@ -39,6 +39,7 @@ class TLSTests(unittest.TestCase):
             ('package_control', 'packagecontrol.io',),
             ('howsmyssl', 'www.howsmyssl.com',),
             ('dh1024', 'dh1024.badssl.com'),
+            ('revoked', 'revoked.grc.com'),
         )
 
     @data('tls_hosts', True)
