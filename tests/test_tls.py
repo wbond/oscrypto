@@ -38,7 +38,6 @@ class TLSTests(unittest.TestCase):
             ('google', 'www.google.com',),
             ('package_control', 'packagecontrol.io',),
             ('howsmyssl', 'www.howsmyssl.com',),
-            ('incomplete_chain', 'incomplete-chain.badssl.com'),
             ('dh1024', 'dh1024.badssl.com'),
         )
 
