@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import sys
 import socket
 
 
@@ -37,7 +38,20 @@ class TLSError(socket.error):
     An exception related to TLS functionality
     """
 
-    pass
+    message = None
+
+    def __init__(self, message):  #pylint: disable=W0231
+        self.args = (message,)
+        self.message = message
+
+    def __str__(self):
+        output = self.__unicode__()
+        if sys.version_info < (3,):
+            output = output.encode('utf-8')
+        return output
+
+    def __unicode__(self):
+        return self.message
 
 
 class TLSVerificationError(TLSError):
@@ -49,5 +63,6 @@ class TLSVerificationError(TLSError):
     certificate = None
 
     def __init__(self, message, certificate):
-        self.certificate = certificate
         TLSError.__init__(self, message)
+        self.certificate = certificate
+        self.args = (message, certificate)
