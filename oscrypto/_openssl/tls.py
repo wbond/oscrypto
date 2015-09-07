@@ -389,8 +389,7 @@ class TLSSocket(object):
                         raise_handshake()
 
                     if info == (20, libssl_const.SSL_F_SSL3_READ_BYTES, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
-                        chain = extract_chain(handshake_server_bytes)
-                        raise_client_auth(chain[0])
+                        raise_client_auth()
 
                     if info == (20, libssl_const.SSL_F_SSL3_GET_SERVER_CERTIFICATE, libssl_const.SSL_R_CERTIFICATE_VERIFY_FAILED):
                         verify_result = libssl.SSL_get_verify_result(ssl)

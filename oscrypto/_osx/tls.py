@@ -603,14 +603,13 @@ class TLSSocket(object):
                     raise_self_signed(cert)
 
                 if detect_client_auth_request(self._server_hello):
-                    raise_client_auth(cert)
+                    raise_client_auth()
 
                 raise_verification(cert)
 
             if handshake_result == security_const.errSSLPeerHandshakeFail:
                 if detect_client_auth_request(self._server_hello):
-                    chain = extract_chain(self._server_hello)
-                    raise_client_auth(chain[0])
+                    raise_client_auth()
                 raise_handshake()
 
             if handshake_result == security_const.errSSLWeakPeerEphemeralDHKey:

@@ -295,19 +295,16 @@ def raise_weak_signature(certificate):
     raise TLSVerificationError(message, certificate)
 
 
-def raise_client_auth(certificate):
+def raise_client_auth():
     """
-    Raises a TLSVerificationError indicating client authentication is required
-
-    :param certificate:
-        An asn1crypto.x509.Certificate object
+    Raises a TLSError indicating client authentication is required
 
     :raises:
-        TLSVerificationError
+        TLSError
     """
 
-    message = 'Server certificate verification failed - client authentication required'
-    raise TLSVerificationError(message, certificate)
+    message = 'TLS handshake failed - client authentication required'
+    raise TLSError(message)
 
 
 def raise_revoked(certificate):

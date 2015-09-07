@@ -98,7 +98,7 @@ class TLSTests(unittest.TestCase):
 
     def test_tls_error_client_cert_required(self):
         session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
-        with self.assertRaisesRegexp(errors.TLSVerificationError, 'client authentication'):
+        with self.assertRaisesRegexp(errors.TLSError, 'client authentication'):
             tls.TLSSocket('test8.tls-o-matic.com', 408, session=session)
 
     def test_tls_error_handshake_error_3(self):

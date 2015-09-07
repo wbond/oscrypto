@@ -647,8 +647,7 @@ class TLSSocket(object):
                         raise_dh_params()
 
                 if result == secur32_const.SEC_I_INCOMPLETE_CREDENTIALS:
-                    chain = extract_chain(handshake_server_bytes)
-                    raise_client_auth(chain[0])
+                    raise_client_auth()
 
                 if result == crypt32_const.TRUST_E_CERT_SIGNATURE:
                     raise_weak_signature(cert)
