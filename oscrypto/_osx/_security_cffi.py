@@ -13,6 +13,13 @@ except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
 
+__all__ = [
+    'Security',
+    'version',
+    'version_info',
+]
+
+
 version = platform.mac_ver()[0]
 version_info = tuple(map(int, version.split('.')))
 
@@ -70,17 +77,26 @@ ffi.cdef("""
     OSStatus SecTrustCopyAnchorCertificates(CFArrayRef *anchors);
     CFDataRef SecCertificateCopyData(SecCertificateRef certificate);
     OSStatus SecTrustSettingsCopyCertificates(SecTrustSettingsDomain domain, CFArrayRef *certArray);
-    OSStatus SecTrustSettingsCopyTrustSettings(SecCertificateRef certRef, SecTrustSettingsDomain domain, CFArrayRef *trustSettings);
+    OSStatus SecTrustSettingsCopyTrustSettings(SecCertificateRef certRef, SecTrustSettingsDomain domain,
+                    CFArrayRef *trustSettings);
     CFDictionaryRef SecPolicyCopyProperties(SecPolicyRef policyRef);
     CFTypeID SecPolicyGetTypeID(void);
-    OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const char *plainText, size_t plainTextLen, char *cipherText, size_t *cipherTextLen);
-    OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const char *cipherText, size_t cipherTextLen, char *plainText, size_t *plainTextLen);
-    OSStatus SecKeyRawSign(SecKeyRef key, SecPadding padding, const char *dataToSign, size_t dataToSignLen, char *sig, size_t * sigLen);
-    OSStatus SecKeyRawVerify(SecKeyRef key, SecPadding padding, const char *signedData, size_t signedDataLen, const char *sig, size_t sigLen);
+    OSStatus SecKeyEncrypt(SecKeyRef key, SecPadding padding, const char *plainText, size_t plainTextLen,
+                    char *cipherText, size_t *cipherTextLen);
+    OSStatus SecKeyDecrypt(SecKeyRef key, SecPadding padding, const char *cipherText, size_t cipherTextLen,
+                    char *plainText, size_t *plainTextLen);
+    OSStatus SecKeyRawSign(SecKeyRef key, SecPadding padding, const char *dataToSign, size_t dataToSignLen,
+                    char *sig, size_t * sigLen);
+    OSStatus SecKeyRawVerify(SecKeyRef key, SecPadding padding, const char *signedData, size_t signedDataLen,
+                    const char *sig, size_t sigLen);
     OSStatus SecKeyGeneratePair(CFDictionaryRef parameters, SecKeyRef *publicKey, SecKeyRef *privateKey);
-    OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags, const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
+    OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags,
+                    const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
     OSStatus SecAccessCreate(CFStringRef descriptor, CFArrayRef trustedlist, SecAccessRef *accessRef);
-    OSStatus SecKeyCreatePair(SecKeychainRef keychainRef, CSSM_ALGORITHMS algorithm, uint32_t keySizeInBits, CSSM_CC_HANDLE contextHandle, CSSM_KEYUSE publicKeyUsage, uint32_t publicKeyAttr, CSSM_KEYUSE privateKeyUsage, uint32_t privateKeyAttr, SecAccessRef initialAccess, SecKeyRef* publicKeyRef, SecKeyRef* privateKeyRef);
+    OSStatus SecKeyCreatePair(SecKeychainRef keychainRef, CSSM_ALGORITHMS algorithm, uint32_t keySizeInBits,
+                    CSSM_CC_HANDLE contextHandle, CSSM_KEYUSE publicKeyUsage, uint32_t publicKeyAttr,
+                    CSSM_KEYUSE privateKeyUsage, uint32_t privateKeyAttr, SecAccessRef initialAccess,
+                    SecKeyRef* publicKeyRef, SecKeyRef* privateKeyRef);
     OSStatus SecKeychainItemDelete(SecKeyRef itemRef);
 
     typedef OSStatus (*SSLReadFunc)(SSLConnectionRef connection, char *data, size_t *dataLength);
@@ -169,7 +185,8 @@ else:
         typedef uint32_t SSLConnectionType;
         typedef uint32_t SSLSessionOption;
 
-        SSLContextRef SSLCreateContext(CFAllocatorRef alloc, SSLProtocolSide protocolSide, SSLConnectionType connectionType);
+        SSLContextRef SSLCreateContext(CFAllocatorRef alloc, SSLProtocolSide protocolSide,
+                        SSLConnectionType connectionType);
 
         OSStatus SSLSetSessionOption(SSLContextRef context, SSLSessionOption option, Boolean value);
 

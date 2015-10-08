@@ -11,6 +11,26 @@ from ._cipher_suites import CIPHER_SUITE_MAP
 from .errors import TLSVerificationError, TLSError
 
 
+__all__ = [
+    'detect_client_auth_request',
+    'extract_chain',
+    'get_dh_params_length',
+    'parse_session_info',
+    'raise_client_auth',
+    'raise_dh_params',
+    'raise_disconnection',
+    'raise_expired_not_yet_valid',
+    'raise_handshake',
+    'raise_hostname',
+    'raise_no_issuer',
+    'raise_protocol_error',
+    'raise_revoked',
+    'raise_self_signed',
+    'raise_verification',
+    'raise_weak_signature',
+]
+
+
 def extract_chain(server_handshake_bytes):
     """
     Extracts the X.509 certificates from the server handshake bytes for use
@@ -30,13 +50,13 @@ def extract_chain(server_handshake_bytes):
 
     pointer = 0
     while pointer < len(server_handshake_bytes):
-        record_header = server_handshake_bytes[pointer:pointer+5]
+        record_header = server_handshake_bytes[pointer:pointer + 5]
         record_type = record_header[0:1]
         record_length = int_from_bytes(record_header[3:])
-        sub_type = server_handshake_bytes[pointer+5:pointer+6]
+        sub_type = server_handshake_bytes[pointer + 5:pointer + 6]
         if record_type == b'\x16' and sub_type == b'\x0b':
             found = True
-            message_bytes = server_handshake_bytes[pointer+5:pointer+5+record_length]
+            message_bytes = server_handshake_bytes[pointer + 5:pointer + 5 + record_length]
             break
         pointer += 5 + record_length
 
@@ -45,7 +65,7 @@ def extract_chain(server_handshake_bytes):
         # length (3 bytes) and cert chain length (3 bytes)
         pointer = 7
         while pointer < len(message_bytes):
-            cert_length = int_from_bytes(message_bytes[pointer:pointer+3])
+            cert_length = int_from_bytes(message_bytes[pointer:pointer + 3])
             cert_start = pointer + 3
             cert_end = cert_start + cert_length
             pointer = cert_end
@@ -69,10 +89,10 @@ def detect_client_auth_request(server_handshake_bytes):
 
     pointer = 0
     while pointer < len(server_handshake_bytes):
-        record_header = server_handshake_bytes[pointer:pointer+5]
+        record_header = server_handshake_bytes[pointer:pointer + 5]
         record_type = record_header[0:1]
         record_length = int_from_bytes(record_header[3:])
-        sub_type = server_handshake_bytes[pointer+5:pointer+6]
+        sub_type = server_handshake_bytes[pointer + 5:pointer + 6]
         if record_type == b'\x16' and sub_type == b'\x0d':
             return True
         pointer += 5 + record_length
@@ -98,13 +118,13 @@ def get_dh_params_length(server_handshake_bytes):
 
     pointer = 0
     while pointer < len(server_handshake_bytes):
-        record_header = server_handshake_bytes[pointer:pointer+5]
+        record_header = server_handshake_bytes[pointer:pointer + 5]
         record_type = record_header[0:1]
         record_length = int_from_bytes(record_header[3:])
-        sub_type = server_handshake_bytes[pointer+5:pointer+6]
+        sub_type = server_handshake_bytes[pointer + 5:pointer + 6]
         if record_type == b'\x16' and sub_type == b'\x0c':
             found = True
-            message_bytes = server_handshake_bytes[pointer+5:pointer+5+record_length]
+            message_bytes = server_handshake_bytes[pointer + 5:pointer + 5 + record_length]
             break
         pointer += 5 + record_length
 
@@ -149,7 +169,7 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
     if server_handshake_bytes[0:1] == b'\x16':
         server_tls_record_header = server_handshake_bytes[0:5]
         server_tls_record_length = int_from_bytes(server_tls_record_header[3:])
-        server_tls_record = server_handshake_bytes[5:5+server_tls_record_length]
+        server_tls_record = server_handshake_bytes[5:5 + server_tls_record_length]
 
         # Ensure we are working with a ServerHello message
         if server_tls_record[0:1] == b'\x02':
@@ -163,24 +183,26 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
 
             session_id_length = int_from_bytes(server_tls_record[38:39])
             if session_id_length > 0:
-                server_session_id = server_tls_record[39:39+session_id_length]
+                server_session_id = server_tls_record[39:39 + session_id_length]
 
             cipher_suite_start = 39 + session_id_length
-            cipher_suite_bytes = server_tls_record[cipher_suite_start:cipher_suite_start+2]
+            cipher_suite_bytes = server_tls_record[cipher_suite_start:cipher_suite_start + 2]
             cipher_suite = CIPHER_SUITE_MAP[cipher_suite_bytes]
 
             compression_start = cipher_suite_start + 2
-            compression = server_tls_record[compression_start:compression_start+1] != b'\x00'
+            compression = server_tls_record[compression_start:compression_start + 1] != b'\x00'
 
             extensions_length_start = compression_start + 1
             if extensions_length_start < len(server_tls_record):
-                extentions_length = int_from_bytes(server_tls_record[extensions_length_start:extensions_length_start+2])
+                extentions_length = int_from_bytes(
+                    server_tls_record[extensions_length_start:extensions_length_start + 2]
+                )
                 extensions_start = extensions_length_start + 2
                 extensions_end = extensions_start + extentions_length
                 extension_start = extensions_start
                 while extension_start < extensions_end:
-                    extension_type = int_from_bytes(server_tls_record[extension_start:extension_start+2])
-                    extension_length = int_from_bytes(server_tls_record[extension_start+2:extension_start+4])
+                    extension_type = int_from_bytes(server_tls_record[extension_start:extension_start + 2])
+                    extension_length = int_from_bytes(server_tls_record[extension_start + 2:extension_start + 4])
                     if extension_type == 35:
                         session_ticket = "new"
                     extension_start += 4 + extension_length
@@ -188,32 +210,34 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
     if client_handshake_bytes[0:1] == b'\x16':
         client_tls_record_header = client_handshake_bytes[0:5]
         client_tls_record_length = int_from_bytes(client_tls_record_header[3:])
-        client_tls_record = client_handshake_bytes[5:5+client_tls_record_length]
+        client_tls_record = client_handshake_bytes[5:5 + client_tls_record_length]
 
         # Ensure we are working with a ClientHello message
         if client_tls_record[0:1] == b'\x01':
             session_id_length = int_from_bytes(client_tls_record[38:39])
             if session_id_length > 0:
-                client_session_id = client_tls_record[39:39+session_id_length]
+                client_session_id = client_tls_record[39:39 + session_id_length]
 
             cipher_suite_start = 39 + session_id_length
-            cipher_suite_length = int_from_bytes(client_tls_record[cipher_suite_start:cipher_suite_start+2])
+            cipher_suite_length = int_from_bytes(client_tls_record[cipher_suite_start:cipher_suite_start + 2])
 
             compression_start = cipher_suite_start + 2 + cipher_suite_length
-            compression_length = int_from_bytes(client_tls_record[compression_start:compression_start+1])
+            compression_length = int_from_bytes(client_tls_record[compression_start:compression_start + 1])
 
             # On subsequent requests, the session ticket will only be seen
             # in the ClientHello message
             if server_session_id is None and session_ticket is None:
                 extensions_length_start = compression_start + 1 + compression_length
                 if extensions_length_start < len(client_tls_record):
-                    extentions_length = int_from_bytes(client_tls_record[extensions_length_start:extensions_length_start+2])
+                    extentions_length = int_from_bytes(
+                        client_tls_record[extensions_length_start:extensions_length_start + 2]
+                    )
                     extensions_start = extensions_length_start + 2
                     extensions_end = extensions_start + extentions_length
                     extension_start = extensions_start
                     while extension_start < extensions_end:
-                        extension_type = int_from_bytes(client_tls_record[extension_start:extension_start+2])
-                        extension_length = int_from_bytes(client_tls_record[extension_start+2:extension_start+4])
+                        extension_type = int_from_bytes(client_tls_record[extension_start:extension_start + 2])
+                        extension_length = int_from_bytes(client_tls_record[extension_start + 2:extension_start + 4])
                         if extension_type == 35:
                             session_ticket = "reused"
                         extension_start += 4 + extension_length
@@ -373,9 +397,11 @@ def raise_expired_not_yet_valid(certificate):
     now = datetime.now(timezone.utc)
 
     if not_before > now:
-        message = 'Server certificate verification failed - certificate not valid until %s' % not_before.strftime('%Y-%m-%d %H:%M:%SZ')
+        formatted_before = not_before.strftime('%Y-%m-%d %H:%M:%SZ')
+        message = 'Server certificate verification failed - certificate not valid until %s' % formatted_before
     elif not_after < now:
-        message = 'Server certificate verification failed - certificate expired %s' % not_after.strftime('%Y-%m-%d %H:%M:%SZ')
+        formatted_after = not_after.strftime('%Y-%m-%d %H:%M:%SZ')
+        message = 'Server certificate verification failed - certificate expired %s' % formatted_after
 
     raise TLSVerificationError(message, certificate)
 

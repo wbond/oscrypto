@@ -26,8 +26,8 @@ def patch():
 
 def _assert_less(self, a, b, msg=None):
     if not a < b:
-        standardMsg = '%s not less than %s' % (unittest.util.safe_repr(a), unittest.util.safe_repr(b))
-        self.fail(self._formatMessage(msg, standardMsg))  #pylint: disable=W0212
+        standard_msg = '%s not less than %s' % (unittest.util.safe_repr(a), unittest.util.safe_repr(b))
+        self.fail(self._formatMessage(msg, standard_msg))
 
 
 def _assert_is_instance(self, obj, cls, msg=None):
@@ -39,11 +39,11 @@ def _assert_is_instance(self, obj, cls, msg=None):
 
 def _assert_in(self, member, container, msg=None):
     if member not in container:
-        standardMsg = '%s not found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
-        self.fail(self._formatMessage(msg, standardMsg))  #pylint: disable=W0212
+        standard_msg = '%s not found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
+        self.fail(self._formatMessage(msg, standard_msg))
 
 
-def _assert_raises(self, excClass, callableObj=None, *args, **kwargs):
+def _assert_raises(self, excClass, callableObj=None, *args, **kwargs):  # noqa
     context = _AssertRaisesContext(excClass, self)
     if callableObj is None:
         return context
@@ -81,7 +81,7 @@ class _AssertRaisesContext(object):
         if not issubclass(exc_type, self.expected):
             # let unexpected exceptions pass through
             return False
-        self.exception = exc_value # store for later retrieval
+        self.exception = exc_value  # store for later retrieval
         if self.expected_regexp is None:
             return True
 

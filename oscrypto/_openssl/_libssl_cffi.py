@@ -12,10 +12,12 @@ except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
 
+__all__ = [
+    'libssl',
+]
+
 
 ffi = FFI()
-
-tls_acronym = 'ssl'
 
 libssl_path = find_library('ssl')
 if not libssl_path:

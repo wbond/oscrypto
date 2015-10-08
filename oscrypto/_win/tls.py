@@ -9,11 +9,27 @@ import numbers
 
 from asn1crypto import x509
 
-from .._ffi import new, null, is_null, struct, unwrap, bytes_from_buffer, write_to_buffer, deref, native, buffer_from_bytes, ref, cast, sizeof, buffer_from_unicode
-from ._secur32 import secur32, secur32_const, handle_error
-from ._crypt32 import crypt32, crypt32_const, handle_error as handle_crypt32_error
+from .._errors import pretty_message
+from .._ffi import (
+    buffer_from_bytes,
+    buffer_from_unicode,
+    bytes_from_buffer,
+    cast,
+    deref,
+    is_null,
+    native,
+    new,
+    null,
+    ref,
+    sizeof,
+    struct,
+    unwrap,
+    write_to_buffer,
+)
+from ._secur32 import secur32, Secur32Const, handle_error
+from ._crypt32 import crypt32, Crypt32Const, handle_error as handle_crypt32_error
 from ._kernel32 import kernel32
-from .._errors import object_name
+from .._types import type_name, str_cls, byte_cls, int_types
 from ..errors import TLSError
 from .._tls import (
     extract_chain,
@@ -36,16 +52,13 @@ from .asymmetric import load_certificate, Certificate
 from ..keys import parse_certificate
 
 if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    int_types = (int, long)  #pylint: disable=E0602
-    range = xrange  #pylint: disable=W0622,E0602
-    byte_cls = str
+    range = xrange  # noqa
 
-else:
-    str_cls = str
-    int_types = int
-    byte_cls = bytes
 
+__all__ = [
+    'TLSSession',
+    'TLSSocket',
+]
 
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
@@ -98,7 +111,12 @@ class TLSSession(object):
         """
 
         if not isinstance(manual_validation, bool):
-            raise TypeError('manual_validation must be a boolean, not %s' % object_name(manual_validation))
+            raise TypeError(pretty_message(
+                '''
+                manual_validation must be a boolean, not %s
+                ''',
+                type_name(manual_validation)
+            ))
 
         self._manual_validation = manual_validation
 
@@ -108,11 +126,23 @@ class TLSSession(object):
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
-            raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
+            raise TypeError(pretty_message(
+                '''
+                protocol must be a unicode string or set of unicode strings,
+                not %s
+                ''',
+                type_name(protocol)
+            ))
 
         unsupported_protocols = protocol - set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'])
         if unsupported_protocols:
-            raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
+            raise ValueError(pretty_message(
+                '''
+                protocol must contain only the unicode strings "SSLv3", "TLSv1",
+                "TLSv1.1", "TLSv1.2", not %s
+                ''',
+                repr(unsupported_protocols)
+            ))
 
         self._protocols = protocol
 
@@ -127,7 +157,14 @@ class TLSSession(object):
                     with open(extra_trust_root, 'rb') as f:
                         extra_trust_root = parse_certificate(f.read())
                 elif not isinstance(extra_trust_root, x509.Certificate):
-                    raise ValueError('extra_trust_roots must be a list of byte strings, unicode strings, asn1crypto.x509.Certificate objects or oscrypto.asymmetric.Certificate objects, not %s' % object_name(extra_trust_root))
+                    raise TypeError(pretty_message(
+                        '''
+                        extra_trust_roots must be a list of byte strings, unicode
+                        strings, asn1crypto.x509.Certificate objects or
+                        oscrypto.asymmetric.Certificate objects, not %s
+                        ''',
+                        type_name(extra_trust_root)
+                    ))
                 self._extra_trust_roots.append(extra_trust_root)
 
         self._obtain_credentials()
@@ -138,10 +175,10 @@ class TLSSession(object):
         """
 
         protocol_values = {
-            'SSLv3': secur32_const.SP_PROT_SSL3_CLIENT,
-            'TLSv1': secur32_const.SP_PROT_TLS1_CLIENT,
-            'TLSv1.1': secur32_const.SP_PROT_TLS1_1_CLIENT,
-            'TLSv1.2': secur32_const.SP_PROT_TLS1_2_CLIENT,
+            'SSLv3': Secur32Const.SP_PROT_SSL3_CLIENT,
+            'TLSv1': Secur32Const.SP_PROT_TLS1_CLIENT,
+            'TLSv1.1': Secur32Const.SP_PROT_TLS1_1_CLIENT,
+            'TLSv1.2': Secur32Const.SP_PROT_TLS1_2_CLIENT,
         }
         protocol_bit_mask = 0
         for key, value in protocol_values.items():
@@ -149,35 +186,35 @@ class TLSSession(object):
                 protocol_bit_mask |= value
 
         algs = [
-            secur32_const.CALG_AES_128,
-            secur32_const.CALG_AES_256,
-            secur32_const.CALG_3DES,
-            secur32_const.CALG_SHA512,
-            secur32_const.CALG_SHA384,
-            secur32_const.CALG_SHA256,
-            secur32_const.CALG_SHA1,
-            secur32_const.CALG_ECDHE,
-            secur32_const.CALG_DH_EPHEM,
-            secur32_const.CALG_RSA_KEYX,
-            secur32_const.CALG_RSA_SIGN,
-            secur32_const.CALG_ECDSA,
-            secur32_const.CALG_DSS_SIGN,
+            Secur32Const.CALG_AES_128,
+            Secur32Const.CALG_AES_256,
+            Secur32Const.CALG_3DES,
+            Secur32Const.CALG_SHA512,
+            Secur32Const.CALG_SHA384,
+            Secur32Const.CALG_SHA256,
+            Secur32Const.CALG_SHA1,
+            Secur32Const.CALG_ECDHE,
+            Secur32Const.CALG_DH_EPHEM,
+            Secur32Const.CALG_RSA_KEYX,
+            Secur32Const.CALG_RSA_SIGN,
+            Secur32Const.CALG_ECDSA,
+            Secur32Const.CALG_DSS_SIGN,
         ]
 
         alg_array = new(secur32, 'ALG_ID[%s]' % len(algs))
         for index, alg in enumerate(algs):
             alg_array[index] = alg
 
-        flags = secur32_const.SCH_USE_STRONG_CRYPTO
+        flags = Secur32Const.SCH_USE_STRONG_CRYPTO
         if not self._manual_validation and not self._extra_trust_roots:
-            flags |= secur32_const.SCH_CRED_AUTO_CRED_VALIDATION
+            flags |= Secur32Const.SCH_CRED_AUTO_CRED_VALIDATION
         else:
-            flags |= secur32_const.SCH_CRED_MANUAL_CRED_VALIDATION
+            flags |= Secur32Const.SCH_CRED_MANUAL_CRED_VALIDATION
 
         schannel_cred_pointer = struct(secur32, 'SCHANNEL_CRED')
         schannel_cred = unwrap(schannel_cred_pointer)
 
-        schannel_cred.dwVersion = secur32_const.SCHANNEL_CRED_VERSION
+        schannel_cred.dwVersion = Secur32Const.SCHANNEL_CRED_VERSION
         schannel_cred.cCreds = 0
         schannel_cred.paCred = null()
         schannel_cred.hRootStore = null()
@@ -197,8 +234,8 @@ class TLSSession(object):
 
         result = secur32.AcquireCredentialsHandleW(
             null(),
-            secur32_const.UNISP_NAME,
-            secur32_const.SECPKG_CRED_OUTBOUND,
+            Secur32Const.UNISP_NAME,
+            Secur32Const.SECPKG_CRED_OUTBOUND,
             null(),
             schannel_cred_pointer,
             null(),
@@ -277,18 +314,33 @@ class TLSSocket(object):
         """
 
         if not isinstance(socket, socket_.socket):
-            raise TypeError('socket must be an instance of socket.socket, not %s' % object_name(socket))
+            raise TypeError(pretty_message(
+                '''
+                socket must be an instance of socket.socket, not %s
+                ''',
+                type_name(socket)
+            ))
 
         if not isinstance(hostname, str_cls):
-            raise TypeError('hostname must be a unicode string, not %s' % object_name(hostname))
+            raise TypeError(pretty_message(
+                '''
+                hostname must be a unicode string, not %s
+                ''',
+                type_name(hostname)
+            ))
 
         if session is not None and not isinstance(session, TLSSession):
-            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
+            raise TypeError(pretty_message(
+                '''
+                session must be an instance of oscrypto.tls.TLSSession, not %s
+                ''',
+                type_name(session)
+            ))
 
         new_socket = cls(None, None, session=session)
-        new_socket._socket = socket  #pylint: disable=W0212
-        new_socket._hostname = hostname  #pylint: disable=W0212
-        new_socket._handshake()  #pylint: disable=W0212
+        new_socket._socket = socket
+        new_socket._hostname = hostname
+        new_socket._handshake()
 
         return new_socket
 
@@ -302,13 +354,28 @@ class TLSSocket(object):
 
         else:
             if not isinstance(address, str_cls):
-                raise TypeError('address must be a unicode string, not %s' % object_name(address))
+                raise TypeError(pretty_message(
+                    '''
+                    address must be a unicode string, not %s
+                    ''',
+                    type_name(address)
+                ))
 
             if not isinstance(port, int_types):
-                raise TypeError('port must be an integer, not %s' % object_name(port))
+                raise TypeError(pretty_message(
+                    '''
+                    port must be an integer, not %s
+                    ''',
+                    type_name(port)
+                ))
 
             if timeout is not None and not isinstance(timeout, numbers.Number):
-                raise TypeError('timeout must be a number, not %s' % object_name(timeout))
+                raise TypeError(pretty_message(
+                    '''
+                    timeout must be a number, not %s
+                    ''',
+                    type_name(timeout)
+                ))
 
             self._socket = socket_.create_connection((address, port), timeout)
 
@@ -316,7 +383,12 @@ class TLSSocket(object):
             session = TLSSession()
 
         elif not isinstance(session, TLSSession):
-            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
+            raise TypeError(pretty_message(
+                '''
+                session must be an instance of oscrypto.tls.TLSSession, not %s
+                ''',
+                type_name(session)
+            ))
 
         self._session = session
 
@@ -339,13 +411,13 @@ class TLSSocket(object):
 
         for index in range(0, number):
             buffers[index].cbBuffer = 0
-            buffers[index].BufferType = secur32_const.SECBUFFER_EMPTY
+            buffers[index].BufferType = Secur32Const.SECBUFFER_EMPTY
             buffers[index].pvBuffer = null()
 
         sec_buffer_desc_pointer = struct(secur32, 'SecBufferDesc')
         sec_buffer_desc = unwrap(sec_buffer_desc_pointer)
 
-        sec_buffer_desc.ulVersion = secur32_const.SECBUFFER_VERSION
+        sec_buffer_desc.ulVersion = Secur32Const.SECBUFFER_VERSION
         sec_buffer_desc.cBuffers = number
         sec_buffer_desc.pBuffers = buffers
 
@@ -364,8 +436,8 @@ class TLSSocket(object):
             # We set up an in-memory store to pass as an extra store to grab
             # certificates from when performing the verification
             store = crypt32.CertOpenStore(
-                crypt32_const.CERT_STORE_PROV_MEMORY,
-                crypt32_const.X509_ASN_ENCODING,
+                Crypt32Const.CERT_STORE_PROV_MEMORY,
+                Crypt32Const.X509_ASN_ENCODING,
                 null(),
                 0,
                 null()
@@ -374,14 +446,14 @@ class TLSSocket(object):
                 handle_crypt32_error(0)
 
             cert_hashes = set()
-            for cert in self._session._extra_trust_roots:  #pylint: disable=W0212
+            for cert in self._session._extra_trust_roots:
                 cert_data = cert.dump()
                 result = crypt32.CertAddEncodedCertificateToStore(
                     store,
-                    crypt32_const.X509_ASN_ENCODING,
+                    Crypt32Const.X509_ASN_ENCODING,
                     cert_data,
                     len(cert_data),
-                    crypt32_const.CERT_STORE_ADD_USE_EXISTING,
+                    Crypt32Const.CERT_STORE_ADD_USE_EXISTING,
                     null()
                 )
                 if not result:
@@ -391,7 +463,7 @@ class TLSSocket(object):
             cert_context_pointer_pointer = new(crypt32, 'PCERT_CONTEXT *')
             result = secur32.QueryContextAttributesW(
                 self._context_handle_pointer,
-                secur32_const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
+                Secur32Const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
                 cert_context_pointer_pointer
             )
             handle_error(result)
@@ -404,9 +476,9 @@ class TLSSocket(object):
             now_pointer = cast(crypt32, 'FILETIME *', now_pointer)
 
             usage_identifiers = new(crypt32, 'char *[3]')
-            usage_identifiers[0] = cast(crypt32, 'char *', crypt32_const.PKIX_KP_SERVER_AUTH)
-            usage_identifiers[1] = cast(crypt32, 'char *', crypt32_const.SERVER_GATED_CRYPTO)
-            usage_identifiers[2] = cast(crypt32, 'char *', crypt32_const.SGC_NETSCAPE)
+            usage_identifiers[0] = cast(crypt32, 'char *', Crypt32Const.PKIX_KP_SERVER_AUTH)
+            usage_identifiers[1] = cast(crypt32, 'char *', Crypt32Const.SERVER_GATED_CRYPTO)
+            usage_identifiers[2] = cast(crypt32, 'char *', Crypt32Const.SGC_NETSCAPE)
 
             cert_enhkey_usage_pointer = struct(crypt32, 'CERT_ENHKEY_USAGE')
             cert_enhkey_usage = unwrap(cert_enhkey_usage_pointer)
@@ -415,7 +487,7 @@ class TLSSocket(object):
 
             cert_usage_match_pointer = struct(crypt32, 'CERT_USAGE_MATCH')
             cert_usage_match = unwrap(cert_usage_match_pointer)
-            cert_usage_match.dwType = crypt32_const.USAGE_MATCH_TYPE_OR
+            cert_usage_match.dwType = Crypt32Const.USAGE_MATCH_TYPE_OR
             cert_usage_match.Usage = cert_enhkey_usage
 
             cert_chain_para_pointer = struct(crypt32, 'CERT_CHAIN_PARA')
@@ -431,13 +503,13 @@ class TLSSocket(object):
                 now_pointer,
                 store,
                 cert_chain_para_pointer,
-                crypt32_const.CERT_CHAIN_CACHE_END_CERT | crypt32_const.CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY,
+                Crypt32Const.CERT_CHAIN_CACHE_END_CERT | Crypt32Const.CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY,
                 null(),
                 cert_chain_context_pointer_pointer
             )
             handle_crypt32_error(result)
 
-            cert_chain_policy_para_flags = crypt32_const.CERT_CHAIN_POLICY_IGNORE_ALL_REV_UNKNOWN_FLAGS
+            cert_chain_policy_para_flags = Crypt32Const.CERT_CHAIN_POLICY_IGNORE_ALL_REV_UNKNOWN_FLAGS
 
             cert_chain_context_pointer = unwrap(cert_chain_context_pointer_pointer)
 
@@ -450,20 +522,27 @@ class TLSSocket(object):
                 first_simple_chain_pointer = unwrap(cert_chain_context.rgpChain)
                 first_simple_chain = unwrap(first_simple_chain_pointer)
                 num_elements = native(int, first_simple_chain.cElement)
-                last_element_pointer = first_simple_chain.rgpElement[num_elements-1]
+                last_element_pointer = first_simple_chain.rgpElement[num_elements - 1]
                 last_element = unwrap(last_element_pointer)
                 last_element_cert = unwrap(last_element.pCertContext)
-                last_element_cert_data = bytes_from_buffer(last_element_cert.pbCertEncoded, native(int, last_element_cert.cbCertEncoded))
+                last_element_cert_data = bytes_from_buffer(
+                    last_element_cert.pbCertEncoded,
+                    native(int, last_element_cert.cbCertEncoded)
+                )
                 last_cert = x509.Certificate.load(last_element_cert_data)
                 if last_cert.sha256 in cert_hashes:
-                    cert_chain_policy_para_flags |= crypt32_const.CERT_CHAIN_POLICY_ALLOW_UNKNOWN_CA_FLAG
+                    cert_chain_policy_para_flags |= Crypt32Const.CERT_CHAIN_POLICY_ALLOW_UNKNOWN_CA_FLAG
 
             ssl_extra_cert_chain_policy_para_pointer = struct(crypt32, 'SSL_EXTRA_CERT_CHAIN_POLICY_PARA')
             ssl_extra_cert_chain_policy_para = unwrap(ssl_extra_cert_chain_policy_para_pointer)
             ssl_extra_cert_chain_policy_para.cbSize = sizeof(crypt32, ssl_extra_cert_chain_policy_para)
-            ssl_extra_cert_chain_policy_para.dwAuthType = crypt32_const.AUTHTYPE_CLIENT
+            ssl_extra_cert_chain_policy_para.dwAuthType = Crypt32Const.AUTHTYPE_CLIENT
             ssl_extra_cert_chain_policy_para.fdwChecks = 0
-            ssl_extra_cert_chain_policy_para.pwszServerName = cast(crypt32, 'wchar_t *', buffer_from_unicode(self._hostname))
+            ssl_extra_cert_chain_policy_para.pwszServerName = cast(
+                crypt32,
+                'wchar_t *',
+                buffer_from_unicode(self._hostname)
+            )
 
             cert_chain_policy_para_pointer = struct(crypt32, 'CERT_CHAIN_POLICY_PARA')
             cert_chain_policy_para = unwrap(cert_chain_policy_para_pointer)
@@ -476,7 +555,7 @@ class TLSSocket(object):
             cert_chain_policy_status.cbSize = sizeof(crypt32, cert_chain_policy_status)
 
             result = crypt32.CertVerifyCertificateChainPolicy(
-                crypt32_const.CERT_CHAIN_POLICY_SSL,
+                Crypt32Const.CERT_CHAIN_POLICY_SSL,
                 cert_chain_context_pointer,
                 cert_chain_policy_para_pointer,
                 cert_chain_policy_status_pointer
@@ -489,21 +568,21 @@ class TLSSocket(object):
                 cert_data = bytes_from_buffer(cert_context.pbCertEncoded, native(int, cert_context.cbCertEncoded))
                 cert = x509.Certificate.load(cert_data)
 
-                if error == crypt32_const.CERT_E_EXPIRED:
+                if error == Crypt32Const.CERT_E_EXPIRED:
                     raise_expired_not_yet_valid(cert)
-                if error == crypt32_const.CERT_E_UNTRUSTEDROOT:
+                if error == Crypt32Const.CERT_E_UNTRUSTEDROOT:
                     oscrypto_cert = load_certificate(cert)
                     if oscrypto_cert.self_signed:
                         raise_self_signed(cert)
                     else:
                         raise_no_issuer(cert)
-                if error == crypt32_const.CERT_E_CN_NO_MATCH:
+                if error == Crypt32Const.CERT_E_CN_NO_MATCH:
                     raise_hostname(cert, self._hostname)
 
-                if error == crypt32_const.TRUST_E_CERT_SIGNATURE:
+                if error == Crypt32Const.TRUST_E_CERT_SIGNATURE:
                     raise_weak_signature(cert)
 
-                if error == crypt32_const.CRYPT_E_REVOKED:
+                if error == Crypt32Const.CRYPT_E_REVOKED:
                     raise_revoked(cert)
 
                 raise_verification(cert)
@@ -534,12 +613,12 @@ class TLSSocket(object):
                 temp_context_handle_pointer = new_context_handle_pointer
 
             requested_flags = {
-                secur32_const.ISC_REQ_REPLAY_DETECT: 'replay detection',
-                secur32_const.ISC_REQ_SEQUENCE_DETECT: 'sequence detection',
-                secur32_const.ISC_REQ_CONFIDENTIALITY: 'confidentiality',
-                secur32_const.ISC_REQ_ALLOCATE_MEMORY: 'memory allocation',
-                secur32_const.ISC_REQ_INTEGRITY: 'integrity',
-                secur32_const.ISC_REQ_STREAM: 'stream orientation',
+                Secur32Const.ISC_REQ_REPLAY_DETECT: 'replay detection',
+                Secur32Const.ISC_REQ_SEQUENCE_DETECT: 'sequence detection',
+                Secur32Const.ISC_REQ_CONFIDENTIALITY: 'confidentiality',
+                Secur32Const.ISC_REQ_ALLOCATE_MEMORY: 'memory allocation',
+                Secur32Const.ISC_REQ_INTEGRITY: 'integrity',
+                Secur32Const.ISC_REQ_STREAM: 'stream orientation',
             }
 
             self._context_flags = 0
@@ -547,11 +626,11 @@ class TLSSocket(object):
                 self._context_flags |= flag
 
             in_sec_buffer_desc_pointer, in_buffers = self._create_buffers(2)
-            in_buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
+            in_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
 
             out_sec_buffer_desc_pointer, out_buffers = self._create_buffers(2)
-            out_buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
-            out_buffers[1].BufferType = secur32_const.SECBUFFER_ALERT
+            out_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
+            out_buffers[1].BufferType = Secur32Const.SECBUFFER_ALERT
 
             output_context_flags_pointer = new(secur32, 'ULONG *')
 
@@ -563,7 +642,7 @@ class TLSSocket(object):
                 second_handle = temp_context_handle_pointer
 
             result = secur32.InitializeSecurityContextW(
-                self._session._credentials_handle,  #pylint: disable=W0212
+                self._session._credentials_handle,
                 first_handle,
                 self._hostname,
                 self._context_flags,
@@ -576,7 +655,7 @@ class TLSSocket(object):
                 output_context_flags_pointer,
                 null()
             )
-            if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
+            if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
                 handle_error(result, TLSError)
 
             if not renegotiate:
@@ -595,7 +674,7 @@ class TLSSocket(object):
             in_data_buffer = buffer_from_bytes(32768)
             in_buffers[0].pvBuffer = cast(secur32, 'char *', in_data_buffer)
 
-            while result != secur32_const.SEC_E_OK:
+            while result != Secur32Const.SEC_E_OK:
                 bytes_read = self._socket.recv(8192)
                 if bytes_read == b'' and self._socket.gettimeout() is None:
                     raise_disconnection()
@@ -606,7 +685,7 @@ class TLSSocket(object):
                 write_to_buffer(in_data_buffer, self._received_bytes)
 
                 result = secur32.InitializeSecurityContextW(
-                    self._session._credentials_handle,  #pylint: disable=W0212
+                    self._session._credentials_handle,
                     temp_context_handle_pointer,
                     self._hostname,
                     self._context_flags,
@@ -620,21 +699,21 @@ class TLSSocket(object):
                     null()
                 )
 
-                if result == secur32_const.SEC_E_INCOMPLETE_MESSAGE:
+                if result == Secur32Const.SEC_E_INCOMPLETE_MESSAGE:
                     continue
 
-                if result == secur32_const.SEC_E_ILLEGAL_MESSAGE:
+                if result == Secur32Const.SEC_E_ILLEGAL_MESSAGE:
                     raise_handshake()
 
-                if result == secur32_const.SEC_E_WRONG_PRINCIPAL:
+                if result == Secur32Const.SEC_E_WRONG_PRINCIPAL:
                     chain = extract_chain(handshake_server_bytes)
                     raise_hostname(chain[0], self._hostname)
 
-                if result == secur32_const.SEC_E_CERT_EXPIRED:
+                if result == Secur32Const.SEC_E_CERT_EXPIRED:
                     chain = extract_chain(handshake_server_bytes)
                     raise_expired_not_yet_valid(chain[0])
 
-                if result == secur32_const.SEC_E_UNTRUSTED_ROOT:
+                if result == Secur32Const.SEC_E_UNTRUSTED_ROOT:
                     chain = extract_chain(handshake_server_bytes)
                     cert = chain[0]
                     oscrypto_cert = load_certificate(cert)
@@ -642,20 +721,20 @@ class TLSSocket(object):
                         raise_no_issuer(cert)
                     raise_self_signed(cert)
 
-                if result == secur32_const.SEC_E_INTERNAL_ERROR:
+                if result == Secur32Const.SEC_E_INTERNAL_ERROR:
                     if get_dh_params_length(handshake_server_bytes) < 1024:
                         raise_dh_params()
 
-                if result == secur32_const.SEC_I_INCOMPLETE_CREDENTIALS:
+                if result == Secur32Const.SEC_I_INCOMPLETE_CREDENTIALS:
                     raise_client_auth()
 
-                if result == crypt32_const.TRUST_E_CERT_SIGNATURE:
+                if result == Crypt32Const.TRUST_E_CERT_SIGNATURE:
                     raise_weak_signature(cert)
 
-                if result == secur32_const.SEC_E_INVALID_TOKEN:
+                if result == Secur32Const.SEC_E_INVALID_TOKEN:
                     raise_protocol_error(handshake_server_bytes)
 
-                if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_I_CONTINUE_NEEDED]):
+                if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
 
                 if out_buffers[0].cbBuffer > 0:
@@ -663,14 +742,14 @@ class TLSSocket(object):
                     handshake_client_bytes += token
                     self._socket.send(token)
 
-                if in_buffers[1].BufferType == secur32_const.SECBUFFER_EXTRA:
+                if in_buffers[1].BufferType == Secur32Const.SECBUFFER_EXTRA:
                     extra_amount = in_buffers[1].cbBuffer
                     self._received_bytes = self._received_bytes[-extra_amount:]
-                    in_buffers[1].BufferType = secur32_const.SECBUFFER_EMPTY
+                    in_buffers[1].BufferType = Secur32Const.SECBUFFER_EMPTY
                     in_buffers[1].cbBuffer = 0
 
                     # The handshake is complete, so discard any extra bytes
-                    if result == secur32_const.SEC_E_OK:
+                    if result == Secur32Const.SEC_E_OK:
                         handshake_server_bytes = handshake_server_bytes[-extra_amount:]
 
                 else:
@@ -679,7 +758,7 @@ class TLSSocket(object):
             connection_info_pointer = struct(secur32, 'SecPkgContext_ConnectionInfo')
             result = secur32.QueryContextAttributesW(
                 temp_context_handle_pointer,
-                secur32_const.SECPKG_ATTR_CONNECTION_INFO,
+                Secur32Const.SECPKG_ATTR_CONNECTION_INFO,
                 connection_info_pointer
             )
             handle_error(result, TLSError)
@@ -687,11 +766,11 @@ class TLSSocket(object):
             connection_info = unwrap(connection_info_pointer)
 
             self._protocol = {
-                secur32_const.SP_PROT_SSL2_CLIENT: 'SSLv2',
-                secur32_const.SP_PROT_SSL3_CLIENT: 'SSLv3',
-                secur32_const.SP_PROT_TLS1_CLIENT: 'TLSv1',
-                secur32_const.SP_PROT_TLS1_1_CLIENT: 'TLSv1.1',
-                secur32_const.SP_PROT_TLS1_2_CLIENT: 'TLSv1.2',
+                Secur32Const.SP_PROT_SSL2_CLIENT: 'SSLv2',
+                Secur32Const.SP_PROT_SSL3_CLIENT: 'SSLv3',
+                Secur32Const.SP_PROT_TLS1_CLIENT: 'TLSv1',
+                Secur32Const.SP_PROT_TLS1_1_CLIENT: 'TLSv1.1',
+                Secur32Const.SP_PROT_TLS1_2_CLIENT: 'TLSv1.2',
             }.get(native(int, connection_info.dwProtocol), str_cls(connection_info.dwProtocol))
 
             if self._protocol in set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2']):
@@ -705,7 +784,12 @@ class TLSSocket(object):
 
             for flag in requested_flags:
                 if (flag | output_context_flags) == 0:
-                    raise OSError('Unable to obtain a credential context with the property %s' % requested_flags[flag])
+                    raise OSError(pretty_message(
+                        '''
+                        Unable to obtain a credential context with the property %s
+                        ''',
+                        requested_flags[flag]
+                    ))
 
             if not renegotiate:
                 self._context_handle_pointer = temp_context_handle_pointer
@@ -714,7 +798,7 @@ class TLSSocket(object):
                 stream_sizes_pointer = struct(secur32, 'SecPkgContext_StreamSizes')
                 result = secur32.QueryContextAttributesW(
                     self._context_handle_pointer,
-                    secur32_const.SECPKG_ATTR_STREAM_SIZES,
+                    Secur32Const.SECPKG_ATTR_STREAM_SIZES,
                     stream_sizes_pointer
                 )
                 handle_error(result)
@@ -725,7 +809,7 @@ class TLSSocket(object):
                 self._trailer_size = native(int, stream_sizes.cbTrailer)
                 self._buffer_size = self._header_size + self._message_size + self._trailer_size
 
-            if self._session._extra_trust_roots:  #pylint: disable=W0212
+            if self._session._extra_trust_roots:
                 self._extra_trust_root_validation()
 
         except (OSError, socket_.error):
@@ -761,7 +845,12 @@ class TLSSocket(object):
         """
 
         if not isinstance(max_length, int_types):
-            raise TypeError('max_length must be an integer, not %s' % object_name(max_length))
+            raise TypeError(pretty_message(
+                '''
+                max_length must be an integer, not %s
+                ''',
+                type_name(max_length)
+            ))
 
         if self._context_handle_pointer is None:
 
@@ -780,7 +869,7 @@ class TLSSocket(object):
         if not self._decrypt_data_buffer:
             self._decrypt_data_buffer = buffer_from_bytes(self._buffer_size)
             self._decrypt_desc, self._decrypt_buffers = self._create_buffers(4)
-            self._decrypt_buffers[0].BufferType = secur32_const.SECBUFFER_DATA
+            self._decrypt_buffers[0].BufferType = Secur32Const.SECBUFFER_DATA
             self._decrypt_buffers[0].pvBuffer = cast(secur32, 'char *', self._decrypt_data_buffer)
 
         to_recv = max(max_length, self._buffer_size)
@@ -794,19 +883,19 @@ class TLSSocket(object):
         buf3 = self._decrypt_buffers[3]
 
         def _reset_buffers():
-            buf0.BufferType = secur32_const.SECBUFFER_DATA
+            buf0.BufferType = Secur32Const.SECBUFFER_DATA
             buf0.pvBuffer = cast(secur32, 'char *', self._decrypt_data_buffer)
             buf0.cbBuffer = 0
 
-            buf1.BufferType = secur32_const.SECBUFFER_EMPTY
+            buf1.BufferType = Secur32Const.SECBUFFER_EMPTY
             buf1.pvBuffer = null_value
             buf1.cbBuffer = 0
 
-            buf2.BufferType = secur32_const.SECBUFFER_EMPTY
+            buf2.BufferType = Secur32Const.SECBUFFER_EMPTY
             buf2.pvBuffer = null_value
             buf2.cbBuffer = 0
 
-            buf3.BufferType = secur32_const.SECBUFFER_EMPTY
+            buf3.BufferType = Secur32Const.SECBUFFER_EMPTY
             buf3.pvBuffer = null_value
             buf3.cbBuffer = 0
 
@@ -834,7 +923,7 @@ class TLSSocket(object):
             write_to_buffer(self._decrypt_data_buffer, self._received_bytes[0:data_len])
 
             result = secur32.DecryptMessage(
-                self._context_handle_pointer,  #pylint: disable=W0212
+                self._context_handle_pointer,
                 self._decrypt_desc,
                 0,
                 null()
@@ -842,36 +931,46 @@ class TLSSocket(object):
 
             do_read = False
 
-            if result == secur32_const.SEC_E_INCOMPLETE_MESSAGE:
+            if result == Secur32Const.SEC_E_INCOMPLETE_MESSAGE:
                 _reset_buffers()
                 do_read = True
                 continue
 
-            elif result == secur32_const.SEC_I_CONTEXT_EXPIRED:
+            elif result == Secur32Const.SEC_I_CONTEXT_EXPIRED:
                 self._remote_closed = True
                 self.shutdown()
                 break
 
-            elif result == secur32_const.SEC_I_RENEGOTIATE:
+            elif result == Secur32Const.SEC_I_RENEGOTIATE:
                 self._handshake(renegotiate=True)
                 return self.read(max_length)
 
-            elif result != secur32_const.SEC_E_OK:
+            elif result != Secur32Const.SEC_E_OK:
                 handle_error(result, TLSError)
 
+            valid_buffer_types = set([
+                Secur32Const.SECBUFFER_EMPTY,
+                Secur32Const.SECBUFFER_STREAM_HEADER,
+                Secur32Const.SECBUFFER_STREAM_TRAILER
+            ])
             extra_amount = None
             for buf in (buf0, buf1, buf2, buf3):
                 buffer_type = buf.BufferType
-                if buffer_type == secur32_const.SECBUFFER_DATA:
+                if buffer_type == Secur32Const.SECBUFFER_DATA:
                     output += bytes_from_buffer(buf.pvBuffer, buf.cbBuffer)
                     output_len = len(output)
-                elif buffer_type == secur32_const.SECBUFFER_EXTRA:
+                elif buffer_type == Secur32Const.SECBUFFER_EXTRA:
                     extra_amount = native(int, buf.cbBuffer)
-                elif buffer_type not in set([secur32_const.SECBUFFER_EMPTY, secur32_const.SECBUFFER_STREAM_HEADER, secur32_const.SECBUFFER_STREAM_TRAILER]):
-                    raise OSError('Unexpected decrypt output buffer of type %s' % buffer_type)
+                elif buffer_type not in valid_buffer_types:
+                    raise OSError(pretty_message(
+                        '''
+                        Unexpected decrypt output buffer of type %s
+                        ''',
+                        buffer_type
+                    ))
 
             if extra_amount:
-                self._received_bytes = self._received_bytes[data_len-extra_amount:]
+                self._received_bytes = self._received_bytes[data_len - extra_amount:]
             else:
                 self._received_bytes = self._received_bytes[data_len:]
 
@@ -927,12 +1026,17 @@ class TLSSocket(object):
             A byte string of the data read
         """
 
-        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):  #pylint: disable=W0212
-            raise TypeError('marker must be a byte string or compiled regex object, not %s' % object_name(marker))
+        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):
+            raise TypeError(pretty_message(
+                '''
+                marker must be a byte string or compiled regex object, not %s
+                ''',
+                type_name(marker)
+            ))
 
         output = b''
 
-        is_regex = isinstance(marker, re._pattern_type)  #pylint: disable=W0212
+        is_regex = isinstance(marker, re._pattern_type)
 
         while True:
             if len(self._decrypted_bytes) > 0:
@@ -1011,14 +1115,14 @@ class TLSSocket(object):
             self._encrypt_data_buffer = buffer_from_bytes(self._header_size + self._message_size + self._trailer_size)
             self._encrypt_desc, self._encrypt_buffers = self._create_buffers(4)
 
-            self._encrypt_buffers[0].BufferType = secur32_const.SECBUFFER_STREAM_HEADER
+            self._encrypt_buffers[0].BufferType = Secur32Const.SECBUFFER_STREAM_HEADER
             self._encrypt_buffers[0].cbBuffer = self._header_size
             self._encrypt_buffers[0].pvBuffer = cast(secur32, 'char *', self._encrypt_data_buffer)
 
-            self._encrypt_buffers[1].BufferType = secur32_const.SECBUFFER_DATA
+            self._encrypt_buffers[1].BufferType = Secur32Const.SECBUFFER_DATA
             self._encrypt_buffers[1].pvBuffer = ref(self._encrypt_data_buffer, self._header_size)
 
-            self._encrypt_buffers[2].BufferType = secur32_const.SECBUFFER_STREAM_TRAILER
+            self._encrypt_buffers[2].BufferType = Secur32Const.SECBUFFER_STREAM_TRAILER
             self._encrypt_buffers[2].cbBuffer = self._trailer_size
             self._encrypt_buffers[2].pvBuffer = ref(self._encrypt_data_buffer, self._header_size + self._message_size)
 
@@ -1036,10 +1140,12 @@ class TLSSocket(object):
                 0
             )
 
-            if result != secur32_const.SEC_E_OK:
+            if result != Secur32Const.SEC_E_OK:
                 handle_error(result, TLSError)
 
-            to_send = native(int, self._encrypt_buffers[0].cbBuffer) + native(int, self._encrypt_buffers[1].cbBuffer) + native(int, self._encrypt_buffers[2].cbBuffer)
+            to_send = native(int, self._encrypt_buffers[0].cbBuffer)
+            to_send += native(int, self._encrypt_buffers[1].cbBuffer)
+            to_send += native(int, self._encrypt_buffers[2].cbBuffer)
             self._socket.send(bytes_from_buffer(self._encrypt_data_buffer, to_send))
 
             data = data[to_send:]
@@ -1080,13 +1186,13 @@ class TLSSocket(object):
 
                 # This is a SCHANNEL_SHUTDOWN token (DWORD of 1)
                 buffers[0].cbBuffer = 4
-                buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
+                buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
                 buffers[0].pvBuffer = cast(secur32, 'char *', buffer_from_bytes(b'\x01\x00\x00\x00'))
 
                 sec_buffer_desc_pointer = struct(secur32, 'SecBufferDesc')
                 sec_buffer_desc = unwrap(sec_buffer_desc_pointer)
 
-                sec_buffer_desc.ulVersion = secur32_const.SECBUFFER_VERSION
+                sec_buffer_desc.ulVersion = Secur32Const.SECBUFFER_VERSION
                 sec_buffer_desc.cBuffers = 1
                 sec_buffer_desc.pBuffers = buffers
 
@@ -1094,13 +1200,13 @@ class TLSSocket(object):
                 handle_error(result, TLSError)
 
             out_sec_buffer_desc_pointer, out_buffers = self._create_buffers(2)
-            out_buffers[0].BufferType = secur32_const.SECBUFFER_TOKEN
-            out_buffers[1].BufferType = secur32_const.SECBUFFER_ALERT
+            out_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
+            out_buffers[1].BufferType = Secur32Const.SECBUFFER_ALERT
 
             output_context_flags_pointer = new(secur32, 'ULONG *')
 
             result = secur32.InitializeSecurityContextW(
-                self._session._credentials_handle,  #pylint: disable=W0212
+                self._session._credentials_handle,
                 self._context_handle_pointer,
                 self._hostname,
                 self._context_flags,
@@ -1113,7 +1219,12 @@ class TLSSocket(object):
                 output_context_flags_pointer,
                 null()
             )
-            if result not in set([secur32_const.SEC_E_OK, secur32_const.SEC_E_CONTEXT_EXPIRED, secur32_const.SEC_I_CONTINUE_NEEDED]):
+            acceptable_results = set([
+                Secur32Const.SEC_E_OK,
+                Secur32Const.SEC_E_CONTEXT_EXPIRED,
+                Secur32Const.SEC_I_CONTINUE_NEEDED
+            ])
+            if result not in acceptable_results:
                 handle_error(result, TLSError)
 
             token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
@@ -1131,7 +1242,7 @@ class TLSSocket(object):
 
             try:
                 self._socket.shutdown(socket_.SHUT_RDWR)
-            except (socket_.error):  #pylint: disable=W0704
+            except (socket_.error):
                 pass
 
     def close(self):
@@ -1146,7 +1257,7 @@ class TLSSocket(object):
             if self._socket:
                 try:
                     self._socket.close()
-                except (socket_.error):  #pylint: disable=W0704
+                except (socket_.error):
                     pass
                 self._socket = None
 
@@ -1159,7 +1270,7 @@ class TLSSocket(object):
         cert_context_pointer_pointer = new(crypt32, 'CERT_CONTEXT **')
         result = secur32.QueryContextAttributesW(
             self._context_handle_pointer,
-            secur32_const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
+            Secur32Const.SECPKG_ATTR_REMOTE_CERT_CONTEXT,
             cert_context_pointer_pointer
         )
         handle_error(result, TLSError)

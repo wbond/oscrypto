@@ -1,18 +1,16 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p, c_byte
 from ctypes.wintypes import ULONG, DWORD, LPCWSTR
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
+from .._types import str_cls
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'bcrypt',
+]
 
 
 try:
@@ -29,57 +27,160 @@ PUCHAR = c_char_p
 PBYTE = c_char_p
 
 try:
-    bcrypt.BCryptOpenAlgorithmProvider.argtypes = [POINTER(BCRYPT_ALG_HANDLE), LPCWSTR, LPCWSTR, DWORD]
+    bcrypt.BCryptOpenAlgorithmProvider.argtypes = [
+        POINTER(BCRYPT_ALG_HANDLE),
+        LPCWSTR,
+        LPCWSTR,
+        DWORD
+    ]
     bcrypt.BCryptOpenAlgorithmProvider.restype = NTSTATUS
 
-    bcrypt.BCryptCloseAlgorithmProvider.argtypes = [BCRYPT_ALG_HANDLE, ULONG]
+    bcrypt.BCryptCloseAlgorithmProvider.argtypes = [
+        BCRYPT_ALG_HANDLE,
+        ULONG
+    ]
     bcrypt.BCryptCloseAlgorithmProvider.restype = NTSTATUS
 
-    bcrypt.BCryptImportKeyPair.argtypes = [BCRYPT_ALG_HANDLE, BCRYPT_KEY_HANDLE, LPCWSTR, POINTER(BCRYPT_KEY_HANDLE), PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptImportKeyPair.argtypes = [
+        BCRYPT_ALG_HANDLE,
+        BCRYPT_KEY_HANDLE,
+        LPCWSTR,
+        POINTER(BCRYPT_KEY_HANDLE),
+        PUCHAR,
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptImportKeyPair.restype = NTSTATUS
 
-    bcrypt.BCryptImportKey.argtypes = [BCRYPT_ALG_HANDLE, BCRYPT_KEY_HANDLE, LPCWSTR, POINTER(BCRYPT_KEY_HANDLE), PUCHAR, ULONG, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptImportKey.argtypes = [
+        BCRYPT_ALG_HANDLE,
+        BCRYPT_KEY_HANDLE,
+        LPCWSTR,
+        POINTER(BCRYPT_KEY_HANDLE),
+        PUCHAR,
+        ULONG,
+        PUCHAR,
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptImportKey.restype = NTSTATUS
 
-    bcrypt.BCryptDestroyKey.argtypes = [BCRYPT_KEY_HANDLE]
+    bcrypt.BCryptDestroyKey.argtypes = [
+        BCRYPT_KEY_HANDLE
+    ]
     bcrypt.BCryptDestroyKey.restype = NTSTATUS
 
-    bcrypt.BCryptVerifySignature.argtypes = [BCRYPT_KEY_HANDLE, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptVerifySignature.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        c_void_p,
+        PUCHAR,
+        ULONG,
+        PUCHAR,
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptVerifySignature.restype = NTSTATUS
 
-    bcrypt.BCryptSignHash.argtypes = [BCRYPT_KEY_HANDLE, c_void_p, PBYTE, DWORD, PBYTE, DWORD, POINTER(DWORD), ULONG]
+    bcrypt.BCryptSignHash.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        c_void_p,
+        PBYTE,
+        DWORD,
+        PBYTE,
+        DWORD,
+        POINTER(DWORD),
+        ULONG
+    ]
     bcrypt.BCryptSignHash.restype = NTSTATUS
 
-    bcrypt.BCryptSetProperty.argtypes = [BCRYPT_KEY_HANDLE, LPCWSTR, c_void_p, ULONG, ULONG]
+    bcrypt.BCryptSetProperty.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        LPCWSTR,
+        c_void_p,
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptSetProperty.restype = NTSTATUS
 
-    bcrypt.BCryptEncrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, POINTER(ULONG), ULONG]
+    bcrypt.BCryptEncrypt.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        PUCHAR,
+        ULONG,
+        c_void_p,
+        PUCHAR,
+        ULONG,
+        PUCHAR,
+        ULONG,
+        POINTER(ULONG),
+        ULONG
+    ]
     bcrypt.BCryptEncrypt.restype = NTSTATUS
 
-    bcrypt.BCryptDecrypt.argtypes = [BCRYPT_KEY_HANDLE, PUCHAR, ULONG, c_void_p, PUCHAR, ULONG, PUCHAR, ULONG, POINTER(ULONG), ULONG]
+    bcrypt.BCryptDecrypt.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        PUCHAR,
+        ULONG,
+        c_void_p,
+        PUCHAR,
+        ULONG,
+        PUCHAR,
+        ULONG,
+        POINTER(ULONG),
+        ULONG
+    ]
     bcrypt.BCryptDecrypt.restype = NTSTATUS
 
-    bcrypt.BCryptDeriveKeyPBKDF2.argtypes = [BCRYPT_ALG_HANDLE, PUCHAR, ULONG, PUCHAR, ULONG, c_ulonglong, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptDeriveKeyPBKDF2.argtypes = [
+        BCRYPT_ALG_HANDLE,
+        PUCHAR,
+        ULONG,
+        PUCHAR,
+        ULONG,
+        c_ulonglong,
+        PUCHAR,
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptDeriveKeyPBKDF2.restype = NTSTATUS
 
-    bcrypt.BCryptGenRandom.argtypes = [BCRYPT_ALG_HANDLE, PUCHAR, ULONG, ULONG]
+    bcrypt.BCryptGenRandom.argtypes = [
+        BCRYPT_ALG_HANDLE,
+        PUCHAR,
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptGenRandom.restype = NTSTATUS
 
-    bcrypt.BCryptGenerateKeyPair.argtypes = [BCRYPT_ALG_HANDLE, POINTER(BCRYPT_KEY_HANDLE), ULONG, ULONG]
+    bcrypt.BCryptGenerateKeyPair.argtypes = [
+        BCRYPT_ALG_HANDLE,
+        POINTER(BCRYPT_KEY_HANDLE),
+        ULONG,
+        ULONG
+    ]
     bcrypt.BCryptGenerateKeyPair.restype = NTSTATUS
 
-    bcrypt.BCryptFinalizeKeyPair.argtypes = [BCRYPT_KEY_HANDLE, ULONG]
+    bcrypt.BCryptFinalizeKeyPair.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        ULONG
+    ]
     bcrypt.BCryptFinalizeKeyPair.restype = NTSTATUS
 
-    bcrypt.BCryptExportKey.argtypes = [BCRYPT_KEY_HANDLE, BCRYPT_KEY_HANDLE, LPCWSTR, PUCHAR, ULONG, POINTER(ULONG), ULONG]
+    bcrypt.BCryptExportKey.argtypes = [
+        BCRYPT_KEY_HANDLE,
+        BCRYPT_KEY_HANDLE,
+        LPCWSTR,
+        PUCHAR,
+        ULONG,
+        POINTER(ULONG),
+        ULONG
+    ]
     bcrypt.BCryptExportKey.restype = NTSTATUS
 
 except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
 
-
-class BCRYPT_RSAKEY_BLOB(Structure):
+class BCRYPT_RSAKEY_BLOB(Structure):  # noqa
     _fields_ = [
         ('Magic', ULONG),
         ('BitLength', ULONG),
@@ -90,7 +191,7 @@ class BCRYPT_RSAKEY_BLOB(Structure):
     ]
 
 
-class BCRYPT_DSA_KEY_BLOB(Structure):
+class BCRYPT_DSA_KEY_BLOB(Structure):  # noqa
     _fields_ = [
         ('dwMagic', ULONG),
         ('cbKey', ULONG),
@@ -100,7 +201,7 @@ class BCRYPT_DSA_KEY_BLOB(Structure):
     ]
 
 
-class BCRYPT_DSA_KEY_BLOB_V2(Structure):
+class BCRYPT_DSA_KEY_BLOB_V2(Structure):  # noqa
     _fields_ = [
         ('dwMagic', ULONG),
         ('cbKey', ULONG),
@@ -112,27 +213,27 @@ class BCRYPT_DSA_KEY_BLOB_V2(Structure):
     ]
 
 
-class BCRYPT_ECCKEY_BLOB(Structure):
+class BCRYPT_ECCKEY_BLOB(Structure):  # noqa
     _fields_ = [
         ('dwMagic', ULONG),
         ('cbKey', ULONG),
     ]
 
 
-class BCRYPT_PKCS1_PADDING_INFO(Structure):
+class BCRYPT_PKCS1_PADDING_INFO(Structure):  # noqa
     _fields_ = [
         ('pszAlgId', LPCWSTR),
     ]
 
 
-class BCRYPT_PSS_PADDING_INFO(Structure):
+class BCRYPT_PSS_PADDING_INFO(Structure):  # noqa
     _fields_ = [
         ('pszAlgId', LPCWSTR),
         ('cbSalt', ULONG),
     ]
 
 
-class BCRYPT_OAEP_PADDING_INFO(Structure):
+class BCRYPT_OAEP_PADDING_INFO(Structure):  # noqa
     _fields_ = [
         ('pszAlgId', LPCWSTR),
         ('pbLabel', PUCHAR),
@@ -140,7 +241,7 @@ class BCRYPT_OAEP_PADDING_INFO(Structure):
     ]
 
 
-class BCRYPT_KEY_DATA_BLOB_HEADER(Structure):
+class BCRYPT_KEY_DATA_BLOB_HEADER(Structure):  # noqa
     _fields_ = [
         ('dwMagic', ULONG),
         ('dwVersion', ULONG),

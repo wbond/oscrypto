@@ -16,7 +16,6 @@ else:
     byte_cls = bytes
 
 
-
 class SymmetricTests(unittest.TestCase):
 
     def test_aes_128_encrypt_decrypt(self):

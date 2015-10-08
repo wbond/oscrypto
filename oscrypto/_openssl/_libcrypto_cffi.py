@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import re
 from ctypes.util import find_library
 
+from .._errors import pretty_message
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
@@ -12,6 +13,12 @@ try:
 except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
+
+__all__ = [
+    'libcrypto',
+    'version',
+    'version_info',
+]
 
 
 ffi = FFI()
@@ -36,7 +43,12 @@ version_parts = re.sub('(\\d)([a-z]+)', '\\1.\\2', version).split('.')
 version_info = tuple(int(part) if part.isdigit() else part for part in version_parts)
 
 if version_info < (0, 9, 8):
-    raise LibraryNotFoundError('OpenSSL versions older than 0.9.8 are not supported - found version %s' % version)
+    raise LibraryNotFoundError(pretty_message(
+        '''
+        OpenSSL versions older than 0.9.8 are not supported - found version %s
+        ''',
+        version
+    ))
 
 # The typedef uintptr_t lines here allow us to check for a NULL pointer,
 # without having to redefine the structs in our code. This is kind of a hack,

@@ -1,25 +1,40 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from asn1crypto import keys, x509
 
+from .._errors import pretty_message
 from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null
-from ._security import Security, security_const, handle_sec_error, osx_version_info
+from ._security import Security, SecurityConst, handle_sec_error, osx_version_info
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import SignatureError, AsymmetricKeyError
 from .._pkcs1 import add_pss_padding, verify_pss_padding, remove_pkcs1v15_encryption_padding
-from .._errors import object_name
+from .._types import type_name, str_cls, byte_cls
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    byte_cls = str
-else:
-    str_cls = str
-    byte_cls = bytes
 
+__all__ = [
+    'Certificate',
+    'dsa_sign',
+    'dsa_verify',
+    'ecdsa_sign',
+    'ecdsa_verify',
+    'generate_pair',
+    'load_certificate',
+    'load_pkcs12',
+    'load_private_key',
+    'load_public_key',
+    'PrivateKey',
+    'PublicKey',
+    'rsa_oaep_decrypt',
+    'rsa_oaep_encrypt',
+    'rsa_pkcs1v15_decrypt',
+    'rsa_pkcs1v15_encrypt',
+    'rsa_pkcs1v15_sign',
+    'rsa_pkcs1v15_verify',
+    'rsa_pss_sign',
+    'rsa_pss_verify',
+]
 
 
 class PrivateKey():
@@ -208,12 +223,23 @@ class Certificate():
                 elif signature_algo == 'ecdsa':
                     verify_func = ecdsa_verify
                 else:
-                    raise OSError('Unable to verify the signature of the certificate since it uses the unsupported algorithm %s' % signature_algo)
+                    raise OSError(pretty_message(
+                        '''
+                        Unable to verify the signature of the certificate since
+                        it uses the unsupported algorithm %s
+                        ''',
+                        signature_algo
+                    ))
 
                 try:
-                    verify_func(self.public_key, self.asn1['signature_value'].native, self.asn1['tbs_certificate'].dump(), hash_algo)
+                    verify_func(
+                        self.public_key,
+                        self.asn1['signature_value'].native,
+                        self.asn1['tbs_certificate'].dump(),
+                        hash_algo
+                    )
                     self._self_signed = True
-                except (SignatureError):  #pylint: disable=W0704
+                except (SignatureError):
                     pass
 
         return self._self_signed
@@ -254,19 +280,39 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     """
 
     if algorithm not in set(['rsa', 'dsa', 'ec']):
-        raise ValueError('algorithm must be one of "rsa", "dsa", "ec", not %s' % repr(algorithm))
+        raise ValueError(pretty_message(
+            '''
+            algorithm must be one of "rsa", "dsa", "ec", not %s
+            ''',
+            repr(algorithm)
+        ))
 
     if algorithm == 'rsa':
         if bit_size not in set([1024, 2048, 3072, 4096]):
-            raise ValueError('bit_size must be one of 1024, 2048, 3072, 4096, not %s' % repr(bit_size))
+            raise ValueError(pretty_message(
+                '''
+                bit_size must be one of 1024, 2048, 3072, 4096, not %s
+                ''',
+                repr(bit_size)
+            ))
 
     elif algorithm == 'dsa':
         if bit_size not in set([1024]):
-            raise ValueError('bit_size must be 1024, not %s' % repr(bit_size))
+            raise ValueError(pretty_message(
+                '''
+                bit_size must be 1024, not %s
+                ''',
+                repr(bit_size)
+            ))
 
     elif algorithm == 'ec':
         if curve not in set(['secp256r1', 'secp384r1', 'secp521r1']):
-            raise ValueError('curve must be one of "secp256r1", "secp384r1", "secp521r1", not %s' % repr(curve))
+            raise ValueError(pretty_message(
+                '''
+                curve must be one of "secp256r1", "secp384r1", "secp521r1", not %s
+                ''',
+                repr(curve)
+            ))
 
     cf_dict = None
     public_key_ref = None
@@ -307,13 +353,13 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
             result = Security.SecKeyCreatePair(
                 null(),
-                security_const.CSSM_ALGID_DSA,
+                SecurityConst.CSSM_ALGID_DSA,
                 key_size,
                 0,
-                security_const.CSSM_KEYUSE_VERIFY,
-                security_const.CSSM_KEYATTR_EXTRACTABLE | security_const.CSSM_KEYATTR_PERMANENT,
-                security_const.CSSM_KEYUSE_SIGN,
-                security_const.CSSM_KEYATTR_EXTRACTABLE | security_const.CSSM_KEYATTR_PERMANENT,
+                SecurityConst.CSSM_KEYUSE_VERIFY,
+                SecurityConst.CSSM_KEYATTR_EXTRACTABLE | SecurityConst.CSSM_KEYATTR_PERMANENT,
+                SecurityConst.CSSM_KEYUSE_SIGN,
+                SecurityConst.CSSM_KEYATTR_EXTRACTABLE | SecurityConst.CSSM_KEYATTR_PERMANENT,
                 sec_access_ref,
                 public_key_pointer,
                 private_key_pointer
@@ -396,7 +442,13 @@ def load_certificate(source):
             certificate = parse_certificate(f.read())
 
     else:
-        raise TypeError('source must be a byte string, unicode string or asn1crypto.x509.Certificate object, not %s' % object_name(source))
+        raise TypeError(pretty_message(
+            '''
+            source must be a byte string, unicode string or
+            asn1crypto.x509.Certificate object, not %s
+            ''',
+            type_name(source)
+        ))
 
     return _load_x509(certificate)
 
@@ -456,14 +508,25 @@ def load_private_key(source, password=None):
             if isinstance(password, str_cls):
                 password = password.encode('utf-8')
             if not isinstance(password, byte_cls):
-                raise TypeError('password must be a byte string, not %s' % object_name(password))
+                raise TypeError(pretty_message(
+                    '''
+                    password must be a byte string, not %s
+                    ''',
+                    type_name(password)
+                ))
 
         if isinstance(source, str_cls):
             with open(source, 'rb') as f:
                 source = f.read()
 
         elif not isinstance(source, byte_cls):
-            raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PrivateKeyInfo object, not %s' % object_name(source))
+            raise TypeError(pretty_message(
+                '''
+                source must be a byte string, unicode string or
+                asn1crypto.keys.PrivateKeyInfo object, not %s
+                ''',
+                type_name(source)
+            ))
 
         private_object = parse_private(source, password)
 
@@ -499,7 +562,13 @@ def load_public_key(source):
             public_key = parse_public(f.read())
 
     else:
-        raise TypeError('source must be a byte string, unicode string or asn1crypto.keys.PublicKeyInfo object, not %s' % object_name(public_key))
+        raise TypeError(pretty_message(
+            '''
+            source must be a byte string, unicode string or
+            asn1crypto.keys.PublicKeyInfo object, not %s
+            ''',
+            type_name(public_key)
+        ))
 
     return _load_key(public_key)
 
@@ -516,7 +585,7 @@ def _load_key(key_object):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        oscrypto.errors.AsymmetricKeyError - when the public or private key is incompatible with the OS crypto library
+        oscrypto.errors.AsymmetricKeyError - when the key is incompatible with the OS crypto library
         OSError - when an error is returned by the OS crypto library
 
     :return:
@@ -528,10 +597,21 @@ def _load_key(key_object):
         if curve_type != 'named':
             raise AsymmetricKeyError('OS X only supports EC keys using named curves')
         if details not in set(['secp256r1', 'secp384r1', 'secp521r1']):
-            raise AsymmetricKeyError('OS X only supports EC keys using the named curves secp256r1, secp384r1 and secp521r1')
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                OS X only supports EC keys using the named curves secp256r1,
+                secp384r1 and secp521r1
+                '''
+            ))
 
     elif key_object.algorithm == 'dsa' and key_object.hash_algo == 'sha2':
-        raise AsymmetricKeyError('OS X only supports DSA keys based on SHA1 (2048 bits or less) - this key is based on SHA2 and is %s bits' % key_object.bit_size)
+        raise AsymmetricKeyError(pretty_message(
+            '''
+            OS X only supports DSA keys based on SHA1 (2048 bits or less) - this
+            key is based on SHA2 and is %s bits
+            ''',
+            key_object.bit_size
+        ))
 
     if isinstance(key_object, keys.PublicKeyInfo):
         source = key_object.dump()
@@ -591,7 +671,7 @@ def load_pkcs12(source, password=None):
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
-        oscrypto.errors.AsymmetricKeyError - when a contained public or private key is incompatible with the OS crypto library
+        oscrypto.errors.AsymmetricKeyError - when a contained key is incompatible with the OS crypto library
         OSError - when an error is returned by the OS crypto library
 
     :return:
@@ -602,14 +682,24 @@ def load_pkcs12(source, password=None):
         if isinstance(password, str_cls):
             password = password.encode('utf-8')
         if not isinstance(password, byte_cls):
-            raise TypeError('password must be a byte string, not %s' % object_name(password))
+            raise TypeError(pretty_message(
+                '''
+                password must be a byte string, not %s
+                ''',
+                type_name(password)
+            ))
 
     if isinstance(source, str_cls):
         with open(source, 'rb') as f:
             source = f.read()
 
     elif not isinstance(source, byte_cls):
-        raise TypeError('source must be a byte string or a unicode string, not %s' % object_name(source))
+        raise TypeError(pretty_message(
+            '''
+            source must be a byte string or a unicode string, not %s
+            ''',
+            type_name(source)
+        ))
 
     key_info, cert_info, extra_certs_info = parse_pkcs12(source, password)
 
@@ -649,15 +739,33 @@ def rsa_pkcs1v15_encrypt(certificate_or_public_key, data):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError(pretty_message(
+            '''
+            certificate_or_public_key must be an instance of the Certificate or
+            PublicKey class, not %s
+            ''',
+            type_name(certificate_or_public_key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     key_length = certificate_or_public_key.byte_size
     buffer = buffer_from_bytes(key_length)
     output_length = new(Security, 'size_t *', key_length)
-    result = Security.SecKeyEncrypt(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), buffer, output_length)
+    result = Security.SecKeyEncrypt(
+        certificate_or_public_key.sec_key_ref,
+        SecurityConst.kSecPaddingPKCS1,
+        data,
+        len(data),
+        buffer,
+        output_length
+    )
     handle_sec_error(result)
 
     return bytes_from_buffer(buffer, deref(output_length))
@@ -683,21 +791,38 @@ def rsa_pkcs1v15_decrypt(private_key, ciphertext):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise TypeError('private_key must an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError(pretty_message(
+            '''
+            private_key must an instance of the PrivateKey class, not %s
+            ''',
+            type_name(private_key)
+        ))
 
     if not isinstance(ciphertext, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(ciphertext))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(ciphertext)
+        ))
 
     key_length = private_key.byte_size
     buffer = buffer_from_bytes(key_length)
     output_length = new(Security, 'size_t *', key_length)
 
     if osx_version_info < (10, 8):
-        padding = security_const.kSecPaddingNone
+        padding = SecurityConst.kSecPaddingNone
     else:
-        padding = security_const.kSecPaddingPKCS1
+        padding = SecurityConst.kSecPaddingPKCS1
 
-    result = Security.SecKeyDecrypt(private_key.sec_key_ref, padding, ciphertext, len(ciphertext), buffer, output_length)
+    result = Security.SecKeyDecrypt(
+        private_key.sec_key_ref,
+        padding,
+        ciphertext,
+        len(ciphertext),
+        buffer,
+        output_length
+    )
     handle_sec_error(result)
 
     output = bytes_from_buffer(buffer, deref(output_length))
@@ -778,10 +903,21 @@ def _encrypt(certificate_or_public_key, data, padding):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError(pretty_message(
+            '''
+            certificate_or_public_key must be an instance of the Certificate or
+            PublicKey class, not %s
+            ''',
+            type_name(certificate_or_public_key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if not padding:
         raise ValueError('padding must be specified')
@@ -793,14 +929,27 @@ def _encrypt(certificate_or_public_key, data, padding):
         cf_data = CFHelpers.cf_data_from_bytes(data)
 
         error_pointer = new(CoreFoundation, 'CFErrorRef *')
-        sec_transform = Security.SecEncryptTransformCreate(certificate_or_public_key.sec_key_ref, error_pointer)
+        sec_transform = Security.SecEncryptTransformCreate(
+            certificate_or_public_key.sec_key_ref,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         if padding:
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error_pointer)
+            Security.SecTransformSetAttribute(
+                sec_transform,
+                Security.kSecPaddingKey,
+                padding,
+                error_pointer
+            )
             handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecTransformInputAttributeName,
+            cf_data,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         ciphertext = Security.SecTransformExecute(sec_transform, error_pointer)
@@ -838,10 +987,20 @@ def _decrypt(private_key, ciphertext, padding):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError(pretty_message(
+            '''
+            private_key must be an instance of the PrivateKey class, not %s
+            ''',
+            type_name(private_key)
+        ))
 
     if not isinstance(ciphertext, byte_cls):
-        raise TypeError('ciphertext must be a byte string, not %s' % object_name(ciphertext))
+        raise TypeError(pretty_message(
+            '''
+            ciphertext must be a byte string, not %s
+            ''',
+            type_name(ciphertext)
+        ))
 
     if not padding:
         raise ValueError('padding must be specified')
@@ -853,13 +1012,26 @@ def _decrypt(private_key, ciphertext, padding):
         cf_data = CFHelpers.cf_data_from_bytes(ciphertext)
 
         error_pointer = new(CoreFoundation, 'CFErrorRef *')
-        sec_transform = Security.SecDecryptTransformCreate(private_key.sec_key_ref, error_pointer)
+        sec_transform = Security.SecDecryptTransformCreate(
+            private_key.sec_key_ref,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, padding, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecPaddingKey,
+            padding,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecTransformInputAttributeName,
+            cf_data,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         plaintext = Security.SecTransformExecute(sec_transform, error_pointer)
@@ -935,10 +1107,21 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError(pretty_message(
+            '''
+            certificate_or_public_key must be an instance of the Certificate or
+            PublicKey class, not %s
+            ''',
+            type_name(certificate_or_public_key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if certificate_or_public_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA public key')
@@ -954,7 +1137,14 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     key_length = certificate_or_public_key.byte_size
     buffer = buffer_from_bytes(key_length)
     output_length = new(Security, 'size_t *', key_length)
-    result = Security.SecKeyEncrypt(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingNone, signature, len(signature), buffer, output_length)
+    result = Security.SecKeyEncrypt(
+        certificate_or_public_key.sec_key_ref,
+        SecurityConst.kSecPaddingNone,
+        signature,
+        len(signature),
+        buffer,
+        output_length
+    )
     handle_sec_error(result)
 
     plaintext = bytes_from_buffer(buffer, deref(output_length))
@@ -1044,13 +1234,29 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
 
     if not isinstance(certificate_or_public_key, (Certificate, PublicKey)):
-        raise TypeError('certificate_or_public_key must be an instance of the Certificate or PublicKey class, not %s' % object_name(certificate_or_public_key))
+        raise TypeError(pretty_message(
+            '''
+            certificate_or_public_key must be an instance of the Certificate or
+            PublicKey class, not %s
+            ''',
+            type_name(certificate_or_public_key)
+        ))
 
     if not isinstance(signature, byte_cls):
-        raise TypeError('signature must be a byte string, not %s' % object_name(signature))
+        raise TypeError(pretty_message(
+            '''
+            signature must be a byte string, not %s
+            ''',
+            type_name(signature)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
     if certificate_or_public_key.algorithm == 'rsa':
@@ -1060,14 +1266,35 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
         valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
         if certificate_or_public_key.algorithm == 'rsa':
             valid_hash_algorithms_error += ', "raw"'
-        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of %s, not %s
+            ''',
+            valid_hash_algorithms_error,
+            repr(hash_algorithm)
+        ))
 
     if certificate_or_public_key.algorithm == 'rsa' and hash_algorithm == 'raw':
         if len(data) > certificate_or_public_key.byte_size - 11:
-            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (certificate_or_public_key.byte_size, len(data)))
+            raise ValueError(pretty_message(
+                '''
+                data must be 11 bytes shorter than the key size when
+                hash_algorithm is "raw" - key size is %s bytes, but data
+                is %s bytes long
+                ''',
+                certificate_or_public_key.byte_size,
+                len(data)
+            ))
 
-        result = Security.SecKeyRawVerify(certificate_or_public_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), signature, len(signature))
-        if result == security_const.errSecVerifyFailed:
+        result = Security.SecKeyRawVerify(
+            certificate_or_public_key.sec_key_ref,
+            SecurityConst.kSecPaddingPKCS1,
+            data,
+            len(data),
+            signature,
+            len(signature)
+        )
+        if result == SecurityConst.errSecVerifyFailed:
             raise SignatureError('Signature is invalid')
         handle_sec_error(result)
         return
@@ -1080,7 +1307,11 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
     try:
         error_pointer = new(CoreFoundation, 'CFErrorRef *')
         cf_signature = CFHelpers.cf_data_from_bytes(signature)
-        sec_transform = Security.SecVerifyTransformCreate(certificate_or_public_key.sec_key_ref, cf_signature, error_pointer)
+        sec_transform = Security.SecVerifyTransformCreate(
+            certificate_or_public_key.sec_key_ref,
+            cf_signature,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         hash_constant = {
@@ -1092,7 +1323,12 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
             'sha512': Security.kSecDigestSHA2
         }[hash_algorithm]
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecDigestTypeAttribute,
+            hash_constant,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         if hash_algorithm in set(['sha224', 'sha256', 'sha384', 'sha512']):
@@ -1105,15 +1341,30 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
 
             cf_hash_length = CFHelpers.cf_number_from_integer(hash_length)
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error_pointer)
+            Security.SecTransformSetAttribute(
+                sec_transform,
+                Security.kSecDigestLengthAttribute,
+                cf_hash_length,
+                error_pointer
+            )
             handle_cf_error(error_pointer)
 
         if certificate_or_public_key.algorithm == 'rsa':
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error_pointer)
+            Security.SecTransformSetAttribute(
+                sec_transform,
+                Security.kSecPaddingKey,
+                Security.kSecPaddingPKCS1Key,
+                error_pointer
+            )
             handle_cf_error(error_pointer)
 
         cf_data = CFHelpers.cf_data_from_bytes(data)
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecTransformInputAttributeName,
+            cf_data,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         res = Security.SecTransformExecute(sec_transform, error_pointer)
@@ -1151,7 +1402,8 @@ def rsa_pkcs1v15_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384", "sha512" or "raw"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384",
+        "sha512" or "raw"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1182,7 +1434,8 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or
+        "sha512"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1194,10 +1447,20 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise TypeError('private_key must be an instance of the PrivateKey class, not %s' % object_name(private_key))
+        raise TypeError(pretty_message(
+            '''
+            private_key must be an instance of the PrivateKey class, not %s
+            ''',
+            type_name(private_key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if private_key.algorithm != 'rsa':
         raise ValueError('The key specified is not an RSA private key')
@@ -1215,7 +1478,14 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
     key_length = private_key.byte_size
     buffer = buffer_from_bytes(key_length)
     output_length = new(Security, 'size_t *', key_length)
-    result = Security.SecKeyDecrypt(private_key.sec_key_ref, security_const.kSecPaddingNone, encoded_data, len(encoded_data), buffer, output_length)
+    result = Security.SecKeyDecrypt(
+        private_key.sec_key_ref,
+        SecurityConst.kSecPaddingNone,
+        encoded_data,
+        len(encoded_data),
+        buffer,
+        output_length
+    )
     handle_sec_error(result)
 
     return bytes_from_buffer(buffer, deref(output_length))
@@ -1232,7 +1502,8 @@ def dsa_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or
+        "sha512"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1260,7 +1531,8 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or
+        "sha512"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1288,7 +1560,8 @@ def _sign(private_key, data, hash_algorithm):
         A byte string of the data the signature is for
 
     :param hash_algorithm:
-        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or "sha512"
+        A unicode string of "md5", "sha1", "sha224", "sha256", "sha384" or
+        "sha512"
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1300,10 +1573,20 @@ def _sign(private_key, data, hash_algorithm):
     """
 
     if not isinstance(private_key, PrivateKey):
-        raise TypeError('private_key must be an instance of PrivateKey, not %s' % object_name(private_key))
+        raise TypeError(pretty_message(
+            '''
+            private_key must be an instance of PrivateKey, not %s
+            ''',
+            type_name(private_key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
     if private_key.algorithm == 'rsa':
@@ -1313,16 +1596,37 @@ def _sign(private_key, data, hash_algorithm):
         valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
         if private_key.algorithm == 'rsa':
             valid_hash_algorithms_error += ', "raw"'
-        raise ValueError('hash_algorithm must be one of %s, not %s' % (valid_hash_algorithms_error, repr(hash_algorithm)))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of %s, not %s
+            ''',
+            valid_hash_algorithms_error,
+            repr(hash_algorithm)
+        ))
 
     if private_key.algorithm == 'rsa' and hash_algorithm == 'raw':
         if len(data) > private_key.byte_size - 11:
-            raise ValueError('data must be 11 bytes shorter than the key size when hash_algorithm is "raw" - key size is %s bytes, but data is %s bytes long' % (private_key.byte_size, len(data)))
+            raise ValueError(pretty_message(
+                '''
+                data must be 11 bytes shorter than the key size when
+                hash_algorithm is "raw" - key size is %s bytes, but
+                data is %s bytes long
+                ''',
+                private_key.byte_size,
+                len(data)
+            ))
 
         key_length = private_key.byte_size
         buffer = buffer_from_bytes(key_length)
         output_length = new(Security, 'size_t *', key_length)
-        result = Security.SecKeyRawSign(private_key.sec_key_ref, security_const.kSecPaddingPKCS1, data, len(data), buffer, output_length)
+        result = Security.SecKeyRawSign(
+            private_key.sec_key_ref,
+            SecurityConst.kSecPaddingPKCS1,
+            data,
+            len(data),
+            buffer,
+            output_length
+        )
         handle_sec_error(result)
 
         return bytes_from_buffer(buffer, deref(output_length))
@@ -1346,7 +1650,12 @@ def _sign(private_key, data, hash_algorithm):
             'sha512': Security.kSecDigestSHA2
         }[hash_algorithm]
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestTypeAttribute, hash_constant, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecDigestTypeAttribute,
+            hash_constant,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         if hash_algorithm in set(['sha224', 'sha256', 'sha384', 'sha512']):
@@ -1359,15 +1668,30 @@ def _sign(private_key, data, hash_algorithm):
 
             cf_hash_length = CFHelpers.cf_number_from_integer(hash_length)
 
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecDigestLengthAttribute, cf_hash_length, error_pointer)
+            Security.SecTransformSetAttribute(
+                sec_transform,
+                Security.kSecDigestLengthAttribute,
+                cf_hash_length,
+                error_pointer
+            )
             handle_cf_error(error_pointer)
 
         if private_key.algorithm == 'rsa':
-            Security.SecTransformSetAttribute(sec_transform, Security.kSecPaddingKey, Security.kSecPaddingPKCS1Key, error_pointer)
+            Security.SecTransformSetAttribute(
+                sec_transform,
+                Security.kSecPaddingKey,
+                Security.kSecPaddingPKCS1Key,
+                error_pointer
+            )
             handle_cf_error(error_pointer)
 
         cf_data = CFHelpers.cf_data_from_bytes(data)
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecTransformInputAttributeName,
+            cf_data,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         cf_signature = Security.SecTransformExecute(sec_transform, error_pointer)
@@ -1384,4 +1708,3 @@ def _sign(private_key, data, hash_algorithm):
             CoreFoundation.CFRelease(cf_data)
         if cf_hash_length:
             CoreFoundation.CFRelease(cf_hash_length)
-

@@ -12,10 +12,24 @@ import weakref
 from asn1crypto import x509
 from asn1crypto.util import int_to_bytes
 
-from ._security import Security, osx_version_info, handle_sec_error, security_const
+from ._security import Security, osx_version_info, handle_sec_error, SecurityConst
 from ._core_foundation import CoreFoundation, handle_cf_error, CFHelpers
-from .._ffi import new, null, unwrap, bytes_from_buffer, deref, buffer_from_bytes, callback, write_to_buffer, pointer_set, array_from_pointer, cast, array_set
-from .._errors import object_name
+from .._errors import pretty_message
+from .._ffi import (
+    array_from_pointer,
+    array_set,
+    buffer_from_bytes,
+    bytes_from_buffer,
+    callback,
+    cast,
+    deref,
+    new,
+    null,
+    pointer_set,
+    unwrap,
+    write_to_buffer,
+)
+from .._types import type_name, str_cls, byte_cls, int_types
 from .._cipher_suites import CIPHER_SUITE_MAP
 from .util import rand_bytes
 from ..errors import TLSError
@@ -40,32 +54,29 @@ from .asymmetric import load_certificate, Certificate
 from ..keys import parse_certificate
 
 if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    int_types = (int, long)  #pylint: disable=E0602
-    range = xrange  #pylint: disable=W0622,E0602
-    byte_cls = str
+    range = xrange  # noqa
 
-else:
-    str_cls = str
-    int_types = int
-    byte_cls = bytes
 
+__all__ = [
+    'TLSSession',
+    'TLSSocket',
+]
 
 
 _PROTOCOL_STRING_CONST_MAP = {
-    'SSLv2': security_const.kSSLProtocol2,
-    'SSLv3': security_const.kSSLProtocol3,
-    'TLSv1': security_const.kTLSProtocol1,
-    'TLSv1.1': security_const.kTLSProtocol11,
-    'TLSv1.2': security_const.kTLSProtocol12,
+    'SSLv2': SecurityConst.kSSLProtocol2,
+    'SSLv3': SecurityConst.kSSLProtocol3,
+    'TLSv1': SecurityConst.kTLSProtocol1,
+    'TLSv1.1': SecurityConst.kTLSProtocol11,
+    'TLSv1.2': SecurityConst.kTLSProtocol12,
 }
 
 _PROTOCOL_CONST_STRING_MAP = {
-    security_const.kSSLProtocol2: 'SSLv2',
-    security_const.kSSLProtocol3: 'SSLv3',
-    security_const.kTLSProtocol1: 'TLSv1',
-    security_const.kTLSProtocol11: 'TLSv1.1',
-    security_const.kTLSProtocol12: 'TLSv1.2',
+    SecurityConst.kSSLProtocol2: 'SSLv2',
+    SecurityConst.kSSLProtocol3: 'SSLv3',
+    SecurityConst.kTLSProtocol1: 'TLSv1',
+    SecurityConst.kTLSProtocol11: 'TLSv1.1',
+    SecurityConst.kTLSProtocol12: 'TLSv1.2',
 }
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
@@ -111,15 +122,15 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
             data += chunk
             if chunk == b'' and socket.gettimeout() is None:
                 if len(data) == 0:
-                    return security_const.errSSLClosedNoNotify
+                    return SecurityConst.errSSLClosedNoNotify
                 break
     except (socket_.error) as e:
         error = e.errno
 
     if error is not None and error != errno.EAGAIN:
         if error == errno.ECONNRESET:
-            return security_const.errSSLClosedNoNotify
-        return security_const.errSSLClosedAbort
+            return SecurityConst.errSSLClosedNoNotify
+        return SecurityConst.errSSLClosedAbort
 
     if self and not self._done_handshake:
         self._server_hello += data
@@ -128,7 +139,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
     pointer_set(data_length_pointer, len(data))
 
     if len(data) != bytes_requested:
-        return security_const.errSSLWouldBlock
+        return SecurityConst.errSSLWouldBlock
 
     return 0
 
@@ -174,12 +185,12 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
 
     if error is not None and error != errno.EAGAIN:
         if error == errno.ECONNRESET:
-            return security_const.errSSLClosedNoNotify
-        return security_const.errSSLClosedAbort
+            return SecurityConst.errSSLClosedNoNotify
+        return SecurityConst.errSSLClosedAbort
 
     if sent != data_length:
         pointer_set(data_length_pointer, sent)
-        return security_const.errSSLWouldBlock
+        return SecurityConst.errSSLWouldBlock
 
     return 0
 
@@ -231,7 +242,12 @@ class TLSSession(object):
         """
 
         if not isinstance(manual_validation, bool):
-            raise TypeError('manual_validation must be a boolean, not %s' % object_name(manual_validation))
+            raise TypeError(pretty_message(
+                '''
+                manual_validation must be a boolean, not %s
+                ''',
+                type_name(manual_validation)
+            ))
 
         self._manual_validation = manual_validation
 
@@ -241,11 +257,23 @@ class TLSSession(object):
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
-            raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
+            raise TypeError(pretty_message(
+                '''
+                protocol must be a unicode string or set of unicode strings,
+                not %s
+                ''',
+                type_name(protocol)
+            ))
 
         unsupported_protocols = protocol - set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'])
         if unsupported_protocols:
-            raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
+            raise ValueError(pretty_message(
+                '''
+                protocol must contain only the unicode strings "SSLv3", "TLSv1",
+                "TLSv1.1", "TLSv1.2", not %s
+                ''',
+                repr(unsupported_protocols)
+            ))
 
         self._protocols = protocol
 
@@ -260,7 +288,14 @@ class TLSSession(object):
                     with open(extra_trust_root, 'rb') as f:
                         extra_trust_root = parse_certificate(f.read())
                 elif not isinstance(extra_trust_root, x509.Certificate):
-                    raise ValueError('extra_trust_roots must be a list of byte strings, unicode strings, asn1crypto.x509.Certificate objects or oscrypto.asymmetric.Certificate objects, not %s' % object_name(extra_trust_root))
+                    raise TypeError(pretty_message(
+                        '''
+                        extra_trust_roots must be a list of byte strings, unicode
+                        strings, asn1crypto.x509.Certificate objects or
+                        oscrypto.asymmetric.Certificate objects, not %s
+                        ''',
+                        type_name(extra_trust_root)
+                    ))
                 self._extra_trust_roots.append(extra_trust_root)
 
         self._peer_id = rand_bytes(8)
@@ -318,18 +353,33 @@ class TLSSocket(object):
         """
 
         if not isinstance(socket, socket_.socket):
-            raise TypeError('socket must be an instance of socket.socket, not %s' % object_name(socket))
+            raise TypeError(pretty_message(
+                '''
+                socket must be an instance of socket.socket, not %s
+                ''',
+                type_name(socket)
+            ))
 
         if not isinstance(hostname, str_cls):
-            raise TypeError('hostname must be a unicode string, not %s' % object_name(hostname))
+            raise TypeError(pretty_message(
+                '''
+                hostname must be a unicode string, not %s
+                ''',
+                type_name(hostname)
+            ))
 
         if session is not None and not isinstance(session, TLSSession):
-            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
+            raise TypeError(pretty_message(
+                '''
+                session must be an instance of oscrypto.tls.TLSSession, not %s
+                ''',
+                type_name(session)
+            ))
 
         new_socket = cls(None, None, session=session)
-        new_socket._socket = socket  #pylint: disable=W0212
-        new_socket._hostname = hostname  #pylint: disable=W0212
-        new_socket._handshake()  #pylint: disable=W0212
+        new_socket._socket = socket
+        new_socket._hostname = hostname
+        new_socket._handshake()
 
         return new_socket
 
@@ -360,13 +410,28 @@ class TLSSocket(object):
 
         else:
             if not isinstance(address, str_cls):
-                raise TypeError('address must be a unicode string, not %s' % object_name(address))
+                raise TypeError(pretty_message(
+                    '''
+                    address must be a unicode string, not %s
+                    ''',
+                    type_name(address)
+                ))
 
             if not isinstance(port, int_types):
-                raise TypeError('port must be an integer, not %s' % object_name(port))
+                raise TypeError(pretty_message(
+                    '''
+                    port must be an integer, not %s
+                    ''',
+                    type_name(port)
+                ))
 
             if timeout is not None and not isinstance(timeout, numbers.Number):
-                raise TypeError('timeout must be a number, not %s' % object_name(timeout))
+                raise TypeError(pretty_message(
+                    '''
+                    timeout must be a number, not %s
+                    ''',
+                    type_name(timeout)
+                ))
 
             self._socket = socket_.create_connection((address, port), timeout)
 
@@ -374,7 +439,12 @@ class TLSSocket(object):
             session = TLSSession()
 
         elif not isinstance(session, TLSSession):
-            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
+            raise TypeError(pretty_message(
+                '''
+                session must be an instance of oscrypto.tls.TLSSession, not %s
+                ''',
+                type_name(session)
+            ))
 
         self._session = session
 
@@ -399,8 +469,8 @@ class TLSSocket(object):
             else:
                 session_context = Security.SSLCreateContext(
                     null(),
-                    security_const.kSSLClientSide,
-                    security_const.kSSLStreamType
+                    SecurityConst.kSSLClientSide,
+                    SecurityConst.kSSLStreamType
                 )
 
             result = Security.SSLSetIOFuncs(
@@ -424,14 +494,14 @@ class TLSSocket(object):
             )
             handle_sec_error(result)
 
-            disable_auto_validation = self._session._manual_validation or self._session._extra_trust_roots  #pylint: disable=W0212
-            explicit_validation = (not self._session._manual_validation) and self._session._extra_trust_roots  #pylint: disable=W0212
+            disable_auto_validation = self._session._manual_validation or self._session._extra_trust_roots
+            explicit_validation = (not self._session._manual_validation) and self._session._extra_trust_roots
 
             # Ensure requested protocol support is set for the session
             if osx_version_info < (10, 8):
                 for protocol in ['SSLv2', 'SSLv3', 'TLSv1']:
                     protocol_const = _PROTOCOL_STRING_CONST_MAP[protocol]
-                    enabled = protocol in self._session._protocols  #pylint: disable=W0212
+                    enabled = protocol in self._session._protocols
                     result = Security.SSLSetProtocolVersionEnabled(
                         session_context,
                         protocol_const,
@@ -439,12 +509,12 @@ class TLSSocket(object):
                     )
                     handle_sec_error(result)
 
-                if disable_auto_validation:  #pylint: disable=W0212
+                if disable_auto_validation:
                     result = Security.SSLSetEnableCertVerify(session_context, False)
                     handle_sec_error(result)
 
             else:
-                protocol_consts = [_PROTOCOL_STRING_CONST_MAP[protocol] for protocol in self._session._protocols]  #pylint: disable=W0212
+                protocol_consts = [_PROTOCOL_STRING_CONST_MAP[protocol] for protocol in self._session._protocols]
                 min_protocol = min(protocol_consts)
                 max_protocol = max(protocol_consts)
                 result = Security.SSLSetProtocolVersionMin(
@@ -458,10 +528,10 @@ class TLSSocket(object):
                 )
                 handle_sec_error(result)
 
-                if disable_auto_validation:  #pylint: disable=W0212
+                if disable_auto_validation:
                     result = Security.SSLSetSessionOption(
                         session_context,
-                        security_const.kSSLSessionOptionBreakOnServerAuth,
+                        SecurityConst.kSSLSessionOptionBreakOnServerAuth,
                         True
                     )
                     handle_sec_error(result)
@@ -475,11 +545,20 @@ class TLSSocket(object):
 
             cipher_buffer = buffer_from_bytes(supported_ciphers * 4)
             supported_cipher_suites_pointer = cast(Security, 'uint32_t *', cipher_buffer)
-            result = Security.SSLGetSupportedCiphers(session_context, supported_cipher_suites_pointer, supported_ciphers_pointer)
+            result = Security.SSLGetSupportedCiphers(
+                session_context,
+                supported_cipher_suites_pointer,
+                supported_ciphers_pointer
+            )
             handle_sec_error(result)
 
             supported_ciphers = deref(supported_ciphers_pointer)
-            supported_cipher_suites = array_from_pointer(Security, 'uint32_t', supported_cipher_suites_pointer, supported_ciphers)
+            supported_cipher_suites = array_from_pointer(
+                Security,
+                'uint32_t',
+                supported_cipher_suites_pointer,
+                supported_ciphers
+            )
             good_ciphers = []
             for supported_cipher_suite in supported_cipher_suites:
                 cipher_suite = int_to_bytes(supported_cipher_suite, width=2)
@@ -500,15 +579,15 @@ class TLSSocket(object):
             handle_sec_error(result)
 
             # Set a peer id from the session to allow for session reuse
-            peer_id = self._session._peer_id  #pylint: disable=W0212
+            peer_id = self._session._peer_id
             result = Security.SSLSetPeerID(session_context, peer_id, len(peer_id))
             handle_sec_error(result)
 
             handshake_result = Security.SSLHandshake(session_context)
-            while handshake_result == security_const.errSSLWouldBlock:
+            while handshake_result == SecurityConst.errSSLWouldBlock:
                 handshake_result = Security.SSLHandshake(session_context)
 
-            if explicit_validation and handshake_result == security_const.errSSLServerAuthCompleted:
+            if explicit_validation and handshake_result == SecurityConst.errSSLServerAuthCompleted:
                 trust_ref_pointer = new(Security, 'SecTrustRef *')
                 result = Security.SSLCopyPeerTrust(
                     session_context,
@@ -519,7 +598,7 @@ class TLSSocket(object):
 
                 ca_cert_refs = []
                 ca_certs = []
-                for cert in self._session._extra_trust_roots:  #pylint: disable=W0212
+                for cert in self._session._extra_trust_roots:
                     ca_cert = load_certificate(cert)
                     ca_certs.append(ca_cert)
                     ca_cert_refs.append(ca_cert.sec_certificate_ref)
@@ -533,22 +612,26 @@ class TLSSocket(object):
                 handle_sec_error(result)
 
                 trust_result_code = deref(result_pointer)
-                if trust_result_code not in set([security_const.kSecTrustResultProceed, security_const.kSecTrustResultUnspecified]):
-                    handshake_result = security_const.errSSLXCertChainInvalid
+                invalid_chain_error_codes = set([
+                    SecurityConst.kSecTrustResultProceed,
+                    SecurityConst.kSecTrustResultUnspecified
+                ])
+                if trust_result_code not in invalid_chain_error_codes:
+                    handshake_result = SecurityConst.errSSLXCertChainInvalid
                 else:
                     handshake_result = Security.SSLHandshake(session_context)
-                    while handshake_result == security_const.errSSLWouldBlock:
+                    while handshake_result == SecurityConst.errSSLWouldBlock:
                         handshake_result = Security.SSLHandshake(session_context)
 
             self._done_handshake = True
 
             handshake_error_codes = set([
-                security_const.errSSLXCertChainInvalid,
-                security_const.errSSLCertExpired,
-                security_const.errSSLCertNotYetValid,
-                security_const.errSSLUnknownRootCert,
-                security_const.errSSLNoRootCert,
-                security_const.errSSLHostNameMismatch
+                SecurityConst.errSSLXCertChainInvalid,
+                SecurityConst.errSSLCertExpired,
+                SecurityConst.errSSLCertNotYetValid,
+                SecurityConst.errSSLUnknownRootCert,
+                SecurityConst.errSSLNoRootCert,
+                SecurityConst.errSSLHostNameMismatch
             ])
 
             # In testing, only errSSLXCertChainInvalid was ever returned for
@@ -582,10 +665,10 @@ class TLSSocket(object):
                     cert = chain[0]
                     oscrypto_cert = load_certificate(cert)
                     self_signed = oscrypto_cert.self_signed
-                    no_issuer = not self_signed and result_code == security_const.CSSMERR_TP_NOT_TRUSTED
-                    expired = result_code == security_const.CSSMERR_TP_CERT_EXPIRED
-                    not_yet_valid = result_code == security_const.CSSMERR_TP_CERT_NOT_VALID_YET
-                    bad_hostname = result_code == security_const.CSSMERR_APPLETP_HOSTNAME_MISMATCH
+                    no_issuer = not self_signed and result_code == SecurityConst.CSSMERR_TP_NOT_TRUSTED
+                    expired = result_code == SecurityConst.CSSMERR_TP_CERT_EXPIRED
+                    not_yet_valid = result_code == SecurityConst.CSSMERR_TP_CERT_NOT_VALID_YET
+                    bad_hostname = result_code == SecurityConst.CSSMERR_APPLETP_HOSTNAME_MISMATCH
 
                 if chain and chain[0].hash_algo in set(['md5', 'md2']):
                     raise_weak_signature(chain[0])
@@ -607,23 +690,23 @@ class TLSSocket(object):
 
                 raise_verification(cert)
 
-            if handshake_result == security_const.errSSLPeerHandshakeFail:
+            if handshake_result == SecurityConst.errSSLPeerHandshakeFail:
                 if detect_client_auth_request(self._server_hello):
                     raise_client_auth()
                 raise_handshake()
 
-            if handshake_result == security_const.errSSLWeakPeerEphemeralDHKey:
+            if handshake_result == SecurityConst.errSSLWeakPeerEphemeralDHKey:
                 raise_dh_params()
 
-            if handshake_result == security_const.errSSLRecordOverflow:
+            if handshake_result == SecurityConst.errSSLRecordOverflow:
                 raise_protocol_error(self._server_hello)
 
-            if handshake_result in set([security_const.errSSLClosedNoNotify, security_const.errSSLClosedAbort]):
+            if handshake_result in set([SecurityConst.errSSLClosedNoNotify, SecurityConst.errSSLClosedAbort]):
                 if detect_other_protocol(self._server_hello):
                     raise_protocol_error(self._server_hello)
                 raise_disconnection()
 
-            if handshake_result != security_const.errSSLWouldBlock:
+            if handshake_result != SecurityConst.errSSLWouldBlock:
                 handle_sec_error(handshake_result, TLSError)
 
             self._session_context = session_context
@@ -690,7 +773,12 @@ class TLSSocket(object):
         """
 
         if not isinstance(max_length, int_types):
-            raise TypeError('max_length must be an integer, not %s' % object_name(max_length))
+            raise TypeError(pretty_message(
+                '''
+                max_length must be an integer, not %s
+                ''',
+                type_name(max_length)
+            ))
 
         if self._session_context is None:
             # Even if the session is closed, we can use
@@ -729,7 +817,7 @@ class TLSSocket(object):
             to_read,
             processed_pointer
         )
-        if result and result not in set([security_const.errSSLWouldBlock, security_const.errSSLClosedGraceful]):
+        if result and result not in set([SecurityConst.errSSLWouldBlock, SecurityConst.errSSLClosedGraceful]):
             handle_sec_error(result, TLSError)
 
         bytes_read = deref(processed_pointer)
@@ -771,12 +859,17 @@ class TLSSocket(object):
             A byte string of the data read, including the marker
         """
 
-        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):  #pylint: disable=W0212
-            raise TypeError('marker must be a byte string or compiled regex object, not %s' % object_name(marker))
+        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):
+            raise TypeError(pretty_message(
+                '''
+                marker must be a byte string or compiled regex object, not %s
+                ''',
+                type_name(marker)
+            ))
 
         output = b''
 
-        is_regex = isinstance(marker, re._pattern_type)  #pylint: disable=W0212
+        is_regex = isinstance(marker, re._pattern_type)
 
         while True:
             if len(self._decrypted_bytes) > 0:
@@ -930,7 +1023,7 @@ class TLSSocket(object):
 
         try:
             self._socket.shutdown(socket_.SHUT_RDWR)
-        except (socket_.error):  #pylint: disable=W0704
+        except (socket_.error):
             pass
 
     def close(self):
@@ -945,7 +1038,7 @@ class TLSSocket(object):
             if self._socket:
                 try:
                     self._socket.close()
-                except (socket_.error):  #pylint: disable=W0704
+                except (socket_.error):
                     pass
                 self._socket = None
 
@@ -960,8 +1053,6 @@ class TLSSocket(object):
 
         trust_ref = None
         cf_data_ref = None
-
-        # Squelches a pylint error
         result = None
 
         try:

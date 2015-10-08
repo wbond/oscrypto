@@ -5,6 +5,15 @@ import sys
 import socket
 
 
+__all__ = [
+    'AsymmetricKeyError',
+    'CACertsError',
+    'SignatureError',
+    'TLSError',
+    'TLSVerificationError',
+]
+
+
 class SignatureError(Exception):
 
     """
@@ -40,7 +49,7 @@ class TLSError(socket.error):
 
     message = None
 
-    def __init__(self, message):  #pylint: disable=W0231
+    def __init__(self, message):
         self.args = (message,)
         self.message = message
 

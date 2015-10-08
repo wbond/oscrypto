@@ -1,18 +1,50 @@
 # coding: utf-8
+
+"""
+Helper for formatting exception messages. Exports the following items:
+
+ - pretty_message()
+"""
+
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import re
+import textwrap
 
 
-def object_name(value):
+__all__ = [
+    'pretty_message',
+]
+
+
+def pretty_message(string, *params):
     """
-    :param value:
-        A value to get the object name of
+    Takes a multi-line string and does the following:
+
+     - dedents
+     - converts newlines with text before and after into a single line
+     - strips leading and trailing whitespace
+
+    :param string:
+        The string to format
+
+    :param *params:
+        Params to interpolate into the string
 
     :return:
-        A unicode string of the object name
+        The formatted string
     """
 
-    cls = value.__class__
-    if cls.__module__ == 'builtins':
-        return cls.__name__
-    return '%s.%s' % (cls.__module__, cls.__name__)
+    output = textwrap.dedent(string)
+
+    # Unwrap lines, taking into account bulleted lists, ordered lists and
+    # underlines consisting of = signs
+    if output.find('\n') != -1:
+        output = re.sub('(?<=\\S)\n(?=[^ \n\t\\d\\*\\-=])', ' ', output)
+
+    if params:
+        output = output % params
+
+    output = output.strip()
+
+    return output

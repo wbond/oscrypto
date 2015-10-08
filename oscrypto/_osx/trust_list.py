@@ -7,11 +7,10 @@ from asn1crypto import x509
 
 from .._ffi import new, unwrap, null
 from ._core_foundation import CoreFoundation, CFHelpers
-from ._security import Security, security_const, handle_sec_error
+from ._security import Security, SecurityConst, handle_sec_error
 
 if sys.version_info < (3,):
-    range = xrange  #pylint: disable=E0602,W0622
-
+    range = xrange  # noqa
 
 
 def system_path():
@@ -51,10 +50,10 @@ def extract_from_system():
 
     CoreFoundation.CFRelease(certs_pointer)
 
-    for domain in [security_const.kSecTrustSettingsDomainUser, security_const.kSecTrustSettingsDomainAdmin]:
+    for domain in [SecurityConst.kSecTrustSettingsDomainUser, SecurityConst.kSecTrustSettingsDomainAdmin]:
         cert_trust_settings_pointer_pointer = new(CoreFoundation, 'CFArrayRef *')
         res = Security.SecTrustSettingsCopyCertificates(domain, cert_trust_settings_pointer_pointer)
-        if res == security_const.errSecNoTrustSettings:
+        if res == SecurityConst.errSecNoTrustSettings:
             continue
         handle_sec_error(res)
 
@@ -78,7 +77,9 @@ def extract_from_system():
 
                 # Expand various information to human-readable form for debugging
                 if 'kSecTrustSettingsAllowedError' in settings_dict:
-                    settings_dict['kSecTrustSettingsAllowedError'] = CFHelpers.cf_string_to_unicode(Security.SecCopyErrorMessageString(settings_dict['kSecTrustSettingsAllowedError'], null()))
+                    settings_dict['kSecTrustSettingsAllowedError'] = CFHelpers.cf_string_to_unicode(
+                        Security.SecCopyErrorMessageString(settings_dict['kSecTrustSettingsAllowedError'], null())
+                    )
 
                 if 'kSecTrustSettingsPolicy' in settings_dict:
                     sub_dict = settings_dict['kSecTrustSettingsPolicy']
@@ -130,7 +131,8 @@ def extract_from_system():
                         # The absence of this key means the trust setting is for the
                         # cert in general, not just for one usage of the cert
                         if 'kSecTrustSettingsPolicy' not in setting:
-                            if setting['kSecTrustSettingsResult'] in ['kSecTrustSettingsResultInvalid', 'kSecTrustSettingsResultDeny']:
+                            invalid_results = set(['kSecTrustSettingsResultInvalid', 'kSecTrustSettingsResultDeny'])
+                            if setting['kSecTrustSettingsResult'] in invalid_results:
                                 del certificates[der_subject]
 
             CoreFoundation.CFRelease(trust_settings_pointer)

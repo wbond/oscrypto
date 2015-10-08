@@ -5,19 +5,25 @@ import sys
 
 
 if sys.platform == 'darwin':
-    from ._osx.tls import (  #pylint: disable=W0611
+    from ._osx.tls import (
         TLSSession,
         TLSSocket,
     )
 
 elif sys.platform == 'win32':
-    from ._win.tls import (  #pylint: disable=W0611
+    from ._win.tls import (
         TLSSession,
         TLSSocket,
     )
 
 else:
-    from ._openssl.tls import (  #pylint: disable=W0611
+    from ._openssl.tls import (
         TLSSession,
         TLSSocket,
     )
+
+
+__all__ = [
+    'TLSSession',
+    'TLSSocket',
+]

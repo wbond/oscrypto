@@ -9,10 +9,11 @@ import numbers
 
 from asn1crypto import x509
 
-from ._libssl import libssl, libssl_const
+from ._libssl import libssl, LibsslConst
 from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
+from .._errors import pretty_message
 from .._ffi import null, unwrap, bytes_from_buffer, buffer_from_bytes, is_null, native, buffer_pointer
-from .._errors import object_name
+from .._types import type_name, str_cls, byte_cls, int_types
 from ..errors import TLSError
 from .._tls import (
     extract_chain,
@@ -34,25 +35,22 @@ from .asymmetric import load_certificate, Certificate
 from ..keys import parse_certificate
 
 if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    int_types = (int, long)  #pylint: disable=E0602
-    range = xrange  #pylint: disable=W0622,E0602
-    byte_cls = str
+    range = xrange  # noqa
 
-else:
-    str_cls = str
-    int_types = int
-    byte_cls = bytes
 
+__all__ = [
+    'TLSSession',
+    'TLSSocket',
+]
 
 
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 _PROTOCOL_MAP = {
-    'SSLv2': libssl_const.SSL_OP_NO_SSLv2,
-    'SSLv3': libssl_const.SSL_OP_NO_SSLv3,
-    'TLSv1': libssl_const.SSL_OP_NO_TLSv1,
-    'TLSv1.1': libssl_const.SSL_OP_NO_TLSv1_1,
-    'TLSv1.2': libssl_const.SSL_OP_NO_TLSv1_2,
+    'SSLv2': LibsslConst.SSL_OP_NO_SSLv2,
+    'SSLv3': LibsslConst.SSL_OP_NO_SSLv3,
+    'TLSv1': LibsslConst.SSL_OP_NO_TLSv1,
+    'TLSv1.1': LibsslConst.SSL_OP_NO_TLSv1_1,
+    'TLSv1.2': LibsslConst.SSL_OP_NO_TLSv1_2,
 }
 
 
@@ -101,7 +99,12 @@ class TLSSession(object):
         """
 
         if not isinstance(manual_validation, bool):
-            raise TypeError('manual_validation must be a boolean, not %s' % object_name(manual_validation))
+            raise TypeError(pretty_message(
+                '''
+                manual_validation must be a boolean, not %s
+                ''',
+                type_name(manual_validation)
+            ))
 
         self._manual_validation = manual_validation
 
@@ -111,12 +114,24 @@ class TLSSession(object):
         if isinstance(protocol, str_cls):
             protocol = set([protocol])
         elif not isinstance(protocol, set):
-            raise TypeError('protocol must be a unicode string or set of unicode strings, not %s' % object_name(protocol))
+            raise TypeError(pretty_message(
+                '''
+                protocol must be a unicode string or set of unicode strings,
+                not %s
+                ''',
+                type_name(protocol)
+            ))
 
         valid_protocols = set(['SSLv3', 'TLSv1', 'TLSv1.1', 'TLSv1.2'])
         unsupported_protocols = protocol - valid_protocols
         if unsupported_protocols:
-            raise ValueError('protocol must contain only the unicode strings "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", not %s' % repr(unsupported_protocols))
+            raise ValueError(pretty_message(
+                '''
+                protocol must contain only the unicode strings "SSLv3", "TLSv1",
+                "TLSv1.1", "TLSv1.2", not %s
+                ''',
+                repr(unsupported_protocols)
+            ))
 
         self._protocols = protocol
 
@@ -131,7 +146,14 @@ class TLSSession(object):
                     with open(extra_trust_root, 'rb') as f:
                         extra_trust_root = parse_certificate(f.read())
                 elif not isinstance(extra_trust_root, x509.Certificate):
-                    raise ValueError('extra_trust_roots must be a list of byte strings, unicode strings, asn1crypto.x509.Certificate objects or oscrypto.asymmetric.Certificate objects, not %s' % object_name(extra_trust_root))
+                    raise TypeError(pretty_message(
+                        '''
+                        extra_trust_roots must be a list of byte strings, unicode
+                        strings, asn1crypto.x509.Certificate objects or
+                        oscrypto.asymmetric.Certificate objects, not %s
+                        ''',
+                        type_name(extra_trust_root)
+                    ))
                 self._extra_trust_roots.append(extra_trust_root)
 
         ssl_ctx = None
@@ -146,19 +168,35 @@ class TLSSession(object):
             # Allow caching SSL sessions
             libssl.SSL_CTX_ctrl(
                 ssl_ctx,
-                libssl_const.SSL_CTRL_SET_SESS_CACHE_MODE,
-                libssl_const.SSL_SESS_CACHE_CLIENT,
+                LibsslConst.SSL_CTRL_SET_SESS_CACHE_MODE,
+                LibsslConst.SSL_SESS_CACHE_CLIENT,
                 null()
             )
 
             result = libssl.SSL_CTX_set_default_verify_paths(ssl_ctx)
             handle_openssl_error(result)
 
-            verify_mode = libssl_const.SSL_VERIFY_NONE if manual_validation else libssl_const.SSL_VERIFY_PEER
+            verify_mode = LibsslConst.SSL_VERIFY_NONE if manual_validation else LibsslConst.SSL_VERIFY_PEER
             libssl.SSL_CTX_set_verify(ssl_ctx, verify_mode, null())
 
             # Modern cipher suite list from https://wiki.mozilla.org/Security/Server_Side_TLS late August 2015
-            result = libssl.SSL_CTX_set_cipher_list(ssl_ctx, b'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA')
+            result = libssl.SSL_CTX_set_cipher_list(
+                ssl_ctx,
+                (
+                    b'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:'
+                    b'ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:'
+                    b'DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:'
+                    b'kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:'
+                    b'ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:'
+                    b'ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:'
+                    b'DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:'
+                    b'DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:'
+                    b'AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:'
+                    b'AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:'
+                    b'!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:'
+                    b'!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA'
+                )
+            )
             handle_openssl_error(result)
 
             disabled_protocols = set(['SSLv2'])
@@ -166,7 +204,7 @@ class TLSSession(object):
             for disabled_protocol in disabled_protocols:
                 libssl.SSL_CTX_ctrl(
                     ssl_ctx,
-                    libssl_const.SSL_CTRL_OPTIONS,
+                    LibsslConst.SSL_CTRL_OPTIONS,
                     _PROTOCOL_MAP[disabled_protocol],
                     null()
                 )
@@ -248,18 +286,33 @@ class TLSSocket(object):
         """
 
         if not isinstance(socket, socket_.socket):
-            raise TypeError('socket must be an instance of socket.socket, not %s' % object_name(socket))
+            raise TypeError(pretty_message(
+                '''
+                socket must be an instance of socket.socket, not %s
+                ''',
+                type_name(socket)
+            ))
 
         if not isinstance(hostname, str_cls):
-            raise TypeError('hostname must be a unicode string, not %s' % object_name(hostname))
+            raise TypeError(pretty_message(
+                '''
+                hostname must be a unicode string, not %s
+                ''',
+                type_name(hostname)
+            ))
 
         if session is not None and not isinstance(session, TLSSession):
-            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
+            raise TypeError(pretty_message(
+                '''
+                session must be an instance of oscrypto.tls.TLSSession, not %s
+                ''',
+                type_name(session)
+            ))
 
         new_socket = cls(None, None, session=session)
-        new_socket._socket = socket  #pylint: disable=W0212
-        new_socket._hostname = hostname  #pylint: disable=W0212
-        new_socket._handshake()  #pylint: disable=W0212
+        new_socket._socket = socket
+        new_socket._hostname = hostname
+        new_socket._handshake()
 
         return new_socket
 
@@ -286,13 +339,28 @@ class TLSSocket(object):
 
         else:
             if not isinstance(address, str_cls):
-                raise TypeError('address must be a unicode string, not %s' % object_name(address))
+                raise TypeError(pretty_message(
+                    '''
+                    address must be a unicode string, not %s
+                    ''',
+                    type_name(address)
+                ))
 
             if not isinstance(port, int_types):
-                raise TypeError('port must be an integer, not %s' % object_name(port))
+                raise TypeError(pretty_message(
+                    '''
+                    port must be an integer, not %s
+                    ''',
+                    type_name(port)
+                ))
 
             if timeout is not None and not isinstance(timeout, numbers.Number):
-                raise TypeError('timeout must be a number, not %s' % object_name(timeout))
+                raise TypeError(pretty_message(
+                    '''
+                    timeout must be a number, not %s
+                    ''',
+                    type_name(timeout)
+                ))
 
             self._socket = socket_.create_connection((address, port), timeout)
 
@@ -300,7 +368,12 @@ class TLSSocket(object):
             session = TLSSession()
 
         elif not isinstance(session, TLSSession):
-            raise TypeError('session must be an instance of oscrypto.tls.TLSSession, not %s' % object_name(session))
+            raise TypeError(pretty_message(
+                '''
+                session must be an instance of oscrypto.tls.TLSSession, not %s
+                ''',
+                type_name(session)
+            ))
 
         self._session = session
 
@@ -318,7 +391,7 @@ class TLSSocket(object):
         wbio = None
 
         try:
-            ssl = libssl.SSL_new(self._session._ssl_ctx)  #pylint: disable=W0212
+            ssl = libssl.SSL_new(self._session._ssl_ctx)
             if is_null(ssl):
                 handle_openssl_error(0)
 
@@ -337,15 +410,15 @@ class TLSSocket(object):
             utf8_domain = self._hostname.encode('utf-8')
             libssl.SSL_ctrl(
                 ssl,
-                libssl_const.SSL_CTRL_SET_TLSEXT_HOSTNAME,
-                libssl_const.TLSEXT_NAMETYPE_host_name,
+                LibsslConst.SSL_CTRL_SET_TLSEXT_HOSTNAME,
+                LibsslConst.TLSEXT_NAMETYPE_host_name,
                 utf8_domain
             )
 
             libssl.SSL_set_connect_state(ssl)
 
-            if self._session._ssl_session:  #pylint: disable=W0212
-                libssl.SSL_set_session(ssl, self._session._ssl_session)  #pylint: disable=W0212
+            if self._session._ssl_session:
+                libssl.SSL_set_session(ssl, self._session._ssl_session)
 
             self._bio_write_buffer = buffer_from_bytes(8192)
             self._read_buffer = buffer_from_bytes(8192)
@@ -365,7 +438,7 @@ class TLSSocket(object):
                     break
 
                 error = libssl.SSL_get_error(ssl, result)
-                if error == libssl_const.SSL_ERROR_WANT_READ:
+                if error == LibsslConst.SSL_ERROR_WANT_READ:
                     chunk = self._raw_read(self._rbio)
                     if chunk == b'' and self._socket.gettimeout() is None:
                         if handshake_server_bytes == b'':
@@ -373,25 +446,50 @@ class TLSSocket(object):
                         raise_protocol_error(handshake_server_bytes)
                     handshake_server_bytes += chunk
 
-                elif error == libssl_const.SSL_ERROR_WANT_WRITE:
+                elif error == LibsslConst.SSL_ERROR_WANT_WRITE:
                     handshake_client_bytes += self._raw_write(self._wbio)
 
                 else:
                     info = peek_openssl_error()
 
-                    if info == (20, libssl_const.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM, libssl_const.SSL_R_DH_KEY_TOO_SMALL):
+                    dh_key_info = (
+                        20,
+                        LibsslConst.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM,
+                        LibsslConst.SSL_R_DH_KEY_TOO_SMALL
+                    )
+                    if info == dh_key_info:
                         raise_dh_params()
 
-                    if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_UNKNOWN_PROTOCOL):
+                    unknown_protocol_info = (
+                        20,
+                        LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
+                        LibsslConst.SSL_R_UNKNOWN_PROTOCOL
+                    )
+                    if info == unknown_protocol_info:
                         raise_protocol_error(handshake_server_bytes)
 
-                    if info == (20, libssl_const.SSL_F_SSL23_GET_SERVER_HELLO, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
+                    handshake_error_info = (
+                        20,
+                        LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
+                        LibsslConst.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
+                    )
+                    if info == handshake_error_info:
                         raise_handshake()
 
-                    if info == (20, libssl_const.SSL_F_SSL3_READ_BYTES, libssl_const.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE):
+                    handshake_failure_info = (
+                        20,
+                        LibsslConst.SSL_F_SSL3_READ_BYTES,
+                        LibsslConst.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
+                    )
+                    if info == handshake_failure_info:
                         raise_client_auth()
 
-                    if info == (20, libssl_const.SSL_F_SSL3_GET_SERVER_CERTIFICATE, libssl_const.SSL_R_CERTIFICATE_VERIFY_FAILED):
+                    cert_verify_failed_info = (
+                        20,
+                        LibsslConst.SSL_F_SSL3_GET_SERVER_CERTIFICATE,
+                        LibsslConst.SSL_R_CERTIFICATE_VERIFY_FAILED
+                    )
+                    if info == cert_verify_failed_info:
                         verify_result = libssl.SSL_get_verify_result(ssl)
                         chain = extract_chain(handshake_server_bytes)
 
@@ -405,10 +503,19 @@ class TLSSocket(object):
                             oscrypto_cert = load_certificate(cert)
                             self_signed = oscrypto_cert.self_signed
 
-                            if verify_result in set([libssl_const.X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, libssl_const.X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN, libssl_const.X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY]):
+                            issuer_error_codes = set([
+                                LibsslConst.X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT,
+                                LibsslConst.X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
+                                LibsslConst.X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+                            ])
+                            if verify_result in issuer_error_codes:
                                 no_issuer = not self_signed
 
-                            time_invalid = verify_result in set([libssl_const.X509_V_ERR_CERT_HAS_EXPIRED, libssl_const.X509_V_ERR_CERT_NOT_YET_VALID])
+                            time_error_codes = set([
+                                LibsslConst.X509_V_ERR_CERT_HAS_EXPIRED,
+                                LibsslConst.X509_V_ERR_CERT_NOT_YET_VALID
+                            ])
+                            time_invalid = verify_result in time_error_codes
 
                         if time_invalid:
                             raise_expired_not_yet_valid(cert)
@@ -445,9 +552,9 @@ class TLSSocket(object):
             # before another is opened. However, since we increase the ref
             # count, we also have to explicitly free any previous session.
             if self._session_id == 'new' or self._session_ticket == 'new':
-                if self._session._ssl_session:  #pylint: disable=W0212
-                    libssl.SSL_SESSION_free(self._session._ssl_session)  #pylint: disable=W0212
-                self._session._ssl_session = libssl.SSL_get1_session(ssl)  #pylint: disable=W0212
+                if self._session._ssl_session:
+                    libssl.SSL_SESSION_free(self._session._ssl_session)
+                self._session._ssl_session = libssl.SSL_get1_session(ssl)
 
             if self.certificate.hash_algo in set(['md5', 'md2']):
                 raise_weak_signature(self.certificate)
@@ -517,7 +624,12 @@ class TLSSocket(object):
         """
 
         if not isinstance(max_length, int_types):
-            raise TypeError('max_length must be an integer, not %s' % object_name(max_length))
+            raise TypeError(pretty_message(
+                '''
+                max_length must be an integer, not %s
+                ''',
+                type_name(max_length)
+            ))
 
         if self._ssl is None:
             # Even if the session is closed, we can use
@@ -560,17 +672,17 @@ class TLSSocket(object):
             if result <= 0:
 
                 error = libssl.SSL_get_error(self._ssl, result)
-                if error == libssl_const.SSL_ERROR_WANT_READ:
+                if error == LibsslConst.SSL_ERROR_WANT_READ:
                     self._raw_read(self._rbio)
                     again = True
                     continue
 
-                elif error == libssl_const.SSL_ERROR_WANT_WRITE:
+                elif error == LibsslConst.SSL_ERROR_WANT_WRITE:
                     self._raw_write(self._wbio)
                     again = True
                     continue
 
-                elif error == libssl_const.SSL_ERROR_ZERO_RETURN:
+                elif error == LibsslConst.SSL_ERROR_ZERO_RETURN:
                     self.shutdown()
                     return b''
 
@@ -615,12 +727,17 @@ class TLSSocket(object):
             A byte string of the data read, including the marker
         """
 
-        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):  #pylint: disable=W0212
-            raise TypeError('marker must be a byte string or compiled regex object, not %s' % object_name(marker))
+        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):
+            raise TypeError(pretty_message(
+                '''
+                marker must be a byte string or compiled regex object, not %s
+                ''',
+                type_name(marker)
+            ))
 
         output = b''
 
-        is_regex = isinstance(marker, re._pattern_type)  #pylint: disable=W0212
+        is_regex = isinstance(marker, re._pattern_type)
 
         while True:
             if len(self._decrypted_bytes) > 0:
@@ -703,15 +820,15 @@ class TLSSocket(object):
             if result <= 0:
 
                 error = libssl.SSL_get_error(self._ssl, result)
-                if error == libssl_const.SSL_ERROR_WANT_READ:
+                if error == LibsslConst.SSL_ERROR_WANT_READ:
                     self._raw_read(self._rbio)
                     continue
 
-                elif error == libssl_const.SSL_ERROR_WANT_WRITE:
+                elif error == LibsslConst.SSL_ERROR_WANT_WRITE:
                     self._raw_write(self._wbio)
                     continue
 
-                elif error == libssl_const.SSL_ERROR_ZERO_RETURN:
+                elif error == LibsslConst.SSL_ERROR_ZERO_RETURN:
                     self.shutdown()
                     return
 
@@ -753,11 +870,11 @@ class TLSSocket(object):
                 break
             if result < 0:
                 error = libssl.SSL_get_error(self._ssl, result)
-                if error == libssl_const.SSL_ERROR_WANT_READ:
+                if error == LibsslConst.SSL_ERROR_WANT_READ:
                     self._raw_read(self._rbio)
                     continue
 
-                elif error == libssl_const.SSL_ERROR_WANT_WRITE:
+                elif error == LibsslConst.SSL_ERROR_WANT_WRITE:
                     self._raw_write(self._wbio)
                     continue
 
@@ -774,7 +891,7 @@ class TLSSocket(object):
 
         try:
             self._socket.shutdown(socket_.SHUT_RDWR)
-        except (socket_.error):  #pylint: disable=W0704
+        except (socket_.error):
             pass
 
     def close(self):
@@ -789,7 +906,7 @@ class TLSSocket(object):
             if self._socket:
                 try:
                     self._socket.close()
-                except (socket_.error):  #pylint: disable=W0704
+                except (socket_.error):
                     pass
                 self._socket = None
 

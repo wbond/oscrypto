@@ -5,25 +5,26 @@ import sys
 import hashlib
 from datetime import datetime
 
-from ._errors import object_name
+from ._types import type_name, byte_cls, int_types
+from ._errors import pretty_message
 from ._ffi import new, deref
 
 if sys.platform == 'darwin':
-    from ._osx.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
+    from ._osx.util import pbkdf2, pkcs12_kdf, rand_bytes
 elif sys.platform == 'win32':
-    from ._win.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
+    from ._win.util import pbkdf2, pkcs12_kdf, rand_bytes
     from ._win._kernel32 import kernel32, handle_error
 else:
-    from ._openssl.util import pbkdf2, pkcs12_kdf, rand_bytes  #pylint: disable=W0611
+    from ._openssl.util import pbkdf2, pkcs12_kdf, rand_bytes
 
 
-if sys.version_info < (3,):
-    byte_cls = str
-    int_types = (int, long)  #pylint: disable=E0602
-
-else:
-    byte_cls = bytes
-    int_types = int
+__all__ = [
+    'pbkdf1',
+    'pbkdf2',
+    'pbkdf2_iteration_calculator',
+    'pkcs12_kdf',
+    'rand_bytes',
+]
 
 
 if sys.platform == 'win32':
@@ -44,8 +45,8 @@ else:
     def _get_elapsed(start):
         length = datetime.now() - start
         seconds = length.seconds + (length.days * 24 * 3600)
-        milliseconds = (length.microseconds / 10**3)
-        return int(milliseconds + (seconds * 10**3))
+        milliseconds = (length.microseconds / 10 ** 3)
+        return int(milliseconds + (seconds * 10 ** 3))
 
 
 def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet=False):
@@ -55,7 +56,8 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
     dynamically adjust the number of iterations as high as you can.
 
     :param hash_algorithm:
-        The string name of the hash algorithm to use: "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
+        The string name of the hash algorithm to use: "md5", "sha1", "sha224",
+        "sha256", "sha384", "sha512"
 
     :param key_length:
         The length of the desired key in bytes
@@ -72,22 +74,53 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
     """
 
     if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+            "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            type_name(key_length)
+        ))
 
     if key_length < 1:
-        raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
+        raise ValueError(pretty_message(
+            '''
+            key_length must be greater than 0 - is %s
+            ''',
+            repr(key_length)
+        ))
 
     if not isinstance(target_ms, int_types):
-        raise ValueError('target_ms must be an integer, not %s' % object_name(target_ms))
+        raise TypeError(pretty_message(
+            '''
+            target_ms must be an integer, not %s
+            ''',
+            type_name(target_ms)
+        ))
 
     if target_ms < 1:
-        raise ValueError('target_ms must be greater than 0 - is %s' % repr(target_ms))
+        raise ValueError(pretty_message(
+            '''
+            target_ms must be greater than 0 - is %s
+            ''',
+            repr(target_ms)
+        ))
 
     if pbkdf2.pure_python:
-        raise OSError('Only a very slow, pure-python version of PBKDF2 is available, making this function useless')
+        raise OSError(pretty_message(
+            '''
+            Only a very slow, pure-python version of PBKDF2 is available,
+            making this function useless
+            '''
+        ))
 
     iterations = 10000
     password = 'this is a test'.encode('utf-8')
@@ -144,31 +177,76 @@ def pbkdf1(hash_algorithm, password, salt, iterations, key_length):
     """
 
     if not isinstance(password, byte_cls):
-        raise ValueError('password must be a byte string, not %s' % (object_name(password)))
+        raise TypeError(pretty_message(
+            '''
+            password must be a byte string, not %s
+            ''',
+            (type_name(password))
+        ))
 
     if not isinstance(salt, byte_cls):
-        raise ValueError('salt must be a byte string, not %s' % (object_name(salt)))
+        raise TypeError(pretty_message(
+            '''
+            salt must be a byte string, not %s
+            ''',
+            (type_name(salt))
+        ))
 
     if not isinstance(iterations, int_types):
-        raise ValueError('iterations must be an integer, not %s' % (object_name(iterations)))
+        raise TypeError(pretty_message(
+            '''
+            iterations must be an integer, not %s
+            ''',
+            (type_name(iterations))
+        ))
 
     if iterations < 1:
-        raise ValueError('iterations must be greater than 0 - is %s' % repr(iterations))
+        raise ValueError(pretty_message(
+            '''
+            iterations must be greater than 0 - is %s
+            ''',
+            repr(iterations)
+        ))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % (object_name(key_length)))
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            (type_name(key_length))
+        ))
 
     if key_length < 1:
-        raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
+        raise ValueError(pretty_message(
+            '''
+            key_length must be greater than 0 - is %s
+            ''',
+            repr(key_length)
+        ))
 
     if hash_algorithm not in set(['md2', 'md5', 'sha1']):
-        raise ValueError('hash_algorithm must be one of "md2", "md5", "sha1", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "md2", "md5", "sha1", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     if key_length > 16 and hash_algorithm in set(['md2', 'md5']):
-        raise ValueError('key_length can not be longer than 16 for %s - is %s' % (hash_algorithm, repr(key_length)))
+        raise ValueError(pretty_message(
+            '''
+            key_length can not be longer than 16 for %s - is %s
+            ''',
+            (hash_algorithm, repr(key_length))
+        ))
 
     if key_length > 20 and hash_algorithm == 'sha1':
-        raise ValueError('key_length can not be longer than 20 for sha1 - is %s' % repr(key_length))
+        raise ValueError(pretty_message(
+            '''
+            key_length can not be longer than 20 for sha1 - is %s
+            ''',
+            repr(key_length)
+        ))
 
     algo = getattr(hashlib, hash_algorithm)
     output = algo(password + salt).digest()

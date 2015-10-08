@@ -1,20 +1,20 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from ._decode import _try_decode
 from .._ffi import FFIEngineError
+from .._types import str_cls
 
 try:
-    from ._kernel32_cffi import kernel32, get_error  #pylint: disable=W0611
+    from ._kernel32_cffi import kernel32, get_error
 except (FFIEngineError, ImportError):
     from ._kernel32_ctypes import kernel32, get_error
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
+
+__all__ = [
+    'handle_error',
+    'kernel32',
+]
 
 
 def handle_error(result):

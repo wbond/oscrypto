@@ -8,12 +8,13 @@ from ctypes import windll, wintypes, POINTER, c_void_p, c_uint, Structure
 from ctypes.wintypes import DWORD, ULONG
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
+from .._types import str_cls
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'get_error',
+    'secur32',
+]
 
 
 try:
@@ -25,7 +26,7 @@ except (OSError) as e:
 
 HCERTSTORE = wintypes.HANDLE
 ALG_ID = c_uint
-if sys.maxsize > 2**32:
+if sys.maxsize > 2 ** 32:
     ULONG_PTR = ctypes.c_uint64
 else:
     ULONG_PTR = ctypes.c_ulong
@@ -44,7 +45,7 @@ try:
     CredHandle = SecHandle
     CtxtHandle = SecHandle
 
-    class SCHANNEL_CRED(Structure):
+    class SCHANNEL_CRED(Structure):  # noqa
         _fields_ = [
             ('dwVersion', DWORD),
             ('cCreds', DWORD),
@@ -84,7 +85,7 @@ try:
             ('pBuffers', PSecBuffer),
         ]
 
-    class SecPkgContext_StreamSizes(Structure):
+    class SecPkgContext_StreamSizes(Structure):  # noqa
         _fields_ = [
             ('cbHeader', ULONG),
             ('cbTrailer', ULONG),
@@ -93,7 +94,7 @@ try:
             ('cbBlockSize', ULONG),
         ]
 
-    class SecPkgContext_ConnectionInfo(Structure):
+    class SecPkgContext_ConnectionInfo(Structure):  # noqa
         _fields_ = [
             ('dwProtocol', DWORD),
             ('aiCipher', ALG_ID),
@@ -104,31 +105,77 @@ try:
             ('dwExchStrength', DWORD),
         ]
 
-    secur32.AcquireCredentialsHandleW.argtypes = [POINTER(SEC_WCHAR), POINTER(SEC_WCHAR), ULONG, POINTER(LUID), c_void_p, SEC_GET_KEY_FN, c_void_p, POINTER(CredHandle), POINTER(TimeStamp)]
+    secur32.AcquireCredentialsHandleW.argtypes = [
+        POINTER(SEC_WCHAR),
+        POINTER(SEC_WCHAR),
+        ULONG,
+        POINTER(LUID),
+        c_void_p,
+        SEC_GET_KEY_FN,
+        c_void_p,
+        POINTER(CredHandle),
+        POINTER(TimeStamp)
+    ]
     secur32.AcquireCredentialsHandleW.restype = SECURITY_STATUS
 
-    secur32.FreeCredentialsHandle.argtypes = [POINTER(CredHandle)]
+    secur32.FreeCredentialsHandle.argtypes = [
+        POINTER(CredHandle)
+    ]
     secur32.FreeCredentialsHandle.restype = SECURITY_STATUS
 
-    secur32.InitializeSecurityContextW.argtypes = [POINTER(CredHandle), POINTER(CtxtHandle), POINTER(SEC_WCHAR), ULONG, ULONG, ULONG, POINTER(SecBufferDesc), ULONG, POINTER(CtxtHandle), POINTER(SecBufferDesc), POINTER(ULONG), POINTER(TimeStamp)]
+    secur32.InitializeSecurityContextW.argtypes = [
+        POINTER(CredHandle),
+        POINTER(CtxtHandle),
+        POINTER(SEC_WCHAR),
+        ULONG,
+        ULONG,
+        ULONG,
+        POINTER(SecBufferDesc),
+        ULONG,
+        POINTER(CtxtHandle),
+        POINTER(SecBufferDesc),
+        POINTER(ULONG),
+        POINTER(TimeStamp)
+    ]
     secur32.InitializeSecurityContextW.restype = SECURITY_STATUS
 
-    secur32.FreeContextBuffer.argtypes = [c_void_p]
+    secur32.FreeContextBuffer.argtypes = [
+        c_void_p
+    ]
     secur32.FreeContextBuffer.restype = SECURITY_STATUS
 
-    secur32.ApplyControlToken.argtypes = [POINTER(CtxtHandle), POINTER(SecBufferDesc)]
+    secur32.ApplyControlToken.argtypes = [
+        POINTER(CtxtHandle),
+        POINTER(SecBufferDesc)
+    ]
     secur32.ApplyControlToken.restype = SECURITY_STATUS
 
-    secur32.DeleteSecurityContext.argtypes = [POINTER(CtxtHandle)]
+    secur32.DeleteSecurityContext.argtypes = [
+        POINTER(CtxtHandle)
+    ]
     secur32.DeleteSecurityContext.restype = SECURITY_STATUS
 
-    secur32.QueryContextAttributesW.argtypes = [POINTER(CtxtHandle), ULONG, c_void_p]
+    secur32.QueryContextAttributesW.argtypes = [
+        POINTER(CtxtHandle),
+        ULONG,
+        c_void_p
+    ]
     secur32.QueryContextAttributesW.restype = SECURITY_STATUS
 
-    secur32.EncryptMessage.argtypes = [POINTER(CtxtHandle), ULONG, POINTER(SecBufferDesc), ULONG]
+    secur32.EncryptMessage.argtypes = [
+        POINTER(CtxtHandle),
+        ULONG,
+        POINTER(SecBufferDesc),
+        ULONG
+    ]
     secur32.EncryptMessage.restype = SECURITY_STATUS
 
-    secur32.DecryptMessage.argtypes = [POINTER(CtxtHandle), POINTER(SecBufferDesc), ULONG, POINTER(ULONG)]
+    secur32.DecryptMessage.argtypes = [
+        POINTER(CtxtHandle),
+        POINTER(SecBufferDesc),
+        ULONG,
+        POINTER(ULONG)
+    ]
     secur32.DecryptMessage.restype = SECURITY_STATUS
 
 except (AttributeError):

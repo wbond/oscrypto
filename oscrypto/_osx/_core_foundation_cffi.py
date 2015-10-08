@@ -12,6 +12,11 @@ except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
 
+__all__ = [
+    'CFHelpers',
+    'CoreFoundation',
+]
+
 
 ffi = FFI()
 ffi.cdef("""
@@ -39,6 +44,7 @@ ffi.cdef("""
         void *equal;
         void *hash;
     } CFDictionaryKeyCallBacks;
+
     typedef struct {
         CFIndex version;
         void *retain;
@@ -46,6 +52,7 @@ ffi.cdef("""
         void *copyDescription;
         void *equal;
     } CFDictionaryValueCallBacks;
+
     typedef struct {
         CFIndex version;
         void *retain;
@@ -58,7 +65,9 @@ ffi.cdef("""
     const char *CFDataGetBytePtr(CFDataRef theData);
     CFDataRef CFDataCreate(CFAllocatorRef allocator, const char *bytes, CFIndex length);
 
-    CFDictionaryRef CFDictionaryCreate(CFAllocatorRef allocator, const void **keys, const void **values, CFIndex numValues, const CFDictionaryKeyCallBacks *keyCallBacks, const CFDictionaryValueCallBacks *valueCallBacks);
+    CFDictionaryRef CFDictionaryCreate(CFAllocatorRef allocator, const void **keys, const void **values,
+                    CFIndex numValues, const CFDictionaryKeyCallBacks *keyCallBacks,
+                    const CFDictionaryValueCallBacks *valueCallBacks);
     CFIndex CFDictionaryGetCount(CFDictionaryRef theDict);
 
     const char *CFStringGetCStringPtr(CFStringRef theString, CFStringEncoding encoding);
@@ -81,7 +90,8 @@ ffi.cdef("""
     CFTypeID CFStringGetTypeID(void);
     CFTypeID CFDataGetTypeID(void);
 
-    CFArrayRef CFArrayCreate(CFAllocatorRef allocator, const void **values, CFIndex numValues, const CFArrayCallBacks *callBacks);
+    CFArrayRef CFArrayCreate(CFAllocatorRef allocator, const void **values, CFIndex numValues,
+                    const CFArrayCallBacks *callBacks);
     CFIndex CFArrayGetCount(CFArrayRef theArray);
     CFTypeRef CFArrayGetValueAtIndex(CFArrayRef theArray, CFIndex idx);
     CFNumberType CFNumberGetType(CFNumberRef number);
@@ -142,25 +152,25 @@ class CFHelpers():
         """
 
         type_ = CoreFoundation.CFNumberGetType(value)
-        type_name = {
-            1: 'int8_t',     # kCFNumberSInt8Type
-            2: 'in16_t',     # kCFNumberSInt16Type
-            3: 'int32_t',    # kCFNumberSInt32Type
-            4: 'int64_t',    # kCFNumberSInt64Type
-            5: 'float',      # kCFNumberFloat32Type
-            6: 'double',     # kCFNumberFloat64Type
-            7: 'char',       # kCFNumberCharType
-            8: 'short',      # kCFNumberShortType
-            9: 'int',        # kCFNumberIntType
-            10: 'long',      # kCFNumberLongType
-            11: 'long long', # kCFNumberLongLongType
-            12: 'float',     # kCFNumberFloatType
-            13: 'double',    # kCFNumberDoubleType
-            14: 'long',      # kCFNumberCFIndexType
-            15: 'int',       # kCFNumberNSIntegerType
-            16: 'double',    # kCFNumberCGFloatType
+        type_name_ = {
+            1: 'int8_t',      # kCFNumberSInt8Type
+            2: 'in16_t',      # kCFNumberSInt16Type
+            3: 'int32_t',     # kCFNumberSInt32Type
+            4: 'int64_t',     # kCFNumberSInt64Type
+            5: 'float',       # kCFNumberFloat32Type
+            6: 'double',      # kCFNumberFloat64Type
+            7: 'char',        # kCFNumberCharType
+            8: 'short',       # kCFNumberShortType
+            9: 'int',         # kCFNumberIntType
+            10: 'long',       # kCFNumberLongType
+            11: 'long long',  # kCFNumberLongLongType
+            12: 'float',      # kCFNumberFloatType
+            13: 'double',     # kCFNumberDoubleType
+            14: 'long',       # kCFNumberCFIndexType
+            15: 'int',        # kCFNumberNSIntegerType
+            16: 'double',     # kCFNumberCGFloatType
         }[type_]
-        output = new(CoreFoundation, type_name + ' *')
+        output = new(CoreFoundation, type_name_ + ' *')
         CoreFoundation.CFNumberGetValue(value, type_, output)
         return deref(output)
 
@@ -264,7 +274,6 @@ class CFHelpers():
         start = CoreFoundation.CFDataGetBytePtr(value)
         num_bytes = CoreFoundation.CFDataGetLength(value)
         return ffi.buffer(start, num_bytes)[:]
-
 
     @staticmethod
     def cf_data_from_bytes(bytes_):

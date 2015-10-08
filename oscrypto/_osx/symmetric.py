@@ -1,18 +1,28 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
+from .._errors import pretty_message
 from .._ffi import new, null
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ._security import Security
 from .util import rand_bytes
-from .._errors import object_name
+from .._types import type_name, byte_cls
 
-if sys.version_info < (3,):
-    byte_cls = str
-else:
-    byte_cls = bytes
+
+__all__ = [
+    'aes_cbc_no_padding_decrypt',
+    'aes_cbc_no_padding_encrypt',
+    'aes_cbc_pkcs7_decrypt',
+    'aes_cbc_pkcs7_encrypt',
+    'des_cbc_pkcs5_decrypt',
+    'des_cbc_pkcs5_encrypt',
+    'rc2_cbc_pkcs5_decrypt',
+    'rc2_cbc_pkcs5_encrypt',
+    'rc4_decrypt',
+    'rc4_encrypt',
+    'tripledes_cbc_pkcs5_decrypt',
+    'tripledes_cbc_pkcs5_encrypt',
+]
 
 
 def aes_cbc_no_padding_encrypt(key, data, iv):
@@ -41,15 +51,30 @@ def aes_cbc_no_padding_encrypt(key, data, iv):
     """
 
     if len(key) not in [16, 24, 32]:
-        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if not iv:
         iv = rand_bytes(16)
     elif len(iv) != 16:
-        raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 16 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     if len(data) % 16 != 0:
-        raise ValueError('data must be a multiple of 16 bytes long - is %s' % len(data))
+        raise ValueError(pretty_message(
+            '''
+            data must be a multiple of 16 bytes long - is %s
+            ''',
+            len(data)
+        ))
 
     return (iv, _encrypt(Security.kSecAttrKeyTypeAES, key, data, iv, Security.kSecPaddingNoneKey))
 
@@ -78,10 +103,20 @@ def aes_cbc_no_padding_decrypt(key, data, iv):
     """
 
     if len(key) not in [16, 24, 32]:
-        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if len(iv) != 16:
-        raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 16 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return _decrypt(Security.kSecAttrKeyTypeAES, key, data, iv, Security.kSecPaddingNoneKey)
 
@@ -111,12 +146,22 @@ def aes_cbc_pkcs7_encrypt(key, data, iv):
     """
 
     if len(key) not in [16, 24, 32]:
-        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if not iv:
         iv = rand_bytes(16)
     elif len(iv) != 16:
-        raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 16 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return (iv, _encrypt(Security.kSecAttrKeyTypeAES, key, data, iv, Security.kSecPaddingPKCS7Key))
 
@@ -144,10 +189,21 @@ def aes_cbc_pkcs7_decrypt(key, data, iv):
     """
 
     if len(key) not in [16, 24, 32]:
-        raise ValueError('key must be either 16, 24 or 32 bytes (128, 192 or 256 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be either 16, 24 or 32 bytes (128, 192 or 256 bits)
+            long - is %s
+            ''',
+            len(key)
+        ))
 
     if len(iv) != 16:
-        raise ValueError('iv must be 16 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 16 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return _decrypt(Security.kSecAttrKeyTypeAES, key, data, iv, Security.kSecPaddingPKCS7Key)
 
@@ -172,7 +228,12 @@ def rc4_encrypt(key, data):
     """
 
     if len(key) < 5 or len(key) > 16:
-        raise ValueError('key must be 5 to 16 bytes (40 to 128 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 5 to 16 bytes (40 to 128 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     return _encrypt(Security.kSecAttrKeyTypeRC4, key, data, None, None)
 
@@ -197,7 +258,12 @@ def rc4_decrypt(key, data):
     """
 
     if len(key) < 5 or len(key) > 16:
-        raise ValueError('key must be 5 to 16 bytes (40 to 128 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 5 to 16 bytes (40 to 128 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     return _decrypt(Security.kSecAttrKeyTypeRC4, key, data, None, None)
 
@@ -226,12 +292,22 @@ def rc2_cbc_pkcs5_encrypt(key, data, iv):
     """
 
     if len(key) < 5 or len(key) > 16:
-        raise ValueError('key must be 5 to 16 bytes (40 to 128 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 5 to 16 bytes (40 to 128 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if not iv:
         iv = rand_bytes(8)
     elif len(iv) != 8:
-        raise ValueError('iv must be 8 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 8 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return (iv, _encrypt(Security.kSecAttrKeyTypeRC2, key, data, iv, Security.kSecPaddingPKCS5Key))
 
@@ -259,10 +335,20 @@ def rc2_cbc_pkcs5_decrypt(key, data, iv):
     """
 
     if len(key) < 5 or len(key) > 16:
-        raise ValueError('key must be 5 to 16 bytes (40 to 128 bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 5 to 16 bytes (40 to 128 bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if len(iv) != 8:
-        raise ValueError('iv must be 8 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 8 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return _decrypt(Security.kSecAttrKeyTypeRC2, key, data, iv, Security.kSecPaddingPKCS5Key)
 
@@ -291,12 +377,22 @@ def tripledes_cbc_pkcs5_encrypt(key, data, iv):
     """
 
     if len(key) != 16 and len(key) != 24:
-        raise ValueError('key must be 16 bytes (2 key) or 24 bytes (3 key) long - %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 16 bytes (2 key) or 24 bytes (3 key) long - %s
+            ''',
+            len(key)
+        ))
 
     if not iv:
         iv = rand_bytes(8)
     elif len(iv) != 8:
-        raise ValueError('iv must be 8 bytes long - %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 8 bytes long - %s
+            ''',
+            len(iv)
+        ))
 
     # Expand 2-key to actual 24 byte byte string used by cipher
     if len(key) == 16:
@@ -328,10 +424,20 @@ def tripledes_cbc_pkcs5_decrypt(key, data, iv):
     """
 
     if len(key) != 16 and len(key) != 24:
-        raise ValueError('key must be 16 bytes (2 key) or 24 bytes (3 key) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 16 bytes (2 key) or 24 bytes (3 key) long - is %s
+            ''',
+            len(key)
+        ))
 
     if len(iv) != 8:
-        raise ValueError('iv must be 8 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 8 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     # Expand 2-key to actual 24 byte byte string used by cipher
     if len(key) == 16:
@@ -364,12 +470,22 @@ def des_cbc_pkcs5_encrypt(key, data, iv):
     """
 
     if len(key) != 8:
-        raise ValueError('key must be 8 bytes (56 bits + 8 parity bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 8 bytes (56 bits + 8 parity bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if not iv:
         iv = rand_bytes(8)
     elif len(iv) != 8:
-        raise ValueError('iv must be 8 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 8 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return (iv, _encrypt(Security.kSecAttrKeyTypeDES, key, data, iv, Security.kSecPaddingPKCS5Key))
 
@@ -397,10 +513,20 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
     """
 
     if len(key) != 8:
-        raise ValueError('key must be 8 bytes (56 bits + 8 parity bits) long - is %s' % len(key))
+        raise ValueError(pretty_message(
+            '''
+            key must be 8 bytes (56 bits + 8 parity bits) long - is %s
+            ''',
+            len(key)
+        ))
 
     if len(iv) != 8:
-        raise ValueError('iv must be 8 bytes long - is %s' % len(iv))
+        raise ValueError(pretty_message(
+            '''
+            iv must be 8 bytes long - is %s
+            ''',
+            len(iv)
+        ))
 
     return _decrypt(Security.kSecAttrKeyTypeDES, key, data, iv, Security.kSecPaddingPKCS5Key)
 
@@ -434,13 +560,28 @@ def _encrypt(cipher, key, data, iv, padding):
     """
 
     if not isinstance(key, byte_cls):
-        raise TypeError('key must be a byte string, not %s' % object_name(key))
+        raise TypeError(pretty_message(
+            '''
+            key must be a byte string, not %s
+            ''',
+            type_name(key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not isinstance(iv, byte_cls):
-        raise TypeError('iv must be a byte string, not %s' % object_name(iv))
+        raise TypeError(pretty_message(
+            '''
+            iv must be a byte string, not %s
+            ''',
+            type_name(iv)
+        ))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not padding:
         raise ValueError('padding must be specified')
@@ -475,7 +616,12 @@ def _encrypt(cipher, key, data, iv, padding):
             Security.SecTransformSetAttribute(sec_transform, Security.kSecIVKey, cf_iv, error_pointer)
             handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecTransformInputAttributeName,
+            cf_data,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         ciphertext = Security.SecTransformExecute(sec_transform, error_pointer)
@@ -527,13 +673,28 @@ def _decrypt(cipher, key, data, iv, padding):
     """
 
     if not isinstance(key, byte_cls):
-        raise TypeError('key must be a byte string, not %s' % object_name(key))
+        raise TypeError(pretty_message(
+            '''
+            key must be a byte string, not %s
+            ''',
+            type_name(key)
+        ))
 
     if not isinstance(data, byte_cls):
-        raise TypeError('data must be a byte string, not %s' % object_name(data))
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not isinstance(iv, byte_cls):
-        raise TypeError('iv must be a byte string, not %s' % object_name(iv))
+        raise TypeError(pretty_message(
+            '''
+            iv must be a byte string, not %s
+            ''',
+            type_name(iv)
+        ))
 
     if cipher != Security.kSecAttrKeyTypeRC4 and not padding:
         raise ValueError('padding must be specified')
@@ -568,7 +729,12 @@ def _decrypt(cipher, key, data, iv, padding):
             Security.SecTransformSetAttribute(sec_transform, Security.kSecIVKey, cf_iv, error_pointer)
             handle_cf_error(error_pointer)
 
-        Security.SecTransformSetAttribute(sec_transform, Security.kSecTransformInputAttributeName, cf_data, error_pointer)
+        Security.SecTransformSetAttribute(
+            sec_transform,
+            Security.kSecTransformInputAttributeName,
+            cf_data,
+            error_pointer
+        )
         handle_cf_error(error_pointer)
 
         plaintext = Security.SecTransformExecute(sec_transform, error_pointer)

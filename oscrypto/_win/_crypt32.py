@@ -1,20 +1,21 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from ._decode import _try_decode
 from .._ffi import FFIEngineError, buffer_from_bytes
+from .._types import str_cls
 
 try:
-    from ._crypt32_cffi import crypt32, get_error  #pylint: disable=W0611
+    from ._crypt32_cffi import crypt32, get_error
 except (FFIEngineError, ImportError):
     from ._crypt32_ctypes import crypt32, get_error
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
+
+__all__ = [
+    'crypt32',
+    'Crypt32Const',
+    'handle_error',
+]
 
 
 def handle_error(result):
@@ -39,7 +40,7 @@ def handle_error(result):
     raise OSError(error_string)
 
 
-class crypt32_const():
+class Crypt32Const():
     X509_ASN_ENCODING = 1
 
     ERROR_INSUFFICIENT_BUFFER = 122
@@ -69,4 +70,3 @@ class crypt32_const():
     PKIX_KP_SERVER_AUTH = buffer_from_bytes(b"1.3.6.1.5.5.7.3.1\x00")
     SERVER_GATED_CRYPTO = buffer_from_bytes(b"1.3.6.1.4.1.311.10.3.3\x00")
     SGC_NETSCAPE = buffer_from_bytes(b"2.16.840.1.113730.4.1\x00")
-

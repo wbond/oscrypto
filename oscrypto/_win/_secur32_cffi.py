@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
+from .._types import str_cls
 
 try:
     import cffi
@@ -11,17 +12,17 @@ try:
 except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'get_error',
+    'secur32',
+]
 
 
 ffi = cffi.FFI()
 if cffi.__version_info__ >= (0, 9):
     ffi.set_unicode(True)
-if sys.maxsize > 2**32:
+if sys.maxsize > 2 ** 32:
     ffi.cdef("typedef uint64_t ULONG_PTR;")
 else:
     ffi.cdef("typedef unsigned long ULONG_PTR;")
@@ -100,9 +101,14 @@ ffi.cdef("""
         DWORD dwExchStrength;
     } SecPkgContext_ConnectionInfo;
 
-    SECURITY_STATUS AcquireCredentialsHandleW(SEC_WCHAR *pszPrincipal, SEC_WCHAR *pszPackage, ULONG fCredentialUse, LUID *pvLogonID, void *pAuthData, SEC_GET_KEY_FN pGetKeyFn, void *pvGetKeyArgument, CredHandle *phCredential, TimeStamp *ptsExpiry);
+    SECURITY_STATUS AcquireCredentialsHandleW(SEC_WCHAR *pszPrincipal, SEC_WCHAR *pszPackage, ULONG fCredentialUse,
+                    LUID *pvLogonID, void *pAuthData, SEC_GET_KEY_FN pGetKeyFn, void *pvGetKeyArgument,
+                    CredHandle *phCredential, TimeStamp *ptsExpiry);
     SECURITY_STATUS FreeCredentialsHandle(CredHandle *phCredential);
-    SECURITY_STATUS InitializeSecurityContextW(CredHandle *phCredential, CtxtHandle *phContext, SEC_WCHAR *pszTargetName, ULONG fContextReq, ULONG Reserved1, ULONG TargetDataRep, SecBufferDesc *pInput, ULONG Reserved2, CtxtHandle *phNewContext, SecBufferDesc *pOutput, ULONG *pfContextAttr, TimeStamp *ptsExpiry);
+    SECURITY_STATUS InitializeSecurityContextW(CredHandle *phCredential, CtxtHandle *phContext,
+                    SEC_WCHAR *pszTargetName, ULONG fContextReq, ULONG Reserved1, ULONG TargetDataRep,
+                    SecBufferDesc *pInput, ULONG Reserved2, CtxtHandle *phNewContext, SecBufferDesc *pOutput,
+                    ULONG *pfContextAttr, TimeStamp *ptsExpiry);
     SECURITY_STATUS FreeContextBuffer(void *pvContextBuffer);
     SECURITY_STATUS ApplyControlToken(CtxtHandle *phContext, SecBufferDesc *pInput);
     SECURITY_STATUS DeleteSecurityContext(CtxtHandle *phContext);

@@ -9,6 +9,11 @@ import ctypes
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
 
+__all__ = [
+    'CFHelpers',
+    'CoreFoundation',
+]
+
 
 core_foundation_path = find_library('CoreFoundation')
 if not core_foundation_path:
@@ -45,46 +50,86 @@ CFArrayCallBacks = c_void_p
 pointer_p = POINTER(c_void_p)
 
 try:
-    CoreFoundation.CFDataGetLength.argtypes = [CFDataRef]
+    CoreFoundation.CFDataGetLength.argtypes = [
+        CFDataRef
+    ]
     CoreFoundation.CFDataGetLength.restype = CFIndex
 
-    CoreFoundation.CFDataGetBytePtr.argtypes = [CFDataRef]
+    CoreFoundation.CFDataGetBytePtr.argtypes = [
+        CFDataRef
+    ]
     CoreFoundation.CFDataGetBytePtr.restype = c_void_p
 
-    CoreFoundation.CFDataCreate.argtypes = [CFAllocatorRef, c_char_p, CFIndex]
+    CoreFoundation.CFDataCreate.argtypes = [
+        CFAllocatorRef,
+        c_char_p,
+        CFIndex
+    ]
     CoreFoundation.CFDataCreate.restype = CFDataRef
 
-    CoreFoundation.CFDictionaryCreate.argtypes = [CFAllocatorRef, CFStringRef, CFTypeRef, CFIndex, CFDictionaryKeyCallBacks, CFDictionaryValueCallBacks]
+    CoreFoundation.CFDictionaryCreate.argtypes = [
+        CFAllocatorRef,
+        CFStringRef,
+        CFTypeRef,
+        CFIndex,
+        CFDictionaryKeyCallBacks,
+        CFDictionaryValueCallBacks
+    ]
     CoreFoundation.CFDictionaryCreate.restype = CFDictionaryRef
 
-    CoreFoundation.CFDictionaryGetCount.argtypes = [CFDictionaryRef]
+    CoreFoundation.CFDictionaryGetCount.argtypes = [
+        CFDictionaryRef
+    ]
     CoreFoundation.CFDictionaryGetCount.restype = CFIndex
 
-    CoreFoundation.CFStringGetCStringPtr.argtypes = [CFStringRef, CFStringEncoding]
+    CoreFoundation.CFStringGetCStringPtr.argtypes = [
+        CFStringRef,
+        CFStringEncoding
+    ]
     CoreFoundation.CFStringGetCStringPtr.restype = c_char_p
 
-    CoreFoundation.CFStringCreateWithCString.argtypes = [CFAllocatorRef, c_char_p, CFStringEncoding]
+    CoreFoundation.CFStringCreateWithCString.argtypes = [
+        CFAllocatorRef,
+        c_char_p,
+        CFStringEncoding
+    ]
     CoreFoundation.CFStringCreateWithCString.restype = CFStringRef
 
-    CoreFoundation.CFNumberCreate.argtypes = [CFAllocatorRef, CFNumberType, c_void_p]
+    CoreFoundation.CFNumberCreate.argtypes = [
+        CFAllocatorRef,
+        CFNumberType,
+        c_void_p
+    ]
     CoreFoundation.CFNumberCreate.restype = CFNumberRef
 
-    CoreFoundation.CFCopyTypeIDDescription.argtypes = [CFTypeID]
+    CoreFoundation.CFCopyTypeIDDescription.argtypes = [
+        CFTypeID
+    ]
     CoreFoundation.CFCopyTypeIDDescription.restype = CFStringRef
 
-    CoreFoundation.CFRelease.argtypes = [CFTypeRef]
+    CoreFoundation.CFRelease.argtypes = [
+        CFTypeRef
+    ]
     CoreFoundation.CFRelease.restype = None
 
-    CoreFoundation.CFErrorCopyDescription.argtypes = [CFErrorRef]
+    CoreFoundation.CFErrorCopyDescription.argtypes = [
+        CFErrorRef
+    ]
     CoreFoundation.CFErrorCopyDescription.restype = CFStringRef
 
-    CoreFoundation.CFErrorGetDomain.argtypes = [CFErrorRef]
+    CoreFoundation.CFErrorGetDomain.argtypes = [
+        CFErrorRef
+    ]
     CoreFoundation.CFErrorGetDomain.restype = CFStringRef
 
-    CoreFoundation.CFErrorGetCode.argtypes = [CFErrorRef]
+    CoreFoundation.CFErrorGetCode.argtypes = [
+        CFErrorRef
+    ]
     CoreFoundation.CFErrorGetCode.restype = CFIndex
 
-    CoreFoundation.CFBooleanGetValue.argtypes = [CFBooleanRef]
+    CoreFoundation.CFBooleanGetValue.argtypes = [
+        CFBooleanRef
+    ]
     CoreFoundation.CFBooleanGetValue.restype = c_byte
 
     CoreFoundation.CFDictionaryGetTypeID.argtypes = []
@@ -99,25 +144,47 @@ try:
     CoreFoundation.CFDataGetTypeID.argtypes = []
     CoreFoundation.CFDataGetTypeID.restype = CFTypeID
 
-    CoreFoundation.CFArrayCreate.argtypes = [CFAllocatorRef, POINTER(c_void_p), CFIndex, CFArrayCallBacks]
+    CoreFoundation.CFArrayCreate.argtypes = [
+        CFAllocatorRef,
+        POINTER(c_void_p),
+        CFIndex,
+        CFArrayCallBacks
+    ]
     CoreFoundation.CFArrayCreate.restype = CFArrayRef
 
-    CoreFoundation.CFArrayGetCount.argtypes = [CFArrayRef]
+    CoreFoundation.CFArrayGetCount.argtypes = [
+        CFArrayRef
+    ]
     CoreFoundation.CFArrayGetCount.restype = CFIndex
 
-    CoreFoundation.CFArrayGetValueAtIndex.argtypes = [CFArrayRef, CFIndex]
+    CoreFoundation.CFArrayGetValueAtIndex.argtypes = [
+        CFArrayRef,
+        CFIndex
+    ]
     CoreFoundation.CFArrayGetValueAtIndex.restype = CFTypeRef
 
-    CoreFoundation.CFNumberGetType.argtypes = [CFNumberRef]
+    CoreFoundation.CFNumberGetType.argtypes = [
+        CFNumberRef
+    ]
     CoreFoundation.CFNumberGetType.restype = CFNumberType
 
-    CoreFoundation.CFNumberGetValue.argtypes = [CFNumberRef, CFNumberType, c_void_p]
+    CoreFoundation.CFNumberGetValue.argtypes = [
+        CFNumberRef,
+        CFNumberType,
+        c_void_p
+    ]
     CoreFoundation.CFNumberGetValue.restype = c_bool
 
-    CoreFoundation.CFDictionaryGetKeysAndValues.argtypes = [CFDictionaryRef, pointer_p, pointer_p]
+    CoreFoundation.CFDictionaryGetKeysAndValues.argtypes = [
+        CFDictionaryRef,
+        pointer_p,
+        pointer_p
+    ]
     CoreFoundation.CFDictionaryGetKeysAndValues.restype = CFIndex
 
-    CoreFoundation.CFGetTypeID.argtypes = [CFTypeRef]
+    CoreFoundation.CFGetTypeID.argtypes = [
+        CFTypeRef
+    ]
     CoreFoundation.CFGetTypeID.restype = CFTypeID
 
     setattr(CoreFoundation, 'kCFAllocatorDefault', CFAllocatorRef.in_dll(CoreFoundation, 'kCFAllocatorDefault'))
@@ -307,7 +374,6 @@ class CFHelpers():
         start = CoreFoundation.CFDataGetBytePtr(value)
         num_bytes = CoreFoundation.CFDataGetLength(value)
         return string_at(start, num_bytes)
-
 
     @staticmethod
     def cf_data_from_bytes(bytes_):

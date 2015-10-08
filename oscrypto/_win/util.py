@@ -1,20 +1,18 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
+from .._errors import pretty_message
 from .._ffi import buffer_from_bytes, bytes_from_buffer
-from ._cng import bcrypt, bcrypt_const, handle_error, open_alg_handle, close_alg_handle
-from .._pkcs12 import pkcs12_kdf  #pylint: disable=W0611
-from .._errors import object_name
+from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
+from .._pkcs12 import pkcs12_kdf
+from .._types import type_name, byte_cls, int_types
 
-if sys.version_info < (3,):
-    byte_cls = str
-    int_types = (int, long)  #pylint: disable=E0602
-else:
-    byte_cls = bytes
-    int_types = int
 
+__all__ = [
+    'pbkdf2',
+    'pkcs12_kdf',
+    'rand_bytes',
+]
 
 
 def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
@@ -46,40 +44,76 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     """
 
     if not isinstance(password, byte_cls):
-        raise TypeError('password must be a byte string, not %s' % object_name(password))
+        raise TypeError(pretty_message(
+            '''
+            password must be a byte string, not %s
+            ''',
+            type_name(password)
+        ))
 
     if not isinstance(salt, byte_cls):
-        raise TypeError('salt must be a byte string, not %s' % object_name(salt))
+        raise TypeError(pretty_message(
+            '''
+            salt must be a byte string, not %s
+            ''',
+            type_name(salt)
+        ))
 
     if not isinstance(iterations, int_types):
-        raise TypeError('iterations must be an integer, not %s' % object_name(iterations))
+        raise TypeError(pretty_message(
+            '''
+            iterations must be an integer, not %s
+            ''',
+            type_name(iterations)
+        ))
 
     if iterations < 1:
         raise ValueError('iterations must be greater than 0')
 
     if not isinstance(key_length, int_types):
-        raise TypeError('key_length must be an integer, not %s' % object_name(key_length))
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            type_name(key_length)
+        ))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0')
 
     if hash_algorithm not in set(['sha1', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha256", "sha384", "sha512",
+            not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     alg_constant = {
-        'sha1': bcrypt_const.BCRYPT_SHA1_ALGORITHM,
-        'sha256': bcrypt_const.BCRYPT_SHA256_ALGORITHM,
-        'sha384': bcrypt_const.BCRYPT_SHA384_ALGORITHM,
-        'sha512': bcrypt_const.BCRYPT_SHA512_ALGORITHM
+        'sha1': BcryptConst.BCRYPT_SHA1_ALGORITHM,
+        'sha256': BcryptConst.BCRYPT_SHA256_ALGORITHM,
+        'sha384': BcryptConst.BCRYPT_SHA384_ALGORITHM,
+        'sha512': BcryptConst.BCRYPT_SHA512_ALGORITHM
     }[hash_algorithm]
 
     alg_handle = None
 
     try:
-        alg_handle = open_alg_handle(alg_constant, bcrypt_const.BCRYPT_ALG_HANDLE_HMAC_FLAG)
+        alg_handle = open_alg_handle(alg_constant, BcryptConst.BCRYPT_ALG_HANDLE_HMAC_FLAG)
 
         output_buffer = buffer_from_bytes(key_length)
-        res = bcrypt.BCryptDeriveKeyPBKDF2(alg_handle, password, len(password), salt, len(salt), iterations, output_buffer, key_length, 0)
+        res = bcrypt.BCryptDeriveKeyPBKDF2(
+            alg_handle,
+            password,
+            len(password),
+            salt,
+            len(salt),
+            iterations,
+            output_buffer,
+            key_length,
+            0
+        )
         handle_error(res)
 
         return bytes_from_buffer(output_buffer)
@@ -107,7 +141,12 @@ def rand_bytes(length):
     """
 
     if not isinstance(length, int_types):
-        raise TypeError('length must be an integer, not %s' % object_name(length))
+        raise TypeError(pretty_message(
+            '''
+            length must be an integer, not %s
+            ''',
+            type_name(length)
+        ))
 
     if length < 1:
         raise ValueError('length must be greater than 0')
@@ -118,7 +157,7 @@ def rand_bytes(length):
     alg_handle = None
 
     try:
-        alg_handle = open_alg_handle(bcrypt_const.BCRYPT_RNG_ALGORITHM)
+        alg_handle = open_alg_handle(BcryptConst.BCRYPT_RNG_ALGORITHM)
         buffer = buffer_from_bytes(length)
 
         res = bcrypt.BCryptGenRandom(alg_handle, buffer, length, 0)

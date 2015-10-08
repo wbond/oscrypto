@@ -1,21 +1,22 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from ._decode import _try_decode
 from .._ffi import FFIEngineError
 from ..errors import TLSError
+from .._types import str_cls
 
 try:
-    from ._secur32_cffi import secur32, get_error  #pylint: disable=W0611
+    from ._secur32_cffi import secur32, get_error
 except (FFIEngineError, ImportError):
     from ._secur32_ctypes import secur32, get_error
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
+
+__all__ = [
+    'handle_error',
+    'secur32',
+    'Secur32Const',
+]
 
 
 def handle_error(result, exception_class=None):
@@ -35,13 +36,13 @@ def handle_error(result, exception_class=None):
     if result == 0:
         return
 
-    if result == secur32_const.SEC_E_OUT_OF_SEQUENCE:
+    if result == Secur32Const.SEC_E_OUT_OF_SEQUENCE:
         raise TLSError('A packet was received out of order')
 
-    if result == secur32_const.SEC_E_MESSAGE_ALTERED:
+    if result == Secur32Const.SEC_E_MESSAGE_ALTERED:
         raise TLSError('A package was received altered')
 
-    if result == secur32_const.SEC_E_CONTEXT_EXPIRED:
+    if result == Secur32Const.SEC_E_CONTEXT_EXPIRED:
         raise TLSError('The TLS session expired')
 
     _, error_string = get_error()
@@ -55,7 +56,7 @@ def handle_error(result, exception_class=None):
     raise exception_class(('SECURITY_STATUS error 0x%0.2X: ' % result) + error_string)
 
 
-class secur32_const():
+class Secur32Const():
     SCHANNEL_CRED_VERSION = 4
 
     SECPKG_CRED_OUTBOUND = 0x00000002
@@ -77,11 +78,11 @@ class secur32_const():
     SEC_E_MESSAGE_ALTERED = 0x8009030F
     SEC_E_CONTEXT_EXPIRED = 0x80090317
 
-    SEC_E_WRONG_PRINCIPAL = 0x80090322 # Domain name mismatch
+    SEC_E_WRONG_PRINCIPAL = 0x80090322  # Domain name mismatch
     SEC_E_UNTRUSTED_ROOT = 0x80090325
     SEC_E_CERT_EXPIRED = 0x80090328
-    SEC_E_ILLEGAL_MESSAGE = 0x80090326 # Handshake error
-    SEC_E_INTERNAL_ERROR = 0x80090304 # Occurs when DH params are too small
+    SEC_E_ILLEGAL_MESSAGE = 0x80090326  # Handshake error
+    SEC_E_INTERNAL_ERROR = 0x80090304  # Occurs when DH params are too small
     SEC_E_BUFFER_TOO_SMALL = 0x80090321
     SEC_I_INCOMPLETE_CREDENTIALS = 0x00090320
 

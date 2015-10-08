@@ -11,21 +11,23 @@ from asn1crypto.util import int_from_bytes, int_to_bytes
 
 from ._int import fill_width
 from .util import constant_compare
-from ._errors import object_name
+from ._errors import pretty_message
+from ._types import type_name, byte_cls, int_types
 
 if sys.version_info < (3,):
-    byte_cls = str
     chr_cls = chr
-    int_types = (int, long)  #pylint: disable=E0602
-    range = xrange  #pylint: disable=E0602,W0622
+    range = xrange  # noqa
 
 else:
-    byte_cls = bytes
-    int_types = int
-
     def chr_cls(num):
         return bytes([num])
 
+
+__all__ = [
+    'add_pss_padding',
+    'remove_pkcs1v15_encryption_padding',
+    'verify_pss_padding',
+]
 
 
 def add_pss_padding(hash_algorithm, salt_length, key_length, message):
@@ -34,7 +36,8 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     v2.2.
 
     :param hash_algorithm:
-        The string name of the hash algorithm to use: "sha1", "sha224", "sha256", "sha384", "sha512"
+        The string name of the hash algorithm to use: "sha1", "sha224",
+        "sha256", "sha384", "sha512"
 
     :param salt_length:
         The length of the salt as an integer - typically the same as the length
@@ -51,22 +54,53 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     """
 
     if not isinstance(message, byte_cls):
-        raise ValueError('message must be a byte string, not %s' % object_name(message))
+        raise TypeError(pretty_message(
+            '''
+            message must be a byte string, not %s
+            ''',
+            type_name(message)
+        ))
 
     if not isinstance(salt_length, int_types):
-        raise ValueError('salt_length must be an integer, not %s' % object_name(salt_length))
+        raise TypeError(pretty_message(
+            '''
+            salt_length must be an integer, not %s
+            ''',
+            type_name(salt_length)
+        ))
 
     if salt_length < 0:
-        raise ValueError('salt_length must be 0 or more - is %s' % repr(salt_length))
+        raise ValueError(pretty_message(
+            '''
+            salt_length must be 0 or more - is %s
+            ''',
+            repr(salt_length)
+        ))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            type_name(key_length)
+        ))
 
     if key_length < 512:
-        raise ValueError('key_length must be 512 or more - is %s' % repr(key_length))
+        raise ValueError(pretty_message(
+            '''
+            key_length must be 512 or more - is %s
+            ''',
+            repr(key_length)
+        ))
 
     if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+            "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     hash_func = getattr(hashlib, hash_algorithm)
 
@@ -79,7 +113,12 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     hash_length = len(message_digest)
 
     if em_len < hash_length + salt_length + 2:
-        raise ValueError('Key is not long enough to use with specified hash_algorithm and salt_length')
+        raise ValueError(pretty_message(
+            '''
+            Key is not long enough to use with specified hash_algorithm and
+            salt_length
+            '''
+        ))
 
     if salt_length > 0:
         salt = os.urandom(salt_length)
@@ -114,7 +153,8 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     Verifies the PSS padding on an encoded message
 
     :param hash_algorithm:
-        The string name of the hash algorithm to use: "sha1", "sha224", "sha256", "sha384", "sha512"
+        The string name of the hash algorithm to use: "sha1", "sha224",
+        "sha256", "sha384", "sha512"
 
     :param salt_length:
         The length of the salt as an integer - typically the same as the length
@@ -134,19 +174,45 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     """
 
     if not isinstance(message, byte_cls):
-        raise ValueError('message must be a byte string, not %s' % object_name(message))
+        raise TypeError(pretty_message(
+            '''
+            message must be a byte string, not %s
+            ''',
+            type_name(message)
+        ))
 
     if not isinstance(signature, byte_cls):
-        raise ValueError('signature must be a byte string, not %s' % object_name(signature))
+        raise TypeError(pretty_message(
+            '''
+            signature must be a byte string, not %s
+            ''',
+            type_name(signature)
+        ))
 
     if not isinstance(salt_length, int_types):
-        raise ValueError('salt_length must be an integer, not %s' % object_name(salt_length))
+        raise TypeError(pretty_message(
+            '''
+            salt_length must be an integer, not %s
+            ''',
+            type_name(salt_length)
+        ))
 
     if salt_length < 0:
-        raise ValueError('salt_length must be 0 or more - is %s' % repr(salt_length))
+        raise ValueError(pretty_message(
+            '''
+            salt_length must be 0 or more - is %s
+            ''',
+            repr(salt_length)
+        ))
 
     if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+            "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     hash_func = getattr(hashlib, hash_algorithm)
 
@@ -172,7 +238,7 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     if bits_that_should_be_zero != 0:
         return False
 
-    m_prime_digest = signature[masked_db_length:masked_db_length+hash_length]
+    m_prime_digest = signature[masked_db_length:masked_db_length + hash_length]
 
     db_mask = mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
 
@@ -191,10 +257,10 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     if not constant_compare(db[0:zero_length], zero_string):
         return False
 
-    if db[zero_length:zero_length+1] != b'\x01':
+    if db[zero_length:zero_length + 1] != b'\x01':
         return False
 
-    salt = db[0-salt_length:]
+    salt = db[0 - salt_length:]
 
     m_prime = (b'\x00' * 8) + message_digest + salt
 
@@ -208,7 +274,8 @@ def mgf1(hash_algorithm, seed, mask_length):
     The PKCS#1 MGF1 mask generation algorithm
 
     :param hash_algorithm:
-        The string name of the hash algorithm to use: "sha1", "sha224", "sha256", "sha384", "sha512"
+        The string name of the hash algorithm to use: "sha1", "sha224",
+        "sha256", "sha384", "sha512"
 
     :param seed:
         A byte string to use as the seed for the mask
@@ -221,16 +288,37 @@ def mgf1(hash_algorithm, seed, mask_length):
     """
 
     if not isinstance(seed, byte_cls):
-        raise ValueError('seed must be a byte string, not %s' % object_name(seed))
+        raise TypeError(pretty_message(
+            '''
+            seed must be a byte string, not %s
+            ''',
+            type_name(seed)
+        ))
 
     if not isinstance(mask_length, int_types):
-        raise ValueError('mask_length must be an integer, not %s' % object_name(mask_length))
+        raise TypeError(pretty_message(
+            '''
+            mask_length must be an integer, not %s
+            ''',
+            type_name(mask_length)
+        ))
 
     if mask_length < 1:
-        raise ValueError('mask_length must be greater than 0 - is %s' % repr(mask_length))
+        raise ValueError(pretty_message(
+            '''
+            mask_length must be greater than 0 - is %s
+            ''',
+            repr(mask_length)
+        ))
 
     if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+            "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     output = b''
 
@@ -267,25 +355,40 @@ def remove_pkcs1v15_encryption_padding(key_length, plaintext):
     """
 
     if not isinstance(plaintext, byte_cls):
-        raise ValueError('plaintext must be a byte string, not %s' % plaintext.__class__.__name__)
+        raise TypeError(pretty_message(
+            '''
+            plaintext must be a byte string, not %s
+            ''',
+            type_name(plaintext)
+        ))
 
     if not isinstance(key_length, int_types):
-        raise ValueError('key_length must be an integer, not %s' % key_length.__class__.__name__)
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            type_name(key_length)
+        ))
 
     if key_length < 64:
-        raise ValueError('key_length must be 64 or more - is %s' % repr(key_length))
+        raise ValueError(pretty_message(
+            '''
+            key_length must be 64 or more - is %s
+            ''',
+            repr(key_length)
+        ))
 
     if len(plaintext) != key_length:
         raise ValueError('Error decrypting')
 
     error = 0
-    trash = 0  #pylint: disable=W0612
+    trash = 0
     padding_end = 0
 
     # Uses bitwise operations on an error variable and another trash variable
     # to perform constant time error checking/token scanning on the plaintext
     for i in range(0, len(plaintext)):
-        byte = plaintext[i:i+1]
+        byte = plaintext[i:i + 1]
         byte_num = ord(byte)
 
         # First byte should be \x00
@@ -317,4 +420,4 @@ def remove_pkcs1v15_encryption_padding(key_length, plaintext):
     if error != 0:
         raise ValueError('Error decrypting')
 
-    return plaintext[padding_end+1:]
+    return plaintext[padding_end + 1:]

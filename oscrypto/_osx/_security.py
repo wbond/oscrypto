@@ -4,12 +4,19 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from .._ffi import FFIEngineError, null
 
 try:
-    from ._security_cffi import Security, version_info as osx_version_info  #pylint: disable=W0611
+    from ._security_cffi import Security, version_info as osx_version_info
     from ._core_foundation_cffi import CoreFoundation, CFHelpers
 except (FFIEngineError):
     from ._security_ctypes import Security, version_info as osx_version_info
     from ._core_foundation_ctypes import CoreFoundation, CFHelpers
 
+
+__all__ = [
+    'handle_sec_error',
+    'osx_version_info',
+    'Security',
+    'SecurityConst',
+]
 
 
 def handle_sec_error(error, exception_class=None):
@@ -50,7 +57,7 @@ CFHelpers.register_native_mapping(
 )
 
 
-class security_const():
+class SecurityConst():
     kSecTrustSettingsDomainUser = 0
     kSecTrustSettingsDomainAdmin = 1
     kSecTrustSettingsDomainSystem = 2

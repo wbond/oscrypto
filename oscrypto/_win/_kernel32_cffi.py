@@ -1,9 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
+from .._types import str_cls
 
 try:
     import cffi
@@ -11,11 +10,11 @@ try:
 except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'get_error',
+    'kernel32',
+]
 
 
 ffi = cffi.FFI()

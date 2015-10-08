@@ -1,18 +1,17 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
 import datetime
 import struct
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer, deref, struct_from_buffer, new, null, is_null, unwrap, cast
-from ._crypt32 import crypt32, crypt32_const, get_error, handle_error
+from ._crypt32 import crypt32, Crypt32Const, get_error, handle_error
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'extract_from_system',
+    'system_path',
+]
 
 
 def system_path():
@@ -44,7 +43,7 @@ def extract_from_system():
 
             skip = False
 
-            if context.dwCertEncodingType != crypt32_const.X509_ASN_ENCODING:
+            if context.dwCertEncodingType != Crypt32Const.X509_ASN_ENCODING:
                 skip = True
 
             if not skip:
@@ -66,13 +65,18 @@ def extract_from_system():
                 res = crypt32.CertGetEnhancedKeyUsage(context_pointer, 0, null(), to_read)
                 if res == 0:
                     error_code, _ = get_error()
-                    if error_code == crypt32_const.CRYPT_E_NOT_FOUND:
+                    if error_code == Crypt32Const.CRYPT_E_NOT_FOUND:
                         has_enhanced_usage = False
                     else:
                         handle_error(res)
                 else:
                     usage_buffer = buffer_from_bytes(deref(to_read))
-                    res = crypt32.CertGetEnhancedKeyUsage(context_pointer, 0, cast(crypt32, 'CERT_ENHKEY_USAGE *', usage_buffer), to_read)
+                    res = crypt32.CertGetEnhancedKeyUsage(
+                        context_pointer,
+                        0,
+                        cast(crypt32, 'CERT_ENHKEY_USAGE *', usage_buffer),
+                        to_read
+                    )
                     handle_error(res)
 
                     key_usage_pointer = struct_from_buffer(crypt32, 'CERT_ENHKEY_USAGE', usage_buffer)

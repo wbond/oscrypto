@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
 import hashlib
 import hmac
 import re
@@ -10,15 +9,25 @@ import binascii
 from asn1crypto import core, pkcs12, cms, keys, x509, pem
 
 from .kdf import pbkdf1, pbkdf2, pkcs12_kdf
-from .symmetric import rc2_cbc_pkcs5_decrypt, rc4_decrypt, des_cbc_pkcs5_decrypt, tripledes_cbc_pkcs5_decrypt, aes_cbc_pkcs7_decrypt
+from .symmetric import (
+    aes_cbc_pkcs7_decrypt,
+    des_cbc_pkcs5_decrypt,
+    rc2_cbc_pkcs5_decrypt,
+    rc4_decrypt,
+    tripledes_cbc_pkcs5_decrypt,
+)
 from .util import constant_compare
+from ._errors import pretty_message
+from ._types import byte_cls, type_name
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    byte_cls = str
-else:
-    str_cls = str
-    byte_cls = bytes
+
+__all__ = [
+    'parse_certificate',
+    'parse_pkcs12',
+    'parse_private',
+    'parse_public',
+]
+
 
 crypto_funcs = {
     'rc2': rc2_cbc_pkcs5_decrypt,
@@ -47,7 +56,12 @@ def parse_public(data):
     """
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string')
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     key_type = None
 
@@ -56,7 +70,12 @@ def parse_public(data):
         key_type, algo, data = _unarmor_pem(data)
 
         if key_type == 'private key':
-            raise ValueError('The data specified does not appear to be a public key or certificate, but rather a private key')
+            raise ValueError(pretty_message(
+                '''
+                The data specified does not appear to be a public key or
+                certificate, but rather a private key
+                '''
+            ))
 
         # When a public key returning from _unarmor_pem has a known algorithm
         # of RSA, that means the DER structure is of the type RSAPublicKey, so
@@ -68,17 +87,17 @@ def parse_public(data):
         try:
             pki = keys.PublicKeyInfo.load(data)
             # Call .native to fully parse since asn1crypto is lazy
-            _ = pki.native
+            pki.native
             return pki
-        except (ValueError):  #pylint: disable=W0704
+        except (ValueError):
             pass  # Data was not PublicKeyInfo
 
         try:
             rpk = keys.RSAPublicKey.load(data)
             # Call .native to fully parse since asn1crypto is lazy
-            _ = rpk.native
+            rpk.native
             return keys.PublicKeyInfo.wrap(rpk, 'rsa')
-        except (ValueError):  #pylint: disable=W0704
+        except (ValueError):
             pass  # Data was not an RSAPublicKey
 
     if key_type is None or key_type == 'certificate':
@@ -86,7 +105,7 @@ def parse_public(data):
             parsed_cert = x509.Certificate.load(data)
             key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
             return key_info
-        except (ValueError):  #pylint: disable=W0704
+        except (ValueError):
             pass  # Data was not a cert
 
     raise ValueError('The data specified does not appear to be a known public key or certificate format')
@@ -108,7 +127,12 @@ def parse_certificate(data):
     """
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string')
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     key_type = None
 
@@ -117,18 +141,32 @@ def parse_certificate(data):
         key_type, _, data = _unarmor_pem(data)
 
         if key_type == 'private key':
-            raise ValueError('The data specified does not appear to be a certificate, but rather a private key')
+            raise ValueError(pretty_message(
+                '''
+                The data specified does not appear to be a certificate, but
+                rather a private key
+                '''
+            ))
 
         if key_type == 'public key':
-            raise ValueError('The data specified does not appear to be a certificate, but rather a public key')
+            raise ValueError(pretty_message(
+                '''
+                The data specified does not appear to be a certificate, but
+                rather a public key
+                '''
+            ))
 
     if key_type is None or key_type == 'certificate':
         try:
             return x509.Certificate.load(data)
-        except (ValueError):  #pylint: disable=W0704
+        except (ValueError):
             pass  # Data was not a Certificate
 
-    raise ValueError('The data specified does not appear to be a known certificate format')
+    raise ValueError(pretty_message(
+        '''
+        The data specified does not appear to be a known certificate format
+        '''
+    ))
 
 
 def parse_private(data, password=None):
@@ -159,11 +197,21 @@ def parse_private(data, password=None):
     """
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string')
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if password is not None:
         if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string')
+            raise TypeError(pretty_message(
+                '''
+                password must be a byte string, not %s
+                ''',
+                type_name(password)
+            ))
     else:
         password = b''
 
@@ -172,17 +220,27 @@ def parse_private(data, password=None):
         key_type, _, data = _unarmor_pem(data, password)
 
         if key_type == 'public key':
-            raise ValueError('The data specified does not appear to be a private key, but rather a public key')
+            raise ValueError(pretty_message(
+                '''
+                The data specified does not appear to be a private key, but
+                rather a public key
+                '''
+            ))
 
         if key_type == 'certificate':
-            raise ValueError('The data specified does not appear to be a private key, but rather a certificate')
+            raise ValueError(pretty_message(
+                '''
+                The data specified does not appear to be a private key, but
+                rather a certificate
+                '''
+            ))
 
     try:
         pki = keys.PrivateKeyInfo.load(data)
         # Call .native to fully parse since asn1crypto is lazy
-        _ = pki.native
+        pki.native
         return pki
-    except (ValueError):  #pylint: disable=W0704
+    except (ValueError):
         pass  # Data was not PrivateKeyInfo
 
     try:
@@ -192,36 +250,40 @@ def parse_private(data, password=None):
         decrypted_data = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_data, password)
         pki = keys.PrivateKeyInfo.load(decrypted_data)
         # Call .native to fully parse since asn1crypto is lazy
-        _ = pki.native
+        pki.native
         return pki
-    except (ValueError):  #pylint: disable=W0704
+    except (ValueError):
         pass  # Data was not EncryptedPrivateKeyInfo
 
     try:
         parsed = keys.RSAPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
-        _ = parsed.native
+        parsed.native
         return keys.PrivateKeyInfo.wrap(parsed, 'rsa')
-    except (ValueError):  #pylint: disable=W0704
+    except (ValueError):
         pass  # Data was not an RSAPrivateKey
 
     try:
         parsed = keys.DSAPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
-        _ = parsed.native
+        parsed.native
         return keys.PrivateKeyInfo.wrap(parsed, 'dsa')
-    except (ValueError):  #pylint: disable=W0704
+    except (ValueError):
         pass  # Data was not a DSAPrivateKey
 
     try:
         parsed = keys.ECPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
-        _ = parsed.native
+        parsed.native
         return keys.PrivateKeyInfo.wrap(parsed, 'ec')
-    except (ValueError):  #pylint: disable=W0704
+    except (ValueError):
         pass  # Data was not an ECPrivateKey
 
-    raise ValueError('The data specified does not appear to be a known private key format')
+    raise ValueError(pretty_message(
+        '''
+        The data specified does not appear to be a known private key format
+        '''
+    ))
 
 
 def _unarmor_pem(data, password=None):
@@ -242,11 +304,17 @@ def _unarmor_pem(data, password=None):
         or "ec".
     """
 
-    type_name, headers, der_bytes = pem.unarmor(data)
+    object_type, headers, der_bytes = pem.unarmor(data)
 
-    armor_type = re.match('^((DSA|EC|RSA) PRIVATE KEY|ENCRYPTED PRIVATE KEY|PRIVATE KEY|PUBLIC KEY|RSA PUBLIC KEY|CERTIFICATE)', type_name)
+    type_regex = '^((DSA|EC|RSA) PRIVATE KEY|ENCRYPTED PRIVATE KEY|PRIVATE KEY|PUBLIC KEY|RSA PUBLIC KEY|CERTIFICATE)'
+    armor_type = re.match(type_regex, object_type)
     if not armor_type:
-        raise ValueError('data does seem to contain a PEM-encoded certificate, private key or public key')
+        raise ValueError(pretty_message(
+            '''
+            data does not seem to contain a PEM-encoded certificate, private
+            key or public key
+            '''
+        ))
 
     pem_header = armor_type.group(1)
 
@@ -383,11 +451,21 @@ def parse_pkcs12(data, password=None):
     """
 
     if not isinstance(data, byte_cls):
-        raise ValueError('data must be a byte string')
+        raise TypeError(pretty_message(
+            '''
+            data must be a byte string, not %s
+            ''',
+            type_name(data)
+        ))
 
     if password is not None:
         if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string')
+            raise TypeError(pretty_message(
+                '''
+                password must be a byte string, not %s
+                ''',
+                type_name(password)
+            ))
     else:
         password = b''
 
@@ -398,7 +476,11 @@ def parse_pkcs12(data, password=None):
 
     auth_safe = pfx['auth_safe']
     if auth_safe['content_type'].native != 'data':
-        raise ValueError('Only password-protected PKCS12 files are currently supported')
+        raise ValueError(pretty_message(
+            '''
+            Only password-protected PKCS12 files are currently supported
+            '''
+        ))
     authenticated_safe = pfx.authenticated_safe
 
     mac_data = pfx['mac_data']
@@ -443,7 +525,11 @@ def parse_pkcs12(data, password=None):
             _parse_safe_contents(decrypted_content, certs, private_keys, password)
 
         else:
-            raise Exception('Public-key-based PKCS12 files are not currently supported')
+            raise ValueError(pretty_message(
+                '''
+                Public-key-based PKCS12 files are not currently supported
+                '''
+            ))
 
     key_fingerprints = set(private_keys.keys())
     cert_fingerprints = set(certs.keys())
@@ -547,7 +633,11 @@ def _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, passwo
     if encryption_algorithm_info.kdf == 'pbkdf2':
 
         if encryption_algorithm_info.encryption_cipher == 'rc5':
-            raise ValueError('PBES2 encryption scheme utilizing RC5 encryption is not supported')
+            raise ValueError(pretty_message(
+                '''
+                PBES2 encryption scheme utilizing RC5 encryption is not supported
+                '''
+            ))
 
         enc_key = pbkdf2(
             encryption_algorithm_info.kdf_hmac,

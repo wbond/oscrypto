@@ -2,6 +2,11 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 
+__all__ = [
+    'CIPHER_SUITE_MAP',
+]
+
+
 CIPHER_SUITE_MAP = {
     b'\x00\x00': 'TLS_NULL_WITH_NULL_NULL',
     b'\x00\x01': 'TLS_RSA_WITH_NULL_MD5',

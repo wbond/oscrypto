@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from .._ffi import FFIEngineError, new, null, unwrap
 
 try:
@@ -10,10 +8,14 @@ try:
 except (FFIEngineError, ImportError):
     from ._cng_ctypes import bcrypt
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
+
+__all__ = [
+    'bcrypt',
+    'BcryptConst',
+    'close_alg_handle',
+    'handle_error',
+    'open_alg_handle',
+]
 
 
 def open_alg_handle(constant, flags=0):
@@ -44,14 +46,16 @@ def handle_error(error_num):
         return
 
     messages = {
-        bcrypt_const.STATUS_NOT_FOUND: 'The object was not found',
-        bcrypt_const.STATUS_INVALID_PARAMETER: 'An invalid parameter was passed to a service or function',
-        bcrypt_const.STATUS_NO_MEMORY: 'Not enough virtual memory or paging file quota is available to complete the specified operation',
-        bcrypt_const.STATUS_INVALID_HANDLE: 'An invalid HANDLE was specified',
-        bcrypt_const.STATUS_INVALID_SIGNATURE: 'The cryptographic signature is invalid',
-        bcrypt_const.STATUS_NOT_SUPPORTED: 'The request is not supported',
-        bcrypt_const.STATUS_BUFFER_TOO_SMALL: 'The buffer is too small to contain the entry',
-        bcrypt_const.STATUS_INVALID_BUFFER_SIZE: 'The size of the buffer is invalid for the specified operation',
+        BcryptConst.STATUS_NOT_FOUND: 'The object was not found',
+        BcryptConst.STATUS_INVALID_PARAMETER: 'An invalid parameter was passed to a service or function',
+        BcryptConst.STATUS_NO_MEMORY: (
+            'Not enough virtual memory or paging file quota is available to complete the specified operation'
+        ),
+        BcryptConst.STATUS_INVALID_HANDLE: 'An invalid HANDLE was specified',
+        BcryptConst.STATUS_INVALID_SIGNATURE: 'The cryptographic signature is invalid',
+        BcryptConst.STATUS_NOT_SUPPORTED: 'The request is not supported',
+        BcryptConst.STATUS_BUFFER_TOO_SMALL: 'The buffer is too small to contain the entry',
+        BcryptConst.STATUS_INVALID_BUFFER_SIZE: 'The size of the buffer is invalid for the specified operation',
     }
 
     output = 'NTSTATUS error 0x%0.2X' % error_num
@@ -62,7 +66,7 @@ def handle_error(error_num):
     raise OSError(output)
 
 
-class bcrypt_const():
+class BcryptConst():
     BCRYPT_RNG_ALGORITHM = 'RNG'
 
     BCRYPT_KEY_LENGTH = 'KeyLength'
@@ -141,4 +145,3 @@ class bcrypt_const():
     BCRYPT_ALG_HANDLE_HMAC_FLAG = 0x00000008
 
     BCRYPT_BLOCK_PADDING = 0x00000001
-

@@ -10,6 +10,10 @@ except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
 
+__all__ = [
+    'CommonCrypto',
+]
+
 
 ffi = FFI()
 ffi.cdef("""
@@ -19,9 +23,8 @@ ffi.cdef("""
     typedef unsigned int uint;
 
     int CCKeyDerivationPBKDF(CCPBKDFAlgorithm algorithm, const char *password, size_t passwordLen,
-                      const char *salt, size_t saltLen,
-                      CCPseudoRandomAlgorithm prf, uint rounds,
-                      char *derivedKey, size_t derivedKeyLen);
+                    const char *salt, size_t saltLen, CCPseudoRandomAlgorithm prf, uint rounds,
+                    char *derivedKey, size_t derivedKeyLen);
 """)
 
 CommonCrypto = ffi.dlopen('/usr/lib/system/libcommonCrypto.dylib')

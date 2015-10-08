@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
+from .._types import str_cls
 
 try:
     import cffi
@@ -11,17 +12,17 @@ try:
 except (ImportError):
     raise FFIEngineError('Error importing cffi')
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'crypt32',
+    'get_error',
+]
 
 
 ffi = cffi.FFI()
 if cffi.__version_info__ >= (0, 9):
     ffi.set_unicode(True)
-if sys.maxsize > 2**32:
+if sys.maxsize > 2 ** 32:
     ffi.cdef("typedef uint64_t ULONG_PTR;")
 else:
     ffi.cdef("typedef unsigned long ULONG_PTR;")
@@ -158,10 +159,15 @@ ffi.cdef("""
     typedef HANDLE HCERTCHAINENGINE;
     typedef HANDLE HCRYPTPROV;
 
-    HCERTSTORE CertOpenStore(LPCSTR lpszStoreProvider, DWORD dwMsgAndCertEncodingType, HCRYPTPROV hCryptProv, DWORD dwFlags, void *pvPara);
-    BOOL CertAddEncodedCertificateToStore(HCERTSTORE hCertStore, DWORD dwCertEncodingType, BYTE *pbCertEncoded, DWORD cbCertEncoded, DWORD dwAddDisposition, PCERT_CONTEXT *ppCertContext);
-    BOOL CertGetCertificateChain(HCERTCHAINENGINE hChainEngine, CERT_CONTEXT *pCertContext, FILETIME *pTime, HCERTSTORE hAdditionalStore, CERT_CHAIN_PARA *pChainPara, DWORD dwFlags, void *pvReserved, PCERT_CHAIN_CONTEXT *ppChainContext);
-    BOOL CertVerifyCertificateChainPolicy(ULONG_PTR pszPolicyOID, PCERT_CHAIN_CONTEXT pChainContext, CERT_CHAIN_POLICY_PARA *pPolicyPara, CERT_CHAIN_POLICY_STATUS *pPolicyStatus);
+    HCERTSTORE CertOpenStore(LPCSTR lpszStoreProvider, DWORD dwMsgAndCertEncodingType, HCRYPTPROV hCryptProv,
+                    DWORD dwFlags, void *pvPara);
+    BOOL CertAddEncodedCertificateToStore(HCERTSTORE hCertStore, DWORD dwCertEncodingType, BYTE *pbCertEncoded,
+                    DWORD cbCertEncoded, DWORD dwAddDisposition, PCERT_CONTEXT *ppCertContext);
+    BOOL CertGetCertificateChain(HCERTCHAINENGINE hChainEngine, CERT_CONTEXT *pCertContext, FILETIME *pTime,
+                    HCERTSTORE hAdditionalStore, CERT_CHAIN_PARA *pChainPara, DWORD dwFlags, void *pvReserved,
+                    PCERT_CHAIN_CONTEXT *ppChainContext);
+    BOOL CertVerifyCertificateChainPolicy(ULONG_PTR pszPolicyOID, PCERT_CHAIN_CONTEXT pChainContext,
+                    CERT_CHAIN_POLICY_PARA *pPolicyPara, CERT_CHAIN_POLICY_STATUS *pPolicyStatus);
     void CertFreeCertificateChain(PCERT_CHAIN_CONTEXT pChainContext);
 
     HCERTSTORE CertOpenSystemStoreW(HANDLE hprov, LPCWSTR szSubsystemProtocol);

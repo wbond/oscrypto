@@ -4,10 +4,16 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from .._ffi import FFIEngineError, is_null, unwrap
 
 try:
-    from ._core_foundation_cffi import CoreFoundation, CFHelpers  #pylint: disable=W0611
+    from ._core_foundation_cffi import CoreFoundation, CFHelpers
 except (FFIEngineError):
     from ._core_foundation_ctypes import CoreFoundation, CFHelpers
 
+
+_all__ = [
+    'CFHelpers',
+    'CoreFoundation',
+    'handle_cf_error',
+]
 
 
 def handle_cf_error(error_pointer):

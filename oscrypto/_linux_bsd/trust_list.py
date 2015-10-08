@@ -5,6 +5,13 @@ import os
 
 from asn1crypto.pem import unarmor
 
+from .._errors import pretty_message
+
+
+__all__ = [
+    'extract_from_system',
+    'system_path',
+]
 
 
 def system_path():
@@ -41,7 +48,12 @@ def system_path():
             break
 
     if not ca_path:
-        raise OSError('Unable to find a CA certs bundle in common locations - try setting the SSL_CERT_FILE environmental variable')
+        raise OSError(pretty_message(
+            '''
+            Unable to find a CA certs bundle in common locations - try
+            setting the SSL_CERT_FILE environmental variable
+            '''
+        ))
 
     return ca_path
 

@@ -6,8 +6,8 @@ import re
 import sys
 
 if sys.version_info < (3,):
-    range = xrange  #pylint: disable=E0602,W0622
-    from cStringIO import StringIO  #pylint: disable=F0401
+    range = xrange  # noqa
+    from cStringIO import StringIO
 else:
     from io import StringIO
 

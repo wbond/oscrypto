@@ -8,13 +8,13 @@ import os
 from oscrypto import tls, errors
 from asn1crypto import x509
 
-from .unittest_data import DataDecorator, data
+from .unittest_data import data_decorator, data
 from ._unittest_compat import patch
 
 patch()
 
 if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
+    str_cls = unicode  # noqa
     byte_cls = str
 else:
     str_cls = str
@@ -28,10 +28,9 @@ digicert_ca_path = os.path.join(fixtures_dir, 'digicert_ca.crt')
 tls_o_matic_ca_path = os.path.join(fixtures_dir, 'tls_o_matic_ca.crt')
 
 
-@DataDecorator
+@data_decorator
 class TLSTests(unittest.TestCase):
 
-    #pylint: disable=C0326
     @staticmethod
     def tls_hosts():
         return (
@@ -61,7 +60,8 @@ class TLSTests(unittest.TestCase):
             tls.TLSSocket('ftp.freebsd.org', 21)
 
     def test_tls_error_missing_issuer(self):
-        with self.assertRaisesRegexp(errors.TLSVerificationError, 'certificate issuer not found in trusted root certificate store'):
+        expected = 'certificate issuer not found in trusted root certificate store'
+        with self.assertRaisesRegexp(errors.TLSVerificationError, expected):
             tls.TLSSocket('test1.tls-o-matic.com', 443)
 
     def test_tls_error_domain_mismatch(self):
@@ -93,7 +93,8 @@ class TLSTests(unittest.TestCase):
 
     def test_tls_error_missing_issuer_2(self):
         session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
-        with self.assertRaisesRegexp(errors.TLSVerificationError, 'certificate issuer not found in trusted root certificate store'):
+        expected = 'certificate issuer not found in trusted root certificate store'
+        with self.assertRaisesRegexp(errors.TLSVerificationError, expected):
             tls.TLSSocket('test7.tls-o-matic.com', 407, session=session)
 
     def test_tls_error_client_cert_required(self):
@@ -136,7 +137,8 @@ class TLSTests(unittest.TestCase):
             tls.TLSSocket('rc4.badssl.com', 443)
 
     def test_tls_extra_trust_roots_no_match(self):
-        with self.assertRaisesRegexp(errors.TLSVerificationError, 'certificate issuer not found in trusted root certificate store'):
+        expected = 'certificate issuer not found in trusted root certificate store'
+        with self.assertRaisesRegexp(errors.TLSVerificationError, expected):
             session = tls.TLSSession(extra_trust_roots=[digicert_ca_path])
             tls.TLSSocket('test1.tls-o-matic.com', 443, session=session)
 

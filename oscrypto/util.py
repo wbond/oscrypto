@@ -3,19 +3,21 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from ._errors import object_name
+from ._errors import pretty_message
+from ._types import type_name, byte_cls
 
 if sys.platform == 'darwin':
-    from ._osx.util import rand_bytes  #pylint: disable=W0611
+    from ._osx.util import rand_bytes
 elif sys.platform == 'win32':
-    from ._win.util import rand_bytes  #pylint: disable=W0611
+    from ._win.util import rand_bytes
 else:
-    from ._openssl.util import rand_bytes  #pylint: disable=W0611
+    from ._openssl.util import rand_bytes
 
-if sys.version_info < (3,):
-    byte_cls = str
-else:
-    byte_cls = bytes
+
+__all__ = [
+    'constant_compare',
+    'rand_bytes',
+]
 
 
 def constant_compare(a, b):
@@ -33,10 +35,20 @@ def constant_compare(a, b):
     """
 
     if not isinstance(a, byte_cls):
-        raise ValueError('a must be a byte string, not %s' % object_name(a))
+        raise TypeError(pretty_message(
+            '''
+            a must be a byte string, not %s
+            ''',
+            type_name(a)
+        ))
 
     if not isinstance(b, byte_cls):
-        raise ValueError('b must be a byte string, not %s' % object_name(b))
+        raise TypeError(pretty_message(
+            '''
+            b must be a byte string, not %s
+            ''',
+            type_name(b)
+        ))
 
     if len(a) != len(b):
         return False

@@ -2,22 +2,19 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import os
-import sys
 
+from .._errors import pretty_message
 from .._ffi import buffer_from_bytes, bytes_from_buffer, errno, byte_string_from_buffer, LibraryNotFoundError
-from ._common_crypto import CommonCrypto, common_crypto_const
+from ._common_crypto import CommonCrypto, CommonCryptoConst
 from ._security import Security
-from .._errors import object_name
+from .._types import type_name, str_cls, byte_cls, int_types
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    byte_cls = str
-    int_types = (int, long)  #pylint: disable=E0602
-else:
-    str_cls = str
-    byte_cls = bytes
-    int_types = int
 
+__all__ = [
+    'pbkdf2',
+    'pkcs12_kdf',
+    'rand_bytes',
+]
 
 
 _encoding = 'utf-8'
@@ -35,7 +32,7 @@ def _try_decode(value):
         for encoding in _fallback_encodings:
             try:
                 return str_cls(value, encoding, errors='strict')
-            except (UnicodeDecodeError):  #pylint: disable=W0704
+            except (UnicodeDecodeError):
                 pass
 
     return str_cls(value, errors='replace')
@@ -91,36 +88,72 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     """
 
     if not isinstance(password, byte_cls):
-        raise TypeError('password must be a byte string, not %s' % object_name(password))
+        raise TypeError(pretty_message(
+            '''
+            password must be a byte string, not %s
+            ''',
+            type_name(password)
+        ))
 
     if not isinstance(salt, byte_cls):
-        raise TypeError('salt must be a byte string, not %s' % object_name(salt))
+        raise TypeError(pretty_message(
+            '''
+            salt must be a byte string, not %s
+            ''',
+            type_name(salt)
+        ))
 
     if not isinstance(iterations, int_types):
-        raise TypeError('iterations must be an integer, not %s' % object_name(iterations))
+        raise TypeError(pretty_message(
+            '''
+            iterations must be an integer, not %s
+            ''',
+            type_name(iterations)
+        ))
 
     if iterations < 1:
         raise ValueError('iterations must be greater than 0')
 
     if not isinstance(key_length, int_types):
-        raise TypeError('key_length must be an integer, not %s' % object_name(key_length))
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            type_name(key_length)
+        ))
 
     if key_length < 1:
         raise ValueError('key_length must be greater than 0')
 
     if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+            "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     algo = {
-        'sha1': common_crypto_const.kCCPRFHmacAlgSHA1,
-        'sha224': common_crypto_const.kCCPRFHmacAlgSHA224,
-        'sha256': common_crypto_const.kCCPRFHmacAlgSHA256,
-        'sha384': common_crypto_const.kCCPRFHmacAlgSHA384,
-        'sha512': common_crypto_const.kCCPRFHmacAlgSHA512
+        'sha1': CommonCryptoConst.kCCPRFHmacAlgSHA1,
+        'sha224': CommonCryptoConst.kCCPRFHmacAlgSHA224,
+        'sha256': CommonCryptoConst.kCCPRFHmacAlgSHA256,
+        'sha384': CommonCryptoConst.kCCPRFHmacAlgSHA384,
+        'sha512': CommonCryptoConst.kCCPRFHmacAlgSHA512
     }[hash_algorithm]
 
     output_buffer = buffer_from_bytes(key_length)
-    result = CommonCrypto.CCKeyDerivationPBKDF(common_crypto_const.kCCPBKDF2, password, len(password), salt, len(salt), algo, iterations, output_buffer, key_length)
+    result = CommonCrypto.CCKeyDerivationPBKDF(
+        CommonCryptoConst.kCCPBKDF2,
+        password,
+        len(password),
+        salt,
+        len(salt),
+        algo,
+        iterations,
+        output_buffer,
+        key_length
+    )
     if result != 0:
         raise OSError(_extract_error())
 
@@ -146,7 +179,12 @@ def rand_bytes(length):
     """
 
     if not isinstance(length, int_types):
-        raise TypeError('length must be an integer, not %s' % object_name(length))
+        raise TypeError(pretty_message(
+            '''
+            length must be an integer, not %s
+            ''',
+            type_name(length)
+        ))
 
     if length < 1:
         raise ValueError('length must be greater than 0')
@@ -216,28 +254,69 @@ try:
         """
 
         if not isinstance(password, byte_cls):
-            raise ValueError('password must be a byte string, not %s' % object_name(password))
+            raise TypeError(pretty_message(
+                '''
+                password must be a byte string, not %s
+                ''',
+                type_name(password)
+            ))
 
         if not isinstance(salt, byte_cls):
-            raise ValueError('salt must be a byte string, not %s' % object_name(salt))
+            raise TypeError(pretty_message(
+                '''
+                salt must be a byte string, not %s
+                ''',
+                type_name(salt)
+            ))
 
         if not isinstance(iterations, int_types):
-            raise ValueError('iterations must be an integer, not %s' % object_name(iterations))
+            raise TypeError(pretty_message(
+                '''
+                iterations must be an integer, not %s
+                ''',
+                type_name(iterations)
+            ))
 
         if iterations < 1:
-            raise ValueError('iterations must be greater than 0 - is %s' % repr(iterations))
+            raise ValueError(pretty_message(
+                '''
+                iterations must be greater than 0 - is %s
+                ''',
+                repr(iterations)
+            ))
 
         if not isinstance(key_length, int_types):
-            raise ValueError('key_length must be an integer, not %s' % object_name(key_length))
+            raise TypeError(pretty_message(
+                '''
+                key_length must be an integer, not %s
+                ''',
+                type_name(key_length)
+            ))
 
         if key_length < 1:
-            raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
+            raise ValueError(pretty_message(
+                '''
+                key_length must be greater than 0 - is %s
+                ''',
+                repr(key_length)
+            ))
 
         if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-            raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+            raise ValueError(pretty_message(
+                '''
+                hash_algorithm must be one of "md5", "sha1", "sha224", "sha256",
+                "sha384", "sha512", not %s
+                ''',
+                repr(hash_algorithm)
+            ))
 
         if id_ not in set([1, 2, 3]):
-            raise ValueError('id_ must be one of 1, 2, 3, not %s' % repr(id_))
+            raise ValueError(pretty_message(
+                '''
+                id_ must be one of 1, 2, 3, not %s
+                ''',
+                repr(id_)
+            ))
 
         utf16_password = password.decode('utf-8').encode('utf-16be') + b'\x00\x00'
 
@@ -269,4 +348,4 @@ try:
 
 except (LibraryNotFoundError):
 
-    from .._pkcs12 import pkcs12_kdf  #pylint: disable=W0611
+    from .._pkcs12 import pkcs12_kdf

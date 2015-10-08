@@ -6,7 +6,6 @@ from setuptools import setup, find_packages, Command
 import oscrypto
 
 
-
 class CleanCommand(Command):
     user_options = []
 
@@ -34,7 +33,10 @@ setup(
     name='oscrypto',
     version=oscrypto.__version__,
 
-    description='Cryptographic services provided by the operating system, including key generation, encryption, decryption, signing, verifying and key derivation',
+    description=(
+        'Cryptographic services provided by the operating system, including key generation, '
+        'encryption, decryption, signing, verifying and key derivation'
+    ),
     long_description='Docs for this project are maintained at https://github.com/wbond/oscrypto#readme.',
 
     url='https://github.com/wbond/oscrypto',

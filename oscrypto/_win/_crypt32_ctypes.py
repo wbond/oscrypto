@@ -8,13 +8,14 @@ from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_char_p
 from ctypes.wintypes import DWORD
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
+from .._types import str_cls
 from ._kernel32 import kernel32
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'crypt32',
+    'get_error',
+]
 
 
 try:
@@ -28,13 +29,13 @@ HCERTSTORE = wintypes.HANDLE
 HCERTCHAINENGINE = wintypes.HANDLE
 HCRYPTPROV = wintypes.HANDLE
 PBYTE = c_char_p
-if sys.maxsize > 2**32:
+if sys.maxsize > 2 ** 32:
     ULONG_PTR = ctypes.c_uint64
 else:
     ULONG_PTR = ctypes.c_ulong
 
 try:
-    class CRYPTOAPI_BLOB(Structure):
+    class CRYPTOAPI_BLOB(Structure):  # noqa
         _fields_ = [
             ("cbData", DWORD),
             ("pbData", c_void_p),
@@ -44,22 +45,19 @@ try:
     CRYPT_BIT_BLOB = CRYPTOAPI_BLOB
     CRYPT_OBJID_BLOB = CRYPTOAPI_BLOB
 
-
-    class CRYPT_ALGORITHM_IDENTIFIER(Structure):
+    class CRYPT_ALGORITHM_IDENTIFIER(Structure):  # noqa
         _fields_ = [
             ("pszObjId", wintypes.LPSTR),
             ("Parameters", CRYPT_OBJID_BLOB),
         ]
 
-
-    class CERT_PUBLIC_KEY_INFO(Structure):
+    class CERT_PUBLIC_KEY_INFO(Structure):  # noqa
         _fields_ = [
             ("Algorithm", CRYPT_ALGORITHM_IDENTIFIER),
             ("PublicKey", CRYPT_BIT_BLOB),
         ]
 
-
-    class CERT_EXTENSION(Structure):
+    class CERT_EXTENSION(Structure):  # noqa
         _fields_ = [
             ("pszObjId", wintypes.LPSTR),
             ("fCritical", wintypes.BOOL),
@@ -67,8 +65,7 @@ try:
         ]
     PCERT_EXTENSION = POINTER(CERT_EXTENSION)
 
-
-    class CERT_INFO(Structure):
+    class CERT_INFO(Structure):  # noqa
         _fields_ = [
             ("dwVersion", DWORD),
             ("SerialNumber", CRYPT_INTEGER_BLOB),
@@ -85,8 +82,7 @@ try:
         ]
     PCERT_INFO = POINTER(CERT_INFO)
 
-
-    class CERT_CONTEXT(Structure):
+    class CERT_CONTEXT(Structure):  # noqa
         _fields_ = [
             ("dwCertEncodingType", DWORD),
             ("pbCertEncoded", c_void_p),
@@ -97,8 +93,7 @@ try:
 
     PCERT_CONTEXT = POINTER(CERT_CONTEXT)
 
-
-    class CERT_ENHKEY_USAGE(Structure):
+    class CERT_ENHKEY_USAGE(Structure):  # noqa
         _fields_ = [
             ('cUsageIdentifier', DWORD),
             ('rgpszUsageIdentifier', POINTER(wintypes.BYTE)),
@@ -106,13 +101,13 @@ try:
 
     PCERT_ENHKEY_USAGE = POINTER(CERT_ENHKEY_USAGE)
 
-    class CERT_TRUST_STATUS(Structure):
+    class CERT_TRUST_STATUS(Structure):  # noqa
         _fields_ = [
             ('dwErrorStatus', DWORD),
             ('dwInfoStatus', DWORD),
         ]
 
-    class CERT_CHAIN_ELEMENT(Structure):
+    class CERT_CHAIN_ELEMENT(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('pCertContext', PCERT_CONTEXT),
@@ -125,7 +120,7 @@ try:
 
     PCERT_CHAIN_ELEMENT = POINTER(CERT_CHAIN_ELEMENT)
 
-    class CERT_SIMPLE_CHAIN(Structure):
+    class CERT_SIMPLE_CHAIN(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('TrustStatus', CERT_TRUST_STATUS),
@@ -138,7 +133,7 @@ try:
 
     PCERT_SIMPLE_CHAIN = POINTER(CERT_SIMPLE_CHAIN)
 
-    class CERT_CHAIN_CONTEXT(Structure):
+    class CERT_CHAIN_CONTEXT(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('TrustStatus', CERT_TRUST_STATUS),
@@ -152,26 +147,26 @@ try:
 
     PCERT_CHAIN_CONTEXT = POINTER(CERT_CHAIN_CONTEXT)
 
-    class CERT_USAGE_MATCH(Structure):
+    class CERT_USAGE_MATCH(Structure):  # noqa
         _fields_ = [
             ('dwType', DWORD),
             ('Usage', CERT_ENHKEY_USAGE),
         ]
 
-    class CERT_CHAIN_PARA(Structure):
+    class CERT_CHAIN_PARA(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('RequestedUsage', CERT_USAGE_MATCH),
         ]
 
-    class CERT_CHAIN_POLICY_PARA(Structure):
+    class CERT_CHAIN_POLICY_PARA(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('dwFlags', DWORD),
             ('pvExtraPolicyPara', c_void_p),
         ]
 
-    class SSL_EXTRA_CERT_CHAIN_POLICY_PARA(Structure):
+    class SSL_EXTRA_CERT_CHAIN_POLICY_PARA(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('dwAuthType', DWORD),
@@ -179,7 +174,7 @@ try:
             ('pwszServerName', wintypes.LPCWSTR),
         ]
 
-    class CERT_CHAIN_POLICY_STATUS(Structure):
+    class CERT_CHAIN_POLICY_STATUS(Structure):  # noqa
         _fields_ = [
             ('cbSize', DWORD),
             ('dwError', DWORD),
@@ -188,31 +183,74 @@ try:
             ('pvExtraPolicyStatus', c_void_p),
         ]
 
-    crypt32.CertOpenStore.argtypes = [wintypes.LPCSTR, DWORD, HCRYPTPROV, DWORD, c_void_p]
+    crypt32.CertOpenStore.argtypes = [
+        wintypes.LPCSTR,
+        DWORD,
+        HCRYPTPROV,
+        DWORD,
+        c_void_p
+    ]
     crypt32.CertOpenStore.restype = HCERTSTORE
 
-    crypt32.CertAddEncodedCertificateToStore.argtypes = [HCERTSTORE, DWORD, PBYTE, DWORD, DWORD, POINTER(PCERT_CONTEXT)]
+    crypt32.CertAddEncodedCertificateToStore.argtypes = [
+        HCERTSTORE,
+        DWORD,
+        PBYTE,
+        DWORD,
+        DWORD,
+        POINTER(PCERT_CONTEXT)
+    ]
     crypt32.CertAddEncodedCertificateToStore.restype = wintypes.BOOL
 
-    crypt32.CertGetCertificateChain.argtypes = [HCERTCHAINENGINE, PCERT_CONTEXT, POINTER(kernel32.FILETIME), HCERTSTORE, POINTER(CERT_CHAIN_PARA), DWORD, c_void_p, POINTER(PCERT_CHAIN_CONTEXT)]
+    crypt32.CertGetCertificateChain.argtypes = [
+        HCERTCHAINENGINE,
+        PCERT_CONTEXT,
+        POINTER(kernel32.FILETIME),
+        HCERTSTORE,
+        POINTER(CERT_CHAIN_PARA),
+        DWORD,
+        c_void_p,
+        POINTER(PCERT_CHAIN_CONTEXT)
+    ]
     crypt32.CertGetCertificateChain.restype = wintypes.BOOL
 
-    crypt32.CertVerifyCertificateChainPolicy.argtypes = [ULONG_PTR, PCERT_CHAIN_CONTEXT, POINTER(CERT_CHAIN_POLICY_PARA), POINTER(CERT_CHAIN_POLICY_STATUS)]
+    crypt32.CertVerifyCertificateChainPolicy.argtypes = [
+        ULONG_PTR,
+        PCERT_CHAIN_CONTEXT,
+        POINTER(CERT_CHAIN_POLICY_PARA),
+        POINTER(CERT_CHAIN_POLICY_STATUS)
+    ]
     crypt32.CertVerifyCertificateChainPolicy.restype = wintypes.BOOL
 
-    crypt32.CertFreeCertificateChain.argtypes = [PCERT_CHAIN_CONTEXT]
+    crypt32.CertFreeCertificateChain.argtypes = [
+        PCERT_CHAIN_CONTEXT
+    ]
     crypt32.CertFreeCertificateChain.restype = None
 
-    crypt32.CertOpenSystemStoreW.argtypes = [wintypes.HANDLE, wintypes.LPCWSTR]
+    crypt32.CertOpenSystemStoreW.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPCWSTR
+    ]
     crypt32.CertOpenSystemStoreW.restype = HCERTSTORE
 
-    crypt32.CertEnumCertificatesInStore.argtypes = [HCERTSTORE, PCERT_CONTEXT]
+    crypt32.CertEnumCertificatesInStore.argtypes = [
+        HCERTSTORE,
+        PCERT_CONTEXT
+    ]
     crypt32.CertEnumCertificatesInStore.restype = PCERT_CONTEXT
 
-    crypt32.CertCloseStore.argtypes = [HCERTSTORE, DWORD]
+    crypt32.CertCloseStore.argtypes = [
+        HCERTSTORE,
+        DWORD
+    ]
     crypt32.CertCloseStore.restype = wintypes.BOOL
 
-    crypt32.CertGetEnhancedKeyUsage.argtypes = [PCERT_CONTEXT, DWORD, c_void_p, POINTER(DWORD)]
+    crypt32.CertGetEnhancedKeyUsage.argtypes = [
+        PCERT_CONTEXT,
+        DWORD,
+        c_void_p,
+        POINTER(DWORD)
+    ]
     crypt32.CertGetEnhancedKeyUsage.restype = wintypes.BOOL
 
 except (AttributeError):

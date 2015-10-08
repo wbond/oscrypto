@@ -9,6 +9,7 @@ import threading
 
 from asn1crypto.pem import armor
 
+from ._errors import pretty_message
 from .errors import CACertsError
 
 if sys.platform == 'win32':
@@ -18,10 +19,11 @@ elif sys.platform == 'darwin':
 else:
     from ._linux_bsd.trust_list import extract_from_system, system_path
 
-try:
-    str_cls = unicode  #pylint: disable=E0602
-except (NameError):
-    str_cls = str
+
+__all__ = [
+    'get_list',
+    'get_path',
+]
 
 
 path_lock = threading.Lock()
@@ -63,7 +65,12 @@ def get_path(temp_dir=None, cache_length=24):
             temp_dir = tempfile.gettempdir()
 
         if not os.path.isdir(temp_dir):
-            raise CACertsError('The temp dir specified, "%s", is not a directory' % temp_dir)
+            raise CACertsError(pretty_message(
+                '''
+                The temp dir specified, "%s", is not a directory
+                ''',
+                temp_dir
+            ))
 
         ca_path = os.path.join(temp_dir, 'oscrypto-ca-bundle.crt')
 
@@ -146,4 +153,8 @@ def _in_memory_up_to_date(cache_length):
         refreshed
     """
 
-    return _module_values['certs'] and _module_values['last_update'] and _module_values['last_update'] > time.time() - (cache_length * 60 * 60)
+    return (
+        _module_values['certs'] and
+        _module_values['last_update'] and
+        _module_values['last_update'] > time.time() - (cache_length * 60 * 60)
+    )

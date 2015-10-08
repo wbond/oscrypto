@@ -17,7 +17,6 @@ else:
     byte_cls = bytes
 
 
-
 class TrustListTests(unittest.TestCase):
 
     def test_get_list(self):

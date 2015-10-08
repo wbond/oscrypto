@@ -7,20 +7,24 @@ from .._ffi import FFIEngineError
 from ._libcrypto import libcrypto_version_info
 
 try:
-    #pylint: disable=W0611
     from ._libssl_cffi import libssl
 except (FFIEngineError):
     from ._libssl_ctypes import libssl
 
 
+__all__ = [
+    'libssl',
+    'LibsslConst',
+]
+
 
 libssl.SSL_library_init()
 # Enables SHA2 algorithms on 0.9.8n and older
-#if libcrypto_version_info < (1, 0):
-    #libssl.OPENSSL_add_all_algorithms_noconf()
+if libcrypto_version_info < (1, 0):
+    libssl.OPENSSL_add_all_algorithms_noconf()
 
 
-class libssl_const():
+class LibsslConst():
     SSL_CTRL_OPTIONS = 32
     SSL_CTRL_SET_SESS_CACHE_MODE = 44
 

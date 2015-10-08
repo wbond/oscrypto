@@ -7,23 +7,50 @@ Exceptions and compatibility shims for consistently using ctypes and cffi
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
+from ._types import str_cls, byte_cls
 
 if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-    byte_cls = str
     bytes_to_list = lambda byte_string: [ord(b) for b in byte_string]
 
 else:
-    str_cls = str
-    byte_cls = bytes
     bytes_to_list = list
+
+
+__all__ = [
+    'array_from_pointer',
+    'array_set',
+    'buffer_from_bytes',
+    'buffer_from_unicode',
+    'buffer_pointer',
+    'byte_array',
+    'byte_string_from_buffer',
+    'bytes_from_buffer',
+    'callback',
+    'cast',
+    'deref',
+    'errno',
+    'FFIEngineError',
+    'is_null',
+    'LibraryNotFoundError',
+    'native',
+    'new',
+    'null',
+    'pointer_set',
+    'ref',
+    'register_ffi',
+    'sizeof',
+    'struct',
+    'struct_bytes',
+    'struct_from_buffer',
+    'unwrap',
+    'write_to_buffer',
+]
 
 
 try:
     from cffi import FFI
 
     _ffi_registry = {}
-
 
     ffi = FFI()
 
@@ -42,7 +69,7 @@ try:
         return ffi.new('wchar_t []', initializer)
 
     def write_to_buffer(buffer, data, offset=0):
-        buffer[offset:offset+len(data)] = data
+        buffer[offset:offset + len(data)] = data
 
     def buffer_pointer(buffer):
         return ffi.new('char *[]', [buffer])
@@ -210,7 +237,7 @@ except (ImportError):
 
         is_array = type_.find('[') != -1
         if is_array:
-            is_array = type_[type_.find('[')+1:type_.find(']')]
+            is_array = type_[type_.find('[') + 1:type_.find(']')]
             if is_array == '':
                 is_array = True
             else:
@@ -227,7 +254,7 @@ except (ImportError):
 
         return (is_pointer, is_array, type_)
 
-    def register_ffi(library, ffi_obj):  #pylint: disable=W0613
+    def register_ffi(library, ffi_obj):
         pass
 
     def buffer_from_bytes(initializer):
@@ -259,7 +286,7 @@ except (ImportError):
 
         return ctypes.cast(value, type_)
 
-    def sizeof(library, value):  #pylint: disable=W0613
+    def sizeof(library, value):
         return ctypes.sizeof(value)
 
     def bytes_from_buffer(buffer, maxlen=None):
@@ -316,8 +343,8 @@ except (ImportError):
     def native(type_, value):
         if isinstance(value, type_):
             return value
-        if isinstance(value, ctypes.Array) and value._type_ == ctypes.c_byte:  #pylint: disable=W0212
-            return ctypes.string_at(ctypes.addressof(value), value._length_)  #pylint: disable=W0212
+        if isinstance(value, ctypes.Array) and value._type_ == ctypes.c_byte:
+            return ctypes.string_at(ctypes.addressof(value), value._length_)
         return type_(value.value)
 
     def deref(point):
@@ -350,7 +377,6 @@ except (ImportError):
         return getattr(library, signature_type)(func)
 
     engine = 'ctypes'
-
 
 
 class LibraryNotFoundError(Exception):

@@ -1,18 +1,17 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 import ctypes
 from ctypes import windll, wintypes, POINTER, c_longlong, Structure
 
 from .._ffi import FFIEngineError, LibraryNotFoundError
+from .._types import str_cls
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
 
+__all__ = [
+    'get_error',
+    'kernel32',
+]
 
 
 try:

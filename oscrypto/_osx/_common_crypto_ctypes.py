@@ -6,6 +6,10 @@ from ctypes import CDLL, c_uint32, c_char_p, c_size_t, c_int, c_uint
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
 
+__all__ = [
+    'CommonCrypto',
+]
+
 
 common_crypto_path = '/usr/lib/system/libcommonCrypto.dylib'
 if not common_crypto_path:

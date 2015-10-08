@@ -1,13 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
 import locale
 
-if sys.version_info < (3,):
-    str_cls = unicode  #pylint: disable=E0602
-else:
-    str_cls = str
+from .._types import str_cls
 
 
 _encoding = locale.getpreferredencoding()
@@ -34,7 +30,7 @@ def _try_decode(byte_string):
         for encoding in _fallback_encodings:
             try:
                 return str_cls(byte_string, encoding, errors='strict')
-            except (UnicodeDecodeError):  #pylint: disable=W0704
+            except (UnicodeDecodeError):
                 pass
 
     return str_cls(byte_string, errors='replace')

@@ -1,24 +1,24 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
 import os
 
+from .._errors import pretty_message
 from .._ffi import buffer_from_bytes, bytes_from_buffer
 from ._libcrypto import libcrypto, libcrypto_version_info, handle_openssl_error
-from .._errors import object_name
+from .._types import type_name, byte_cls, int_types
 
-if sys.version_info < (3,):
-    byte_cls = str
-    int_types = (int, long)  #pylint: disable=E0602
-else:
-    byte_cls = bytes
-    int_types = int
+
+__all__ = [
+    'pbkdf2',
+    'pkcs12_kdf',
+    'rand_bytes',
+]
 
 
 # OpenSSL 0.9.8 does not include PBKDF2
 if libcrypto_version_info < (1,):
-    from .._pkcs5 import pbkdf2  #pylint: disable=W0611
+    from .._pkcs5 import pbkdf2
 
 else:
     def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
@@ -49,25 +49,51 @@ else:
         """
 
         if not isinstance(password, byte_cls):
-            raise TypeError('password must be a byte string, not %s' % object_name(password))
+            raise TypeError(pretty_message(
+                '''
+                password must be a byte string, not %s
+                ''',
+                type_name(password)
+            ))
 
         if not isinstance(salt, byte_cls):
-            raise TypeError('salt must be a byte string, not %s' % object_name(salt))
+            raise TypeError(pretty_message(
+                '''
+                salt must be a byte string, not %s
+                ''',
+                type_name(salt)
+            ))
 
         if not isinstance(iterations, int_types):
-            raise TypeError('iterations must be an integer, not %s' % object_name(iterations))
+            raise TypeError(pretty_message(
+                '''
+                iterations must be an integer, not %s
+                ''',
+                type_name(iterations)
+            ))
 
         if iterations < 1:
             raise ValueError('iterations must be greater than 0')
 
         if not isinstance(key_length, int_types):
-            raise TypeError('key_length must be an integer, not %s' % object_name(key_length))
+            raise TypeError(pretty_message(
+                '''
+                key_length must be an integer, not %s
+                ''',
+                type_name(key_length)
+            ))
 
         if key_length < 1:
             raise ValueError('key_length must be greater than 0')
 
         if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-            raise ValueError('hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+            raise ValueError(pretty_message(
+                '''
+                hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+                "sha512", not %s
+                ''',
+                repr(hash_algorithm)
+            ))
 
         evp_md = {
             'sha1': libcrypto.EVP_sha1,
@@ -78,7 +104,16 @@ else:
         }[hash_algorithm]()
 
         output_buffer = buffer_from_bytes(key_length)
-        result = libcrypto.PKCS5_PBKDF2_HMAC(password, len(password), salt, len(salt), iterations, evp_md, key_length, output_buffer)
+        result = libcrypto.PKCS5_PBKDF2_HMAC(
+            password,
+            len(password),
+            salt,
+            len(salt),
+            iterations,
+            evp_md,
+            key_length,
+            output_buffer
+        )
         handle_openssl_error(result)
 
         return bytes_from_buffer(output_buffer)
@@ -117,28 +152,69 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
     """
 
     if not isinstance(password, byte_cls):
-        raise TypeError('password must be a byte string, not %s' % object_name(password))
+        raise TypeError(pretty_message(
+            '''
+            password must be a byte string, not %s
+            ''',
+            type_name(password)
+        ))
 
     if not isinstance(salt, byte_cls):
-        raise TypeError('salt must be a byte string, not %s' % object_name(salt))
+        raise TypeError(pretty_message(
+            '''
+            salt must be a byte string, not %s
+            ''',
+            type_name(salt)
+        ))
 
     if not isinstance(iterations, int_types):
-        raise TypeError('iterations must be an integer, not %s' % object_name(iterations))
+        raise TypeError(pretty_message(
+            '''
+            iterations must be an integer, not %s
+            ''',
+            type_name(iterations)
+        ))
 
     if iterations < 1:
-        raise ValueError('iterations must be greater than 0 - is %s' % repr(iterations))
+        raise ValueError(pretty_message(
+            '''
+            iterations must be greater than 0 - is %s
+            ''',
+            repr(iterations)
+        ))
 
     if not isinstance(key_length, int_types):
-        raise TypeError('key_length must be an integer, not %s' % object_name(key_length))
+        raise TypeError(pretty_message(
+            '''
+            key_length must be an integer, not %s
+            ''',
+            type_name(key_length)
+        ))
 
     if key_length < 1:
-        raise ValueError('key_length must be greater than 0 - is %s' % repr(key_length))
+        raise ValueError(pretty_message(
+            '''
+            key_length must be greater than 0 - is %s
+            ''',
+            repr(key_length)
+        ))
 
     if hash_algorithm not in set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
-        raise ValueError('hash_algorithm must be one of "md5", "sha1", "sha224", "sha256", "sha384", "sha512", not %s' % repr(hash_algorithm))
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "md5", "sha1", "sha224", "sha256",
+            "sha384", "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
 
     if id_ not in set([1, 2, 3]):
-        raise ValueError('id_ must be one of 1, 2, 3, not %s' % repr(id_))
+        raise ValueError(pretty_message(
+            '''
+            id_ must be one of 1, 2, 3, not %s
+            ''',
+            repr(id_)
+        ))
 
     utf16_password = password.decode('utf-8').encode('utf-16be') + b'\x00\x00'
 
@@ -167,6 +243,7 @@ def pkcs12_kdf(hash_algorithm, password, salt, iterations, key_length, id_):
 
     return bytes_from_buffer(output_buffer)
 
+
 def rand_bytes(length):
     """
     Returns a number of random bytes suitable for cryptographic purposes
@@ -184,7 +261,12 @@ def rand_bytes(length):
     """
 
     if not isinstance(length, int_types):
-        raise TypeError('length must be an integer, not %s' % object_name(length))
+        raise TypeError(pretty_message(
+            '''
+            length must be an integer, not %s
+            ''',
+            type_name(length)
+        ))
 
     if length < 1:
         raise ValueError('length must be greater than 0')

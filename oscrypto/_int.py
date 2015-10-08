@@ -10,6 +10,10 @@ width. Exports the following items:
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 
+__all__ = [
+    'fill_width',
+]
+
 
 def fill_width(bytes_, width):
     """
