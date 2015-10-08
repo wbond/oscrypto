@@ -19,7 +19,7 @@ from .._ffi import (
 )
 from ._libcrypto import libcrypto, LibcryptoConst, libcrypto_version_info, handle_openssl_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
-from ..errors import SignatureError, AsymmetricKeyError
+from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
 from .._types import type_name, str_cls, byte_cls
 from ..util import constant_compare
 
@@ -617,14 +617,22 @@ def load_public_key(source):
             type_name(public_key)
         ))
 
-    if libcrypto_version_info < (1,) and public_key.algorithm == 'dsa' and public_key.hash_algo == 'sha2':
-        raise AsymmetricKeyError(pretty_message(
-            '''
-            OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or
-            less) - this key is based on SHA2 and is %s bits
-            ''',
-            public_key.bit_size
-        ))
+    if public_key.algorithm == 'dsa':
+        if libcrypto_version_info < (1,) and public_key.hash_algo == 'sha2':
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                OpenSSL 0.9.8 only supports DSA keys based on SHA1 (2048 bits or
+                less) - this key is based on SHA2 and is %s bits
+                ''',
+                public_key.bit_size
+            ))
+        elif public_key.hash_algo is None:
+            raise IncompleteAsymmetricKeyError(pretty_message(
+                '''
+                The DSA key does not contain the necessary p, q and g
+                parameters and can not be used
+                '''
+            ))
 
     data = public_key.dump()
     buffer = buffer_from_bytes(data)

@@ -8,7 +8,7 @@ from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, nul
 from ._security import Security, SecurityConst, handle_sec_error, osx_version_info
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
-from ..errors import SignatureError, AsymmetricKeyError
+from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
 from .._pkcs1 import add_pss_padding, verify_pss_padding, remove_pkcs1v15_encryption_padding
 from .._types import type_name, str_cls, byte_cls
 
@@ -611,6 +611,14 @@ def _load_key(key_object):
             key is based on SHA2 and is %s bits
             ''',
             key_object.bit_size
+        ))
+
+    elif key_object.algorithm == 'dsa' and key_object.hash_algo is None:
+        raise IncompleteAsymmetricKeyError(pretty_message(
+            '''
+            The DSA key does not contain the necessary p, q and g parameters
+            and can not be used
+            '''
         ))
 
     if isinstance(key_object, keys.PublicKeyInfo):

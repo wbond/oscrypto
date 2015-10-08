@@ -32,6 +32,15 @@ class AsymmetricKeyError(Exception):
     pass
 
 
+class IncompleteAsymmetricKeyError(AsymmetricKeyError):
+
+    """
+    An exception when a key is missing necessary information
+    """
+
+    pass
+
+
 class CACertsError(Exception):
 
     """

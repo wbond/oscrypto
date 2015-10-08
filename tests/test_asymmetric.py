@@ -28,6 +28,10 @@ def _win_version_pair():
 
 class AsymmetricTests(unittest.TestCase):
 
+    def test_load_incomplete_dsa_cert(self):
+        with self.assertRaises(errors.IncompleteAsymmetricKeyError):
+            asymmetric.load_public_key(os.path.join(fixtures_dir, 'DSAParametersInheritedCACert.crt'))
+
     def test_cert_attributes(self):
         cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test.crt'))
         self.assertEqual(2048, cert.bit_size)
