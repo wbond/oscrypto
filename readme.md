@@ -93,7 +93,7 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 ## Installation
 
 ```bash
-pip install git+git://github.com/wbond/asn1crypto.git@0.11.0
+pip install asn1crypto
 pip install git+git://github.com/wbond/oscrypto.git@0.11.0
 ```
 
