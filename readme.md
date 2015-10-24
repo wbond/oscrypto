@@ -73,6 +73,7 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 
  - [asn1crypto](https://github.com/wbond/asn1crypto)
  - [oscrypto](https://github.com/wbond/oscrypto)
+ - [csrbuilder](https://github.com/wbond/csrbuilder)
  - [certbuilder](https://github.com/wbond/certbuilder)
  - [crlbuilder](https://github.com/wbond/crlbuilder)
 
