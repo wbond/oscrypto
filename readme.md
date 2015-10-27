@@ -90,13 +90,13 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 
 ## Version
 
-0.11.0 - [changelog](changelog.md)
+0.11.1 - [changelog](changelog.md)
 
 ## Installation
 
 ```bash
 pip install asn1crypto
-pip install git+git://github.com/wbond/oscrypto.git@0.11.0
+pip install oscrypto
 ```
 
 ## Documentation

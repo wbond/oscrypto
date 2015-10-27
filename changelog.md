@@ -1,5 +1,10 @@
 # changelog
 
+## 0.11.1
+
+ - Handles specific weak DH keys error code in newer versions of OpenSSL
+ - Added `__str__()` and `__unicode__()` to TLS exceptions
+
 ## 0.11.0
 
  - Added TLS functionality
