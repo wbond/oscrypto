@@ -144,7 +144,7 @@ encryption and decryption. The following functions comprise the public API:
 >     :raises:
 >         ValueError - when any of the parameters contain an invalid value
 >         TypeError - when any of the parameters are of the wrong type
->         oscrypto.errors.AsymmetricKeyError - when a contained public or private key is incompatible with the OS crypto library
+>         oscrypto.errors.AsymmetricKeyError - when a contained key is incompatible with the OS crypto library
 >         OSError - when an error is returned by the OS crypto library
 >
 >     :return:

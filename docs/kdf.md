@@ -45,7 +45,8 @@ functions comprise the public API:
 > def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet=False):
 >     """
 >     :param hash_algorithm:
->         The string name of the hash algorithm to use: "md5", "sha1", "sha224", "sha256", "sha384", "sha512"
+>         The string name of the hash algorithm to use: "md5", "sha1", "sha224",
+>         "sha256", "sha384", "sha512"
 >
 >     :param key_length:
 >         The length of the desired key in bytes
