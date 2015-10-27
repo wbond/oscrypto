@@ -76,6 +76,7 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
  - [csrbuilder](https://github.com/wbond/csrbuilder)
  - [certbuilder](https://github.com/wbond/certbuilder)
  - [crlbuilder](https://github.com/wbond/crlbuilder)
+ - [ocspbuilder](https://github.com/wbond/ocspbuilder)
 
 ## License
 
