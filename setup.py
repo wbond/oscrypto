@@ -34,8 +34,10 @@ setup(
     version=oscrypto.__version__,
 
     description=(
-        'Cryptographic services provided by the operating system, including key generation, '
-        'encryption, decryption, signing, verifying and key derivation'
+        'TLS (SSL) sockets, key generation, encryption, decryption, signing, '
+        'verification and KDFs using the OS crypto libraries. Does not require '
+        'a compiler, and relies on the OS for patching. Works on Windows, OS X '
+        'and Linux/BSD.'
     ),
     long_description='Docs for this project are maintained at https://github.com/wbond/oscrypto#readme.',
 
