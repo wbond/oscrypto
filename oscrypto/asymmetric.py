@@ -267,7 +267,7 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
     output = private_key.dump()
 
     if passphrase is not None:
-        cipher = 'aes256'
+        cipher = 'aes256_cbc'
         key_length = 32
         kdf_hmac = 'sha256'
         kdf_salt = rand_bytes(key_length)
