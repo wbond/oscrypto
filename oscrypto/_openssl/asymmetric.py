@@ -321,7 +321,7 @@ def generate_pair(algorithm, bit_size=None, curve=None):
                 ))
 
     elif algorithm == 'ec':
-        if curve not in {'secp256r1', 'secp384r1', 'secp521r1'}:
+        if curve not in set(['secp256r1', 'secp384r1', 'secp521r1']):
             raise ValueError(pretty_message(
                 '''
                 curve must be one of "secp256r1", "secp384r1", "secp521r1",
