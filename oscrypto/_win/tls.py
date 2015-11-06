@@ -64,7 +64,7 @@ __all__ = [
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 
 _gwv = sys.getwindowsversion()
-_win_version_info = (_gwv.major, _gwv.minor)
+_win_version_info = (_gwv[0], _gwv[1])
 
 
 class TLSSession(object):

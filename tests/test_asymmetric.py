@@ -23,7 +23,7 @@ fixtures_dir = os.path.join(tests_root, 'fixtures')
 
 def _win_version_pair():
     ver_info = sys.getwindowsversion()
-    return (ver_info.major, ver_info.minor)
+    return (ver_info[0], ver_info[1])
 
 
 class AsymmetricTests(unittest.TestCase):

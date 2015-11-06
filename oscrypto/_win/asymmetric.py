@@ -56,7 +56,7 @@ __all__ = [
 
 
 _gwv = sys.getwindowsversion()
-_win_version_info = (_gwv.major, _gwv.minor)
+_win_version_info = (_gwv[0], _gwv[1])
 
 
 class PrivateKey():
