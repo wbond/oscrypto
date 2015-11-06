@@ -7,7 +7,7 @@ Exceptions and compatibility shims for consistently using ctypes and cffi
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
-from ._types import str_cls, byte_cls
+from ._types import str_cls, byte_cls, int_types
 
 if sys.version_info < (3,):
     bytes_to_list = lambda byte_string: [ord(b) for b in byte_string]
@@ -342,6 +342,8 @@ except (ImportError):
 
     def native(type_, value):
         if isinstance(value, type_):
+            return value
+        if sys.version_info < (3,) and type_ == int and isinstance(value, int_types):
             return value
         if isinstance(value, ctypes.Array) and value._type_ == ctypes.c_byte:
             return ctypes.string_at(ctypes.addressof(value), value._length_)
