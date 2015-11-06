@@ -112,7 +112,7 @@ def _convert_filetime_to_datetime(filetime):
         A (UTC) datetime object
     """
 
-    hundreds_nano_seconds = struct.unpack('>Q', struct.pack('>LL', filetime.dwHighDateTime, filetime.dwLowDateTime))[0]
+    hundreds_nano_seconds = struct.unpack(b'>Q', struct.pack(b'>LL', filetime.dwHighDateTime, filetime.dwLowDateTime))[0]
     seconds_since_1601 = hundreds_nano_seconds / 10000000
     epoch_seconds = seconds_since_1601 - 11644473600  # Seconds from Jan 1 1601 to Jan 1 1970
 
