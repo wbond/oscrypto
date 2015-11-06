@@ -23,6 +23,20 @@ test_classes = [KDFTests, KeyTests, AsymmetricTests, SymmetricTests, TrustListTe
 
 
 def run(matcher=None, repeat=1):
+    """
+    Runs the tests
+
+    :param matcher:
+        A unicode string containing a regular expression to use to filter test
+        names by. A value of None will cause no filtering.
+
+    :param repeat:
+        An integer - the number of times to run the tests
+
+    :return:
+        A bool - if the tests succeeded
+    """
+
     loader = unittest.TestLoader()
     # We have to manually track the list of applicable tests because for
     # some reason with Python 3.4 on Windows, the tests in a suite are replaced
@@ -49,9 +63,13 @@ def run(matcher=None, repeat=1):
         for test in test_list:
             suite.addTest(test)
         result = unittest.TextTestRunner(stream=stream, verbosity=verbosity).run(suite)
+
         if len(result.errors) > 0:
             if repeat > 1:
                 print(stream.getvalue())
-            break
+            return False
+
         if repeat > 1:
             stream.truncate(0)
+
+    return True
