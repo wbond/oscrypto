@@ -471,9 +471,14 @@ class TLSSocket(object):
             cert_context_pointer = unwrap(cert_context_pointer_pointer)
             cert_context_pointer = cast(crypt32, 'PCERT_CONTEXT', cert_context_pointer)
 
-            now_pointer = new(kernel32, 'FILETIME *')
-            kernel32.GetSystemTimeAsFileTime(now_pointer)
-            now_pointer = cast(crypt32, 'FILETIME *', now_pointer)
+            # We have to do a funky shuffle here because FILETIME from kernel32
+            # is different than FILETIME from crypt32 when using cffi. If we
+            # overwrite the "now_pointer" variable, cffi releases the backing
+            # memory and we end up getting a validation error about certificate
+            # expiration time.
+            orig_now_pointer = new(kernel32, 'FILETIME *')
+            kernel32.GetSystemTimeAsFileTime(orig_now_pointer)
+            now_pointer = cast(crypt32, 'FILETIME *', orig_now_pointer)
 
             usage_identifiers = new(crypt32, 'char *[3]')
             usage_identifiers[0] = cast(crypt32, 'char *', Crypt32Const.PKIX_KP_SERVER_AUTH)
