@@ -195,6 +195,8 @@ except (ImportError):
     import ctypes
     from ctypes import pointer, c_int, c_char_p, c_uint, c_void_p, c_wchar_p
 
+    _pointer_int_types = int_types + (c_char_p, ctypes.POINTER(ctypes.c_byte))
+
     _pointer_types = {
         'void *': True,
         'wchar_t *': True,
@@ -290,7 +292,7 @@ except (ImportError):
         return ctypes.sizeof(value)
 
     def bytes_from_buffer(buffer, maxlen=None):
-        if isinstance(buffer, (int, c_char_p, ctypes.POINTER(ctypes.c_byte))):
+        if isinstance(buffer, _pointer_int_types):
             return ctypes.string_at(buffer, maxlen)
         if maxlen is not None:
             return buffer.raw[0:maxlen]

@@ -13,7 +13,7 @@ if sys.version_info < (3,):
 else:
     str_cls = str
     byte_cls = bytes
-    int_types = int
+    int_types = (int,)
 
 
 def type_name(value):
