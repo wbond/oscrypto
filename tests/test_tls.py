@@ -56,7 +56,7 @@ class TLSTests(unittest.TestCase):
             tls.TLSSocket('www.google.com', 80)
 
     def test_tls_error_ftp(self):
-        with self.assertRaisesRegexp(errors.TLSError, 'remote end closed the connection'):
+        with self.assertRaisesRegexp(errors.TLSError, 'remote end closed the connection|server responded using FTP'):
             tls.TLSSocket('ftp.freebsd.org', 21)
 
     def test_tls_error_missing_issuer(self):
