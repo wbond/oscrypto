@@ -77,6 +77,7 @@ class SecurityConst():
     kSSLClientSide = 1
     kSSLStreamType = 0
 
+    errSSLProtocol = -9800
     errSSLWouldBlock = -9803
     errSSLClosedGraceful = -9805
     errSSLClosedNoNotify = -9816

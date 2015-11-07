@@ -37,6 +37,7 @@ from .._tls import (
     detect_client_auth_request,
     detect_other_protocol,
     extract_chain,
+    get_dh_params_length,
     parse_session_info,
     raise_client_auth,
     raise_dh_params,
@@ -698,7 +699,12 @@ class TLSSocket(object):
             if handshake_result == SecurityConst.errSSLWeakPeerEphemeralDHKey:
                 raise_dh_params()
 
-            if handshake_result == SecurityConst.errSSLRecordOverflow:
+            if osx_version_info < (10, 10):
+                dh_params_length = get_dh_params_length(self._server_hello)
+                if dh_params_length is not None and dh_params_length < 1024:
+                    raise_dh_params()
+
+            if handshake_result in set([SecurityConst.errSSLRecordOverflow, SecurityConst.errSSLProtocol]):
                 raise_protocol_error(self._server_hello)
 
             if handshake_result in set([SecurityConst.errSSLClosedNoNotify, SecurityConst.errSSLClosedAbort]):
