@@ -526,7 +526,7 @@ class TLSSocket(object):
             )
             handle_sec_error(result)
 
-            if osx_version_info > (10, 9):
+            if osx_version_info >= (10, 10):
                 disable_auto_validation = self._session._manual_validation or self._session._extra_trust_roots
                 explicit_validation = (not self._session._manual_validation) and self._session._extra_trust_roots
             else:
