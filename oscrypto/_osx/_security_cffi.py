@@ -39,6 +39,7 @@ ffi.cdef("""
     typedef uint32_t CSSM_ALGORITHMS;
     typedef uint64_t CSSM_CC_HANDLE;
     typedef uint32_t CSSM_KEYUSE;
+    typedef uint32_t CSSM_CERT_TYPE;
     typedef uint32_t SSLProtocol;
     typedef uint32_t SSLCipherSuite;
     typedef uint32_t SecTrustResultType;
@@ -56,12 +57,31 @@ ffi.cdef("""
     typedef ... *SecTransformRef;
     typedef ... *SecRandomRef;
     typedef ... *SecPolicyRef;
+    typedef ... *SecPolicySearchRef;
     typedef ... *SecItemImportExportKeyParameters;
     typedef ... *SecAccessRef;
     typedef ... *SecKeychainRef;
     typedef ... *SSLContextRef;
     typedef ... *SecTrustRef;
     typedef uint32_t SSLConnectionRef;
+
+    typedef struct {
+        uint32_t Length;
+        char *Data;
+    } CSSM_DATA, CSSM_OID;
+
+    typedef struct {
+        uint32_t Version;
+        uint32_t Flags;
+        CSSM_DATA *LocalResponder;
+        CSSM_DATA *LocalResponderCert;
+    } CSSM_APPLE_TP_OCSP_OPTIONS;
+
+    typedef struct {
+        uint32_t Version;
+        uint32_t CrlFlags;
+        void *crlStore;
+    } CSSM_APPLE_TP_CRL_OPTIONS;
 
     int SecRandomCopyBytes(SecRandomRef rnd, size_t count, char *bytes);
     SecKeyRef SecKeyCreateFromData(CFDictionaryRef parameters, CFDataRef keyData, CFErrorRef *error);
@@ -127,6 +147,13 @@ ffi.cdef("""
     CFIndex SecTrustGetCertificateCount(SecTrustRef trust);
     SecCertificateRef SecTrustGetCertificateAtIndex(SecTrustRef trust, CFIndex ix);
     OSStatus SecTrustSetAnchorCertificates(SecTrustRef trust, CFArrayRef anchorCertificates);
+    OSStatus SecTrustSetAnchorCertificatesOnly(SecTrustRef trust, Boolean anchorCertificatesOnly);
+    OSStatus SecTrustSetPolicies(SecTrustRef trust, CFArrayRef policies);
+    OSStatus SecTrustCopyPolicies(SecTrustRef trust, CFArrayRef *policies);
+    OSStatus SecPolicySearchCreate(CSSM_CERT_TYPE certType, const CSSM_OID *policyOID, const CSSM_DATA *value,
+                    SecPolicySearchRef *searchRef);
+    OSStatus SecPolicySearchCopyNext(SecPolicySearchRef searchRef, SecPolicyRef *policyRef);
+    OSStatus SecPolicySetValue(SecPolicyRef policyRef, const CSSM_DATA *value);
     OSStatus SecTrustEvaluate(SecTrustRef trust, SecTrustResultType *result);
 
     SecRandomRef kSecRandomDefault;

@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import platform
 from ctypes.util import find_library
 from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_uint64, c_ulong, c_long, c_bool
-from ctypes import CDLL, POINTER, CFUNCTYPE
+from ctypes import CDLL, POINTER, CFUNCTYPE, Structure
 
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
@@ -59,7 +59,7 @@ SecExternalFormat = c_uint32
 SecPadding = c_uint32
 SSLProtocol = c_uint32
 SSLCipherSuite = c_uint32
-SecPolicyRef = c_void_p
+SecPolicyRef = POINTER(c_void_p)
 CSSM_CC_HANDLE = c_uint64
 CSSM_ALGORITHMS = c_uint32
 CSSM_KEYUSE = c_uint32
@@ -71,6 +71,35 @@ SecTrustRef = POINTER(c_void_p)
 SSLConnectionRef = c_uint32
 SecTrustResultType = c_uint32
 SecTrustOptionFlags = c_uint32
+SecPolicySearchRef = c_void_p
+CSSM_CERT_TYPE = c_uint32
+
+
+class CSSM_DATA(Structure):  # noqa
+    _fields_ = [
+        ('Length', c_uint32),
+        ('Data', c_char_p)
+    ]
+
+CSSM_OID = CSSM_DATA
+
+
+class CSSM_APPLE_TP_OCSP_OPTIONS(Structure):  # noqa
+    _fields_ = [
+        ('Version', c_uint32),
+        ('Flags', c_uint32),
+        ('LocalResponder', POINTER(CSSM_DATA)),
+        ('LocalResponderCert', POINTER(CSSM_DATA)),
+    ]
+
+
+class CSSM_APPLE_TP_CRL_OPTIONS(Structure):  # noqa
+    _fields_ = [
+        ('Version', c_uint32),
+        ('CrlFlags', c_uint32),
+        ('crlStore', c_void_p),
+    ]
+
 
 try:
     Security.SecRandomCopyBytes.argtypes = [
@@ -282,11 +311,37 @@ try:
     ]
     Security.SSLSetCertificateAuthorities.restype = OSStatus
 
-    Security.SecTrustSetOptions.argtypes = [
+    Security.SecTrustSetPolicies.argtypes = [
         SecTrustRef,
-        SecTrustOptionFlags
+        CFArrayRef
     ]
-    Security.SecTrustSetOptions.restype = OSStatus
+    Security.SecTrustSetPolicies.restype = OSStatus
+
+    Security.SecTrustCopyPolicies.argtypes = [
+        SecTrustRef,
+        POINTER(CFArrayRef)
+    ]
+    Security.SecTrustCopyPolicies.restype = OSStatus
+
+    Security.SecPolicySearchCreate.argtypes = [
+        CSSM_CERT_TYPE,
+        POINTER(CSSM_OID),
+        POINTER(CSSM_DATA),
+        POINTER(SecPolicySearchRef)
+    ]
+    Security.SecPolicySearchCreate.restype = OSStatus
+
+    Security.SecPolicySearchCopyNext.argtypes = [
+        SecPolicySearchRef,
+        POINTER(SecPolicyRef)
+    ]
+    Security.SecPolicySearchCopyNext.restype = OSStatus
+
+    Security.SecPolicySetValue.argtypes = [
+        SecPolicyRef,
+        POINTER(CSSM_DATA)
+    ]
+    Security.SecPolicySetValue.restype = OSStatus
 
     Security.SSLSetConnection.argtypes = [
         SSLContextRef,
@@ -407,6 +462,12 @@ try:
     ]
     Security.SecTrustSetAnchorCertificates.restype = OSStatus
 
+    Security.SecTrustSetAnchorCertificatesOnly.argstypes = [
+        SecTrustRef,
+        Boolean
+    ]
+    Security.SecTrustSetAnchorCertificatesOnly.restype = OSStatus
+
     Security.SecTrustEvaluate.argtypes = [
         SecTrustRef,
         POINTER(SecTrustResultType)
@@ -480,6 +541,15 @@ try:
 
     setattr(Security, 'SecAccessRef', SecAccessRef)
     setattr(Security, 'SecKeyRef', SecKeyRef)
+
+    setattr(Security, 'SecPolicySearchRef', SecPolicySearchRef)
+    setattr(Security, 'SecPolicyRef', SecPolicyRef)
+
+    setattr(Security, 'CSSM_DATA', CSSM_DATA)
+    setattr(Security, 'CSSM_OID', CSSM_OID)
+    setattr(Security, 'CSSM_APPLE_TP_OCSP_OPTIONS', CSSM_APPLE_TP_OCSP_OPTIONS)
+    setattr(Security, 'CSSM_APPLE_TP_CRL_OPTIONS', CSSM_APPLE_TP_CRL_OPTIONS)
+
     setattr(Security, 'kSecRandomDefault', SecRandomRef.in_dll(Security, 'kSecRandomDefault'))
 
     setattr(Security, 'kSecPaddingKey', CFStringRef.in_dll(Security, 'kSecPaddingKey'))

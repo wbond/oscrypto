@@ -26,6 +26,8 @@ from .._ffi import (
     new,
     null,
     pointer_set,
+    struct,
+    struct_bytes,
     unwrap,
     write_to_buffer,
 )
@@ -483,6 +485,11 @@ class TLSSocket(object):
         """
 
         session_context = None
+        crl_search_ref = None
+        crl_policy_ref = None
+        ocsp_search_ref = None
+        ocsp_policy_ref = None
+        policy_array_ref = None
 
         try:
             if osx_version_info < (10, 8):
@@ -519,8 +526,12 @@ class TLSSocket(object):
             )
             handle_sec_error(result)
 
-            disable_auto_validation = self._session._manual_validation or self._session._extra_trust_roots
-            explicit_validation = (not self._session._manual_validation) and self._session._extra_trust_roots
+            if osx_version_info > (10, 9):
+                disable_auto_validation = self._session._manual_validation or self._session._extra_trust_roots
+                explicit_validation = (not self._session._manual_validation) and self._session._extra_trust_roots
+            else:
+                disable_auto_validation = True
+                explicit_validation = not self._session._manual_validation
 
             # Ensure requested protocol support is set for the session
             if osx_version_info < (10, 8):
@@ -621,16 +632,113 @@ class TLSSocket(object):
                 handle_sec_error(result)
                 trust_ref = unwrap(trust_ref_pointer)
 
-                ca_cert_refs = []
-                ca_certs = []
-                for cert in self._session._extra_trust_roots:
-                    ca_cert = load_certificate(cert)
-                    ca_certs.append(ca_cert)
-                    ca_cert_refs.append(ca_cert.sec_certificate_ref)
-
-                array_ref = CFHelpers.cf_array_from_list(ca_cert_refs)
-                result = Security.SecTrustSetAnchorCertificates(trust_ref, array_ref)
+                policies_pointer = new(CoreFoundation, 'CFArrayRef *')
+                result = Security.SecTrustCopyPolicies(trust_ref, policies_pointer)
                 handle_sec_error(result)
+
+                policies = unwrap(policies_pointer)
+                ssl_policy_ref = CoreFoundation.CFArrayGetValueAtIndex(policies, 0)
+
+                # Create a new policy for OCSP checking to disable it
+                ocsp_oid_pointer = struct(Security, 'CSSM_OID')
+                ocsp_oid = unwrap(ocsp_oid_pointer)
+                ocsp_oid.Length = len(SecurityConst.APPLE_TP_REVOCATION_OCSP)
+                ocsp_oid_buffer = buffer_from_bytes(SecurityConst.APPLE_TP_REVOCATION_OCSP)
+                ocsp_oid.Data = cast(Security, 'char *', ocsp_oid_buffer)
+
+                ocsp_search_ref_pointer = new(Security, 'SecPolicySearchRef *')
+                result = Security.SecPolicySearchCreate(
+                    SecurityConst.CSSM_CERT_X_509v3,
+                    ocsp_oid_pointer,
+                    null(),
+                    ocsp_search_ref_pointer
+                )
+                handle_sec_error(result)
+                ocsp_search_ref = unwrap(ocsp_search_ref_pointer)
+
+                ocsp_policy_ref_pointer = new(Security, 'SecPolicyRef *')
+                result = Security.SecPolicySearchCopyNext(ocsp_search_ref, ocsp_policy_ref_pointer)
+                handle_sec_error(result)
+                ocsp_policy_ref = unwrap(ocsp_policy_ref_pointer)
+
+                ocsp_struct_pointer = struct(Security, 'CSSM_APPLE_TP_OCSP_OPTIONS')
+                ocsp_struct = unwrap(ocsp_struct_pointer)
+                ocsp_struct.Version = SecurityConst.CSSM_APPLE_TP_OCSP_OPTS_VERSION
+                ocsp_struct.Flags = (
+                    SecurityConst.CSSM_TP_ACTION_OCSP_DISABLE_NET |
+                    SecurityConst.CSSM_TP_ACTION_OCSP_CACHE_READ_DISABLE
+                )
+                ocsp_struct_bytes = struct_bytes(ocsp_struct_pointer)
+
+                cssm_data_pointer = struct(Security, 'CSSM_DATA')
+                cssm_data = unwrap(cssm_data_pointer)
+                cssm_data.Length = len(ocsp_struct_bytes)
+                ocsp_struct_buffer = buffer_from_bytes(ocsp_struct_bytes)
+                cssm_data.Data = cast(Security, 'char *', ocsp_struct_buffer)
+
+                result = Security.SecPolicySetValue(ocsp_policy_ref, cssm_data_pointer)
+                handle_sec_error(result)
+
+                # Create a new policy for CRL checking to disable it
+                crl_oid_pointer = struct(Security, 'CSSM_OID')
+                crl_oid = unwrap(crl_oid_pointer)
+                crl_oid.Length = len(SecurityConst.APPLE_TP_REVOCATION_CRL)
+                crl_oid_buffer = buffer_from_bytes(SecurityConst.APPLE_TP_REVOCATION_CRL)
+                crl_oid.Data = cast(Security, 'char *', crl_oid_buffer)
+
+                crl_search_ref_pointer = new(Security, 'SecPolicySearchRef *')
+                result = Security.SecPolicySearchCreate(
+                    SecurityConst.CSSM_CERT_X_509v3,
+                    crl_oid_pointer,
+                    null(),
+                    crl_search_ref_pointer
+                )
+                handle_sec_error(result)
+                crl_search_ref = unwrap(crl_search_ref_pointer)
+
+                crl_policy_ref_pointer = new(Security, 'SecPolicyRef *')
+                result = Security.SecPolicySearchCopyNext(crl_search_ref, crl_policy_ref_pointer)
+                handle_sec_error(result)
+                crl_policy_ref = unwrap(crl_policy_ref_pointer)
+
+                crl_struct_pointer = struct(Security, 'CSSM_APPLE_TP_CRL_OPTIONS')
+                crl_struct = unwrap(crl_struct_pointer)
+                crl_struct.Version = SecurityConst.CSSM_APPLE_TP_CRL_OPTS_VERSION
+                crl_struct.CrlFlags = 0
+                crl_struct_bytes = struct_bytes(crl_struct_pointer)
+
+                cssm_data_pointer = struct(Security, 'CSSM_DATA')
+                cssm_data = unwrap(cssm_data_pointer)
+                cssm_data.Length = len(crl_struct_bytes)
+                crl_struct_buffer = buffer_from_bytes(crl_struct_bytes)
+                cssm_data.Data = cast(Security, 'char *', crl_struct_buffer)
+
+                result = Security.SecPolicySetValue(crl_policy_ref, cssm_data_pointer)
+                handle_sec_error(result)
+
+                policy_array_ref = CFHelpers.cf_array_from_list([
+                    ssl_policy_ref,
+                    crl_policy_ref,
+                    ocsp_policy_ref
+                ])
+
+                result = Security.SecTrustSetPolicies(trust_ref, policy_array_ref)
+                handle_sec_error(result)
+
+                if self._session._extra_trust_roots:
+                    ca_cert_refs = []
+                    ca_certs = []
+                    for cert in self._session._extra_trust_roots:
+                        ca_cert = load_certificate(cert)
+                        ca_certs.append(ca_cert)
+                        ca_cert_refs.append(ca_cert.sec_certificate_ref)
+
+                    result = Security.SecTrustSetAnchorCertificatesOnly(trust_ref, False)
+                    handle_sec_error(result)
+
+                    array_ref = CFHelpers.cf_array_from_list(ca_cert_refs)
+                    result = Security.SecTrustSetAnchorCertificates(trust_ref, array_ref)
+                    handle_sec_error(result)
 
                 result_pointer = new(Security, 'SecTrustResultType *')
                 result = Security.SecTrustEvaluate(trust_ref, result_pointer)
@@ -786,6 +894,25 @@ class TLSSocket(object):
             self.close()
 
             raise
+
+        finally:
+            # Trying to release crl_search_ref or ocsp_search_ref results in
+            # a segmentation fault, so we do not do that
+
+            if crl_policy_ref:
+                result = CoreFoundation.CFRelease(crl_policy_ref)
+                handle_cf_error(result)
+                crl_policy_ref = None
+
+            if ocsp_policy_ref:
+                result = CoreFoundation.CFRelease(ocsp_policy_ref)
+                handle_cf_error(result)
+                ocsp_policy_ref = None
+
+            if policy_array_ref:
+                result = CoreFoundation.CFRelease(policy_array_ref)
+                handle_cf_error(result)
+                policy_array_ref = None
 
     def read(self, max_length):
         """
