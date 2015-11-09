@@ -40,7 +40,7 @@ def handle_error(result, exception_class=None):
         raise TLSError('A packet was received out of order')
 
     if result == Secur32Const.SEC_E_MESSAGE_ALTERED:
-        raise TLSError('A package was received altered')
+        raise TLSError('A packet was received altered')
 
     if result == Secur32Const.SEC_E_CONTEXT_EXPIRED:
         raise TLSError('The TLS session expired')
