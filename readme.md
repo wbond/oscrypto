@@ -92,6 +92,11 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 
 0.11.1 - [changelog](changelog.md)
 
+## Continuous Integration
+
+ - [Windows](https://ci.appveyor.com/project/wbond/oscrypto/history) via AppVeyor
+ - [OS X & Linux](https://travis-ci.org/wbond/oscrypto/builds) via Travis CI
+
 ## Installation
 
 ```bash
