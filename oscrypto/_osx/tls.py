@@ -485,6 +485,7 @@ class TLSSocket(object):
         """
 
         session_context = None
+        ssl_policy_ref = None
         crl_search_ref = None
         crl_policy_ref = None
         ocsp_search_ref = None
@@ -614,8 +615,10 @@ class TLSSocket(object):
             )
             handle_sec_error(result)
 
-            # Set a peer id from the session to allow for session reuse
-            peer_id = self._session._peer_id
+            # Set a peer id from the session to allow for session reuse, the hostname
+            # is appended to prevent a bug on OS X 10.7 where it tries to reuse a
+            # connection even if the hostnames are different.
+            peer_id = self._session._peer_id + self._hostname.encode('utf-8')
             result = Security.SSLSetPeerID(session_context, peer_id, len(peer_id))
             handle_sec_error(result)
 
@@ -623,7 +626,12 @@ class TLSSocket(object):
             while handshake_result == SecurityConst.errSSLWouldBlock:
                 handshake_result = Security.SSLHandshake(session_context)
 
-            if explicit_validation and handshake_result == SecurityConst.errSSLServerAuthCompleted:
+            if osx_version_info < (10, 8) and osx_version_info >= (10, 7):
+                do_validation = explicit_validation and handshake_result == 0
+            else:
+                do_validation = explicit_validation and handshake_result == SecurityConst.errSSLServerAuthCompleted
+
+            if do_validation:
                 trust_ref_pointer = new(Security, 'SecTrustRef *')
                 result = Security.SSLCopyPeerTrust(
                     session_context,
@@ -632,12 +640,10 @@ class TLSSocket(object):
                 handle_sec_error(result)
                 trust_ref = unwrap(trust_ref_pointer)
 
-                policies_pointer = new(CoreFoundation, 'CFArrayRef *')
-                result = Security.SecTrustCopyPolicies(trust_ref, policies_pointer)
-                handle_sec_error(result)
-
-                policies = unwrap(policies_pointer)
-                ssl_policy_ref = CoreFoundation.CFArrayGetValueAtIndex(policies, 0)
+                cf_string_hostname = CFHelpers.cf_string_from_unicode(self._hostname)
+                ssl_policy_ref = Security.SecPolicyCreateSSL(True, cf_string_hostname)
+                result = CoreFoundation.CFRelease(cf_string_hostname)
+                handle_cf_error(result)
 
                 # Create a new policy for OCSP checking to disable it
                 ocsp_oid_pointer = struct(Security, 'CSSM_OID')
@@ -831,11 +837,6 @@ class TLSSocket(object):
             if handshake_result == SecurityConst.errSSLWeakPeerEphemeralDHKey:
                 raise_dh_params()
 
-            if osx_version_info < (10, 10):
-                dh_params_length = get_dh_params_length(self._server_hello)
-                if dh_params_length is not None and dh_params_length < 1024:
-                    raise_dh_params()
-
             if handshake_result in set([SecurityConst.errSSLRecordOverflow, SecurityConst.errSSLProtocol]):
                 self._server_hello += _read_remaining(self._socket)
                 raise_protocol_error(self._server_hello)
@@ -846,6 +847,11 @@ class TLSSocket(object):
                 if detect_other_protocol(self._server_hello):
                     raise_protocol_error(self._server_hello)
                 raise_disconnection()
+
+            if osx_version_info < (10, 10):
+                dh_params_length = get_dh_params_length(self._server_hello)
+                if dh_params_length is not None and dh_params_length < 1024:
+                    raise_dh_params()
 
             if handshake_result != SecurityConst.errSSLWouldBlock:
                 handle_sec_error(handshake_result, TLSError)
@@ -898,6 +904,11 @@ class TLSSocket(object):
         finally:
             # Trying to release crl_search_ref or ocsp_search_ref results in
             # a segmentation fault, so we do not do that
+
+            if ssl_policy_ref:
+                result = CoreFoundation.CFRelease(ssl_policy_ref)
+                handle_cf_error(result)
+                ssl_policy_ref = None
 
             if crl_policy_ref:
                 result = CoreFoundation.CFRelease(crl_policy_ref)

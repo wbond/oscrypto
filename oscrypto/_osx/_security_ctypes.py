@@ -317,11 +317,11 @@ try:
     ]
     Security.SecTrustSetPolicies.restype = OSStatus
 
-    Security.SecTrustCopyPolicies.argtypes = [
-        SecTrustRef,
-        POINTER(CFArrayRef)
+    Security.SecPolicyCreateSSL.argtypes = [
+        Boolean,
+        CFStringRef
     ]
-    Security.SecTrustCopyPolicies.restype = OSStatus
+    Security.SecPolicyCreateSSL.restype = SecPolicyRef
 
     Security.SecPolicySearchCreate.argtypes = [
         CSSM_CERT_TYPE,

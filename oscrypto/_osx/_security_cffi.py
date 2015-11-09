@@ -149,7 +149,7 @@ ffi.cdef("""
     OSStatus SecTrustSetAnchorCertificates(SecTrustRef trust, CFArrayRef anchorCertificates);
     OSStatus SecTrustSetAnchorCertificatesOnly(SecTrustRef trust, Boolean anchorCertificatesOnly);
     OSStatus SecTrustSetPolicies(SecTrustRef trust, CFArrayRef policies);
-    OSStatus SecTrustCopyPolicies(SecTrustRef trust, CFArrayRef *policies);
+    SecPolicyRef SecPolicyCreateSSL(Boolean server, CFStringRef hostname);
     OSStatus SecPolicySearchCreate(CSSM_CERT_TYPE certType, const CSSM_OID *policyOID, const CSSM_DATA *value,
                     SecPolicySearchRef *searchRef);
     OSStatus SecPolicySearchCopyNext(SecPolicySearchRef searchRef, SecPolicyRef *policyRef);
