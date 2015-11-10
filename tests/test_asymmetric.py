@@ -113,7 +113,7 @@ class AsymmetricTests(unittest.TestCase):
         # operation fails since there is no reasonable way to ensure we are
         # using a good number of iterations of PBKDF2
         if openssl_098:
-            with self.assertRaises(errors.AsymmetricKeyError):
+            with self.assertRaises(OSError):
                 do_run()
         else:
             do_run()
