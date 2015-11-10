@@ -11,6 +11,12 @@ from ._unittest_compat import patch
 
 patch()
 
+if sys.platform not in set(['darwin', 'win32']):
+    from oscrypto._openssl._libcrypto import libcrypto_version_info
+    openssl_098 = libcrypto_version_info < (1, 0, 0)
+else:
+    openssl_098 = False
+
 if sys.version_info < (3,):
     byte_cls = str
 else:
@@ -24,6 +30,16 @@ fixtures_dir = os.path.join(tests_root, 'fixtures')
 def _win_version_pair():
     ver_info = sys.getwindowsversion()
     return (ver_info[0], ver_info[1])
+
+
+def _should_support_sha2():
+    if sys.platform == 'darwin':
+        return False
+    if sys.platform == 'win32' and _win_version_pair() < (6, 2):
+        return False
+    if openssl_098:
+        return False
+    return True
 
 
 class AsymmetricTests(unittest.TestCase):
@@ -86,11 +102,21 @@ class AsymmetricTests(unittest.TestCase):
         self.assertEqual('rsa', cert_reloaded.algorithm)
 
     def test_dump_private(self):
-        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
-        pem_serialized = asymmetric.dump_private_key(private, 'password123', target_ms=20)
-        private_reloaded = asymmetric.load_private_key(pem_serialized, 'password123')
-        self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
-        self.assertEqual('rsa', private_reloaded.algorithm)
+        def do_run():
+            private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+            pem_serialized = asymmetric.dump_private_key(private, 'password123', target_ms=20)
+            private_reloaded = asymmetric.load_private_key(pem_serialized, 'password123')
+            self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
+            self.assertEqual('rsa', private_reloaded.algorithm)
+
+        # OpenSSL 0.9.8 doesn't have PBKDF2 implemented in C, thus the dump
+        # operation fails since there is no reasonable way to ensure we are
+        # using a good number of iterations of PBKDF2
+        if openssl_098:
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_dump_private_openssl(self):
         private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
@@ -315,7 +341,7 @@ class AsymmetricTests(unittest.TestCase):
 
             asymmetric.dsa_verify(public, signature, original_data, 'sha256')
 
-        if sys.platform == 'darwin' or (sys.platform == 'win32' and _win_version_pair() < (6, 2)):
+        if not _should_support_sha2():
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         else:
@@ -332,7 +358,7 @@ class AsymmetricTests(unittest.TestCase):
 
             asymmetric.dsa_verify(public, signature, original_data, 'sha256')
 
-        if sys.platform == 'darwin' or (sys.platform == 'win32' and _win_version_pair() < (6, 2)):
+        if not _should_support_sha2():
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         else:
@@ -349,7 +375,7 @@ class AsymmetricTests(unittest.TestCase):
 
             asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
-        if sys.platform == 'darwin':
+        if sys.platform == 'darwin' or openssl_098:
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         elif sys.platform == 'win32':
