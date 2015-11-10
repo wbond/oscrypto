@@ -6,12 +6,41 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
 
 The library integrates with the encryption library that is part of the operating
 system. This means that a compiler is never needed, and OS security updates take
-care of patching vulnerabilities. Here are the operating systems and the
-libraries utilized:
+care of patching vulnerabilities. Supported operating systems include:
 
- - Windows: Cryptography API Next Generation (CNG), Cryptography API
- - OS X: Security.framework, CommonCrypto
- - Linux/BSD: OpenSSL/LibreSSL
+ - Windows Vista or newer
+   - Uses:
+     - [Cryptography API: Next Generation (CNG)](https://msdn.microsoft.com/en-us/library/windows/desktop/aa376210(v=vs.85).aspx)
+     - [Secure Channel](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380123(v=vs.85).aspx) for TLS
+     - [CryptoAPI](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380256(v=vs.85).aspx) for trust lists
+   - Tested on:
+     - Windows 7
+     - Windows 8.1
+     - Windows Server 2012
+ - OS X 10.7 or newer
+   - Uses:
+     - [Security.framework](https://developer.apple.com/library/prerelease/mac/documentation/Security/Reference/SecurityFrameworkReference/index.html)
+     - [Secure Transport](https://developer.apple.com/library/prerelease/mac/documentation/Security/Reference/secureTransportRef/index.html#//apple_ref/doc/uid/TP30000155) for TLS
+     - [CommonCrypto](http://www.opensource.apple.com/source/CommonCrypto/CommonCrypto-55010/CommonCrypto/) for PBKDF2
+   - Tested on:
+     - OS X 10.7
+     - OS X 10.8
+     - OS X 10.9
+     - OS X 10.10
+ - Linux or BSD
+   - Uses one of:
+     - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
+     - [OpenSSL 1.0.x](https://www.openssl.org/docs/man1.0.0/)
+     - [LibreSSL](http://www.libressl.org/)
+   - Tested on:
+     - Arch Linux with OpenSSL 1.0.2
+     - OpenBSD 5.7 with LibreSSL
+     - Ubuntu 10.04 with OpenSSL 0.9.8
+     - Ubuntu 12.04 with OpenSSL 1.0.1
+     - Ubuntu 15.04 with OpenSSL 1.0.1
+
+*Windows XP and OS X 10.6 will not be supported due to a lack of available
+cryptographic primitives and due to lack of vendor support.*
 
 Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
@@ -101,7 +130,6 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 ## Installation
 
 ```bash
-pip install asn1crypto
 pip install oscrypto
 ```
 
@@ -109,20 +137,12 @@ pip install oscrypto
 
 [*oscrypto* documentation](docs/readme.md)
 
-## Development
+## Testing
 
-To install required development dependencies, execute:
-
-```bash
-pip install -r dev-requirements.txt
-```
-
-The following commands will run the test suite, linter and test coverage:
+Tests are written using `unittest` and require no third-party packages:
 
 ```bash
 python run.py tests
-python run.py lint
-python run.py coverage
 ```
 
 To run only some tests, pass a regular expression as a parameter to `tests`.
@@ -138,4 +158,19 @@ repeat count after the regular expression.
 ```bash
 python run.py tests 20
 python run.py tests aes 20
+```
+
+## Development
+
+To install required development dependencies, execute:
+
+```bash
+pip install -r dev-requirements.txt
+```
+
+The following commands will run the linter and test coverage:
+
+```bash
+python run.py lint
+python run.py coverage
 ```
