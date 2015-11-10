@@ -1,5 +1,21 @@
 # changelog
 
+## 0.12.0
+
+ - Fixed Python 2.6 support on Windows and Linux
+ - Fixed handling of some TLS error conditions with Python 2 on Windows
+ - Corrected handling of incomplete DSA keys on Windows
+ - Fixed a bug converting a `FILETIME` struct with Python 2 on Windows to a
+   `datetime` object
+ - Fixed a cast/free bug with cffi and CPython on Windows that incorrectly
+   reported some TLS certificates as invalid
+ - Fixed a bug with exporting the trust list from Windows on Python 2 x64
+ - Fixed detection of weak DH params in a TLS connection on OS X 10.7-10.9
+ - OS X 10.7-10.9 no longer use CRL/OCSP to check for revocation, making the
+   functionality consistent with Linux, Window and OS X 10.10 and newer
+ - Fixed OS X 10.7 TLS validation when using `extra_trust_roots` in a
+   `tls.TLSSession`
+
 ## 0.11.1
 
  - Handles specific weak DH keys error code in newer versions of OpenSSL

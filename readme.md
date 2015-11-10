@@ -25,6 +25,7 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - Modern cipher suites (RC4, DES, anon and NULL ciphers disabled)
    - Weak DH parameters and certificate signatures rejected
    - SSLv3 disabled by default, SSLv2 unimplemented
+   - CRL/OCSP revocation checks consistenty disabled
  - [Exporting OS trust roots](docs/trust_list.md)
    - PEM-formatted CA certs from the OS for OpenSSL-based code
  - [Encryption/decryption](docs/symmetric.md)
@@ -90,7 +91,7 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 
 ## Version
 
-0.11.1 - [changelog](changelog.md)
+0.12.0 - [changelog](changelog.md)
 
 ## Continuous Integration
 
