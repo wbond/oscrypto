@@ -4,6 +4,21 @@ A compilation-free, always up-to-date encryption library for Python that works
 on Windows, OS X, Linux and BSD. Supports the following versions of Python:
 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, pypy and pypy3.
 
+ - [Supported Operating Systems](#supported-operationg-systems)
+ - [Features](#features)
+ - [Why Another Python Crypto Library?](#why-another-python-crypto-library)
+ - [Related Crypto Libraries](#related-crypto-libraries)
+ - [Current Release](#current-release)
+ - [Dependencies](#dependencies)
+ - [Installation](#installation)
+ - [License](#license)
+ - [Documentation](#documentation)
+ - [Continuous Integration](#continuous-integration)
+ - [Testing](#testing)
+ - [Development](#development)
+
+## Supported Operating Systems
+
 The library integrates with the encryption library that is part of the operating
 system. This means that a compiler is never needed, and OS security updates take
 care of patching vulnerabilities. Supported operating systems include:
@@ -41,6 +56,8 @@ care of patching vulnerabilities. Supported operating systems include:
 
 *Windows XP and OS X 10.6 will not be supported due to a lack of available
 cryptographic primitives and due to lack of vendor support.*
+
+## Features
 
 Currently the following features are implemented. Many of these should only be
 used for integration with existing/legacy systems. If you don't know which you
@@ -94,10 +111,54 @@ and KDFs are used to load encrypted private keys, and the various RSA padding
 schemes are part of X.509 signatures.
 
 For modern cryptography not tied to an existing system, please see the
-[Modern Cryptography](docs/readme.md#learning) section of the docs.
+[Modern Cryptography](docs/readme.md#modern-cryptography) section of the docs.
 
-*Please note that this library does not inlcude modern block modes such as CTR
+*Please note that this library does not include modern block modes such as CTR
 and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
+
+## Why Another Python Crypto Library?
+
+In short, the existing cryptography libraries for Python didn't fit the needs of
+a couple of projects I was working on. Primarily these are applications
+distributed to end-users who aren't programmers, that need to handle TLS and
+various technologies related to X.509 certificates.
+
+If your system is not tied to AES, TLS, X.509, or related technologies, you
+probably want [more modern cryptography](docs/readme.md#modern-cryptography).
+
+Depending on your needs, the [cryptography](https://cryptography.io) package may
+be a good (or better) fit.
+
+Some things that make oscrypto unique:
+
+ - No compiler needed, ever. No need to pre-compile shared libraries. Just
+   distribute the Python source files, any way you want.
+ - Uses the operating system's crypto library - does not use OpenSSL on Windows
+   or OS X.
+ - Relies on the operating system for security patching. You don't need to
+   rebuild all of your apps every time there is a new TLS vulnerability.
+ - Intentionally limited in scope to crypto primitives. Other libraries
+   built upon it deal with certificate path validation, creating certificates
+   and CSRs, constructing CMS structures.
+ - Built on top of a fast, pure-Python ASN.1 parser,
+   [asn1crypto](https://github.com/wbond/asn1crypto).
+ - TLS functionality uses the operating system's trust list/CA certs and is
+   pre-configured with sane defaults
+ - Public APIs are simple and use strict type checks to avoid errors
+
+Some downsides include:
+
+ - Does not currently implement:
+   - DH key exchange
+   - various encryption modes such as GCM, CCM, CTR, CFB, OFB, ECB
+   - key wrapping
+   - CMAC
+   - HKDF
+ - Non-TLS functionality is architected for dealing with data that fits in
+   memory and is available all at once
+ - Developed by a single developer
+
+## Related Crypto Libraries
 
 *oscrypto* is part of the modularcrypto family of Python packages:
 
@@ -108,24 +169,14 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
  - [crlbuilder](https://github.com/wbond/crlbuilder)
  - [ocspbuilder](https://github.com/wbond/ocspbuilder)
 
-## License
+## Current Release
 
-*oscrypto* is licensed under the terms of the MIT license. See the
-[LICENSE](LICENSE) file for the exact license text.
+0.12.0 - [changelog](changelog.md)
 
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
  - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, pypy or pypy3
-
-## Version
-
-0.12.0 - [changelog](changelog.md)
-
-## Continuous Integration
-
- - [Windows](https://ci.appveyor.com/project/wbond/oscrypto/history) via AppVeyor
- - [OS X & Linux](https://travis-ci.org/wbond/oscrypto/builds) via Travis CI
 
 ## Installation
 
@@ -133,9 +184,19 @@ and GCM due to lack of support from both OS X and OpenSSL 0.9.8.*
 pip install oscrypto
 ```
 
+## License
+
+*oscrypto* is licensed under the terms of the MIT license. See the
+[LICENSE](LICENSE) file for the exact license text.
+
 ## Documentation
 
 [*oscrypto* documentation](docs/readme.md)
+
+## Continuous Integration
+
+ - [Windows](https://ci.appveyor.com/project/wbond/oscrypto/history) via AppVeyor
+ - [OS X & Linux](https://travis-ci.org/wbond/oscrypto/builds) via Travis CI
 
 ## Testing
 
