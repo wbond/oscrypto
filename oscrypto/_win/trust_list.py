@@ -6,6 +6,7 @@ import struct
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer, deref, struct_from_buffer, new, null, is_null, unwrap, cast
 from ._crypt32 import crypt32, Crypt32Const, get_error, handle_error
+from .._types import str_cls
 
 
 __all__ = [
@@ -49,14 +50,32 @@ def extract_from_system():
             if not skip:
                 cert_info = unwrap(context.pCertInfo)
 
-                not_before = _convert_filetime_to_datetime(cert_info.NotBefore)
-                not_after = _convert_filetime_to_datetime(cert_info.NotAfter)
+                not_before_seconds = _convert_filetime_to_timestamp(cert_info.NotBefore)
+                try:
+                    not_before = datetime.datetime.fromtimestamp(not_before_seconds)
+                    if not_before > now:
+                        skip = True
+                except (ValueError, OSError) as e:
+                    # If there is an error converting the not before timestamp,
+                    # it is almost certainly because it is from too long ago,
+                    # which means the cert is definitely valid by now.
+                    pass
 
-                if not_before > now:
-                    skip = True
-
-                if not_after < now:
-                    skip = True
+                not_after_seconds = _convert_filetime_to_timestamp(cert_info.NotAfter)
+                try:
+                    not_after = datetime.datetime.fromtimestamp(not_after_seconds)
+                    if not_after < now:
+                        skip = True
+                except (ValueError, OSError) as e:
+                    # The only reason we would get an exception here is if the
+                    # expiration time is so far in the future that it can't be
+                    # used as a timestamp, or it is before 0. If it is very far
+                    # in the future, the cert is still valid, so we only raise
+                    # an exception if the timestamp is less than zero.
+                    if not_after_seconds < 0:
+                        message = e.args[0] + ' - ' + str_cls(not_after_seconds)
+                        e.args = (message,) + e.args[1:]
+                        raise e
 
             if not skip:
                 has_enhanced_usage = True
@@ -99,7 +118,7 @@ def extract_from_system():
     return output
 
 
-def _convert_filetime_to_datetime(filetime):
+def _convert_filetime_to_timestamp(filetime):
     """
     Windows returns times as 64-bit unsigned longs that are the number
     of hundreds of nanoseconds since Jan 1 1601. This converts it to
@@ -109,7 +128,7 @@ def _convert_filetime_to_datetime(filetime):
         A FILETIME struct object
 
     :return:
-        A (UTC) datetime object
+        An integer unix timestamp
     """
 
     hundreds_nano_seconds = struct.unpack(
@@ -121,9 +140,4 @@ def _convert_filetime_to_datetime(filetime):
         )
     )[0]
     seconds_since_1601 = hundreds_nano_seconds / 10000000
-    epoch_seconds = seconds_since_1601 - 11644473600  # Seconds from Jan 1 1601 to Jan 1 1970
-
-    try:
-        return datetime.datetime.fromtimestamp(epoch_seconds)
-    except (OSError):
-        return datetime.datetime(2037, 1, 1)
+    return seconds_since_1601 - 11644473600  # Seconds from Jan 1 1601 to Jan 1 1970
