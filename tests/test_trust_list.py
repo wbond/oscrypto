@@ -24,8 +24,8 @@ class TrustListTests(unittest.TestCase):
         self.assertIsInstance(certs, list)
         self.assertLess(10, len(certs))
         for cert in certs:
-            self.assertIsInstance(cert, byte_cls)
-            _ = x509.Certificate.load(cert).native
+            self.assertIsInstance(cert, x509.Certificate)
+            cert.native
 
     def test_get_path(self):
         certs = trust_list.get_path()

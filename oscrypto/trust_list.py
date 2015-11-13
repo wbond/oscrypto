@@ -8,6 +8,7 @@ import tempfile
 import threading
 
 from asn1crypto.pem import armor
+from asn1crypto.x509 import Certificate
 
 from ._errors import pretty_message
 from .errors import CACertsError
@@ -99,13 +100,14 @@ def get_list(cache_length=24):
         oscrypto.errors.CACertsError - when an error occurs exporting/locating certs
 
     :return:
-        A list of DER-encoded byte strings of the CA certs from the OS
+        A list of asn1crypto.x509.Certificate objects of the CA certs from
+        the OS
     """
 
     if not _in_memory_up_to_date(cache_length):
         with memory_lock:
             if not _in_memory_up_to_date(cache_length):
-                _module_values['certs'] = extract_from_system()
+                _module_values['certs'] = [Certificate.load(cert) for cert in extract_from_system()]
                 _module_values['last_update'] = time.time()
 
     return _module_values['certs']
