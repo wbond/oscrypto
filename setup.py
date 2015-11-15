@@ -66,7 +66,7 @@ setup(
         'Topic :: Security :: Cryptography',
     ],
 
-    keywords='crypto pki',
+    keywords='crypto pki x509 certificate encrypt decrypt sign verify rsa dsa ec',
 
     install_requires=['asn1crypto>=0.13'],
     packages=find_packages(exclude=['tests*', 'dev*']),
