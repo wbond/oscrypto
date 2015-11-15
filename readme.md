@@ -235,3 +235,9 @@ The following commands will run the linter and test coverage:
 python run.py lint
 python run.py coverage
 ```
+
+The following will regenerate the API documentation:
+
+```bash
+python run.py api_docs
+```
