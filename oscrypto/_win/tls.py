@@ -1398,6 +1398,14 @@ class TLSSocket(object):
         return self._session
 
     @property
+    def hostname(self):
+        """
+        A unicode string of the TLS server domain name or IP address
+        """
+
+        return self._hostname
+
+    @property
     def socket(self):
         """
         The underlying socket.socket connection

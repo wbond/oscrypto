@@ -14,6 +14,7 @@ features include:
 The API consists of:
 
  - [`TLSSocket()`](#tlssocket-class)
+   - [`.hostname`](#hostname-attribute)
    - [`.certificate`](#certificate-attribute)
    - [`.intermediates`](#intermediates-attribute)
    - [`.protocol`](#protocol-attribute)
@@ -58,6 +59,10 @@ The API consists of:
 > >         controlling the protocols and validation performed
 > >     """
 > > ```
+>
+> ##### `.hostname` attribute
+>
+> > A unicode string of the TLS server domain name or IP address
 >
 > ##### `.certificate` attribute
 >

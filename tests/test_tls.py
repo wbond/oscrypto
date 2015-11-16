@@ -44,6 +44,8 @@ class TLSTests(unittest.TestCase):
     @data('tls_hosts', True)
     def tls_connect(self, hostname):
         connection = tls.TLSSocket(hostname, 443)
+        self.assertEqual(hostname, connection.hostname)
+        self.assertIsInstance(connection.hostname, str_cls)
         self.assertIsInstance(connection.cipher_suite, str_cls)
         self.assertIsInstance(connection.certificate, x509.Certificate)
         self.assertLess(10, len(connection.cipher_suite))
