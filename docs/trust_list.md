@@ -20,7 +20,8 @@ functions comprise the public API:
 >         oscrypto.errors.CACertsError - when an error occurs exporting/locating certs
 >
 >     :return:
->         A list of DER-encoded byte strings of the CA certs from the OS
+>         A list of asn1crypto.x509.Certificate objects of the CA certs from
+>         the OS
 >     """
 > ```
 >
