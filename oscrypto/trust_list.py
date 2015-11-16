@@ -100,8 +100,8 @@ def get_list(cache_length=24):
         oscrypto.errors.CACertsError - when an error occurs exporting/locating certs
 
     :return:
-        A list of asn1crypto.x509.Certificate objects of the CA certs from
-        the OS
+        A (copied) list of asn1crypto.x509.Certificate objects of the CA certs
+        from the OS
     """
 
     if not _in_memory_up_to_date(cache_length):
@@ -110,7 +110,7 @@ def get_list(cache_length=24):
                 _module_values['certs'] = [Certificate.load(cert) for cert in extract_from_system()]
                 _module_values['last_update'] = time.time()
 
-    return _module_values['certs']
+    return list(_module_values['certs'])
 
 
 def _cached_path_needs_update(ca_path, cache_length):
