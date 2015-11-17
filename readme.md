@@ -168,6 +168,7 @@ Some downsides include:
  - [certbuilder](https://github.com/wbond/certbuilder)
  - [crlbuilder](https://github.com/wbond/crlbuilder)
  - [ocspbuilder](https://github.com/wbond/ocspbuilder)
+ - [certvalidator](https://github.com/wbond/certvalidator)
 
 ## Current Release
 
