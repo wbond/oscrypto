@@ -1,5 +1,13 @@
 # changelog
 
+## 0.13.0
+
+ - Backwards compatibility break: `trust_list.get_list()` now returns a list of
+   `asn1crypto.x509.Certificate` objects instead of a list of byte strings
+ - `trust_list.get_list()` now returns a copy of the list to prevent accidental
+   modification of the list
+ - Added `tls.TLSSocket.hostname`
+
 ## 0.12.0
 
  - Fixed Python 2.6 support on Windows and Linux
