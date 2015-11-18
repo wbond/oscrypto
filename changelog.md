@@ -1,5 +1,11 @@
 # changelog
 
+## 0.13.1
+
+ - Improved handling of signature errors to always raise `errors.SignatureError`
+ - Fixed a bug with `trust_list.get_list()` on Windows not returning
+   certificates that were valid for all uses
+
 ## 0.13.0
 
  - Backwards compatibility break: `trust_list.get_list()` now returns a list of
