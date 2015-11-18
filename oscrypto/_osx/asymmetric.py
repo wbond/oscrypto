@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from asn1crypto import keys, x509
 
 from .._errors import pretty_message
-from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null
+from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null, is_null
 from ._security import Security, SecurityConst, handle_sec_error, osx_version_info
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
@@ -1376,7 +1376,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
         handle_cf_error(error_pointer)
 
         res = Security.SecTransformExecute(sec_transform, error_pointer)
-        handle_cf_error(error_pointer)
+        if not is_null(error_pointer):
+            error = unwrap(error_pointer)
+            if not is_null(error):
+                raise SignatureError('Signature is invalid')
 
         res = bool(CoreFoundation.CFBooleanGetValue(res))
 
