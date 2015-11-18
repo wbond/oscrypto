@@ -175,6 +175,22 @@ class AsymmetricTests(unittest.TestCase):
         with self.assertRaises(errors.SignatureError):
             asymmetric.rsa_pkcs1v15_verify(public, signature, original_data + b'1', 'sha1')
 
+    def test_rsa_verify_fail_each_byte(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_signature'), 'rb') as f:
+            original_signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        for i in range(0, len(original_signature)):
+            if i == 0:
+                signature = b'\xab' + original_signature[1:]
+            elif i == len(original_signature) - 1:
+                signature = original_signature[0:-1] + b'\xab'
+            else:
+                signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
+            with self.assertRaises(errors.SignatureError):
+                asymmetric.rsa_pkcs1v15_verify(public, signature, original_data+ b'1', 'sha1')
+
     def test_rsa_pss_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -216,6 +232,31 @@ class AsymmetricTests(unittest.TestCase):
             signature = f.read()
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
         asymmetric.dsa_verify(public, signature, original_data, 'sha1')
+
+    def test_dsa_verify_fail(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'dsa_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.dsa_verify(public, signature, original_data + b'1', 'sha1')
+
+    def test_dsa_verify_fail_each_byte(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'dsa_signature'), 'rb') as f:
+            original_signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
+        for i in range(0, len(original_signature)):
+            if i == 0:
+                signature = b'\xab' + original_signature[1:]
+            elif i == len(original_signature) - 1:
+                signature = original_signature[0:-1] + b'\xab'
+            else:
+                signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
+            with self.assertRaises(errors.SignatureError):
+                asymmetric.dsa_verify(public, signature, original_data+ b'1', 'sha1')
 
     def test_ecdsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:

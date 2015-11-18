@@ -1327,7 +1327,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
             res = libcrypto.EVP_DigestVerifyFinal(evp_md_ctx, signature, len(signature))
 
-        if res == 0:
+        if res < 1:
             raise SignatureError('Signature is invalid')
         handle_openssl_error(res)
 
