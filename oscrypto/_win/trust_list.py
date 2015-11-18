@@ -82,13 +82,15 @@ def extract_from_system():
 
                 to_read = new(crypt32, 'DWORD *', 0)
                 res = crypt32.CertGetEnhancedKeyUsage(context_pointer, 0, null(), to_read)
-                if res == 0:
-                    error_code, _ = get_error()
-                    if error_code == Crypt32Const.CRYPT_E_NOT_FOUND:
-                        has_enhanced_usage = False
-                    else:
-                        handle_error(res)
-                else:
+                handle_error(res)
+
+                # This determines if an empty struct indicates the
+                # certificate is valid for all uses or none
+                error_code, _ = get_error()
+                if error_code == Crypt32Const.CRYPT_E_NOT_FOUND:
+                    has_enhanced_usage = False
+
+                if has_enhanced_usage:
                     usage_buffer = buffer_from_bytes(deref(to_read))
                     res = crypt32.CertGetEnhancedKeyUsage(
                         context_pointer,
