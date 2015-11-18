@@ -216,7 +216,7 @@ class Certificate():
 
         if self._self_signed is None:
             self._self_signed = False
-            if self.asn1.self_signed:
+            if self.asn1.self_signed in set(['yes', 'maybe']):
 
                 signature_algo = self.asn1['signature_algorithm'].signature_algo
                 hash_algo = self.asn1['signature_algorithm'].hash_algo
