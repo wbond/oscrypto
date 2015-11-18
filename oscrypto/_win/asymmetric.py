@@ -1414,7 +1414,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     else:
         # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
-        signature = Signature.load(signature).to_bcrypt()
+        try:
+            signature = Signature.load(signature).to_bcrypt()
+        except (ValueError, OverflowError, TypeError):
+            raise SignatureError('Signature is invalid')
 
     res = bcrypt.BCryptVerifySignature(
         certificate_or_public_key.bcrypt_key_handle,
