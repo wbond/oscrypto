@@ -49,21 +49,24 @@ def extract_chain(server_handshake_bytes):
     message_bytes = None
 
     pointer = 0
-    while pointer < len(server_handshake_bytes):
+    while not found and pointer < len(server_handshake_bytes):
         record_header = server_handshake_bytes[pointer:pointer + 5]
         record_type = record_header[0:1]
         record_length = int_from_bytes(record_header[3:])
-        sub_type = server_handshake_bytes[pointer + 5:pointer + 6]
-        if record_type == b'\x16' and sub_type == b'\x0b':
-            found = True
-            message_bytes = server_handshake_bytes[pointer + 5:pointer + 5 + record_length]
-            break
+        if record_type == b'\x16':
+            section_pointer = pointer + 5
+            while not found and section_pointer < pointer + record_length + 4:
+                sub_type = server_handshake_bytes[section_pointer:section_pointer + 1]
+                section_length = int_from_bytes(server_handshake_bytes[section_pointer + 1:section_pointer + 4])
+                if sub_type == b'\x0b':
+                    message_bytes = server_handshake_bytes[section_pointer + 4:section_pointer + 4 + section_length]
+                    found = True
+                section_pointer += section_length + 4
         pointer += 5 + record_length
 
     if found:
-        # The first 7 bytes are the handshake type (1 byte) and total message
-        # length (3 bytes) and cert chain length (3 bytes)
-        pointer = 7
+        # The first 3 bytes are the cert chain length
+        pointer = 3
         while pointer < len(message_bytes):
             cert_length = int_from_bytes(message_bytes[pointer:pointer + 3])
             cert_start = pointer + 3
