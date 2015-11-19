@@ -90,6 +90,7 @@ class SecurityConst():
     errSSLNoRootCert = -9813
     errSSLHostNameMismatch = -9843
     errSSLPeerHandshakeFail = -9824
+    errSSLPeerUserCancelled = -9839
     errSSLWeakPeerEphemeralDHKey = -9850
     errSSLServerAuthCompleted = -9841
     errSSLRecordOverflow = -9847

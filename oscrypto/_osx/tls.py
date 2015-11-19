@@ -106,45 +106,49 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
         An integer status code of the result - 0 for success
     """
 
-    self = _connection_refs.get(connection_id)
-    if not self:
-        socket = _socket_refs.get(connection_id)
-    else:
-        socket = self._socket
-
-    if not self and not socket:
-        return 0
-
-    bytes_requested = deref(data_length_pointer)
-
-    error = None
-    data = b''
     try:
-        while len(data) < bytes_requested:
-            chunk = socket.recv(bytes_requested - len(data))
-            data += chunk
-            if chunk == b'' and socket.gettimeout() is None:
-                if len(data) == 0:
-                    return SecurityConst.errSSLClosedNoNotify
-                break
-    except (socket_.error) as e:
-        error = e.errno
+        self = _connection_refs.get(connection_id)
+        if not self:
+            socket = _socket_refs.get(connection_id)
+        else:
+            socket = self._socket
 
-    if error is not None and error != errno.EAGAIN:
-        if error == errno.ECONNRESET:
-            return SecurityConst.errSSLClosedNoNotify
-        return SecurityConst.errSSLClosedAbort
+        if not self and not socket:
+            return 0
 
-    if self and not self._done_handshake:
-        self._server_hello += data
+        bytes_requested = deref(data_length_pointer)
 
-    write_to_buffer(data_buffer, data)
-    pointer_set(data_length_pointer, len(data))
+        error = None
+        data = b''
+        try:
+            while len(data) < bytes_requested:
+                chunk = socket.recv(bytes_requested - len(data))
+                data += chunk
+                if chunk == b'' and socket.gettimeout() is None:
+                    if len(data) == 0:
+                        return SecurityConst.errSSLClosedNoNotify
+                    break
+        except (socket_.error) as e:
+            error = e.errno
 
-    if len(data) != bytes_requested:
-        return SecurityConst.errSSLWouldBlock
+        if error is not None and error != errno.EAGAIN:
+            if error == errno.ECONNRESET:
+                return SecurityConst.errSSLClosedNoNotify
+            return SecurityConst.errSSLClosedAbort
 
-    return 0
+        if self and not self._done_handshake:
+            self._server_hello += data
+
+        write_to_buffer(data_buffer, data)
+        pointer_set(data_length_pointer, len(data))
+
+        if len(data) != bytes_requested:
+            return SecurityConst.errSSLWouldBlock
+
+        return 0
+    except (KeyboardInterrupt) as e:
+        self._exception = e
+        return SecurityConst.errSSLPeerUserCancelled
 
 
 def _read_remaining(socket):
@@ -189,37 +193,41 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
         An integer status code of the result - 0 for success
     """
 
-    self = _connection_refs.get(connection_id)
-    if not self:
-        socket = _socket_refs.get(connection_id)
-    else:
-        socket = self._socket
-
-    if not self and not socket:
-        return 0
-
-    data_length = deref(data_length_pointer)
-    data = bytes_from_buffer(data_buffer, data_length)
-
-    if self and not self._done_handshake:
-        self._client_hello += data
-
-    error = None
     try:
-        sent = socket.send(data)
-    except (socket_.error) as e:
-        error = e.errno
+        self = _connection_refs.get(connection_id)
+        if not self:
+            socket = _socket_refs.get(connection_id)
+        else:
+            socket = self._socket
 
-    if error is not None and error != errno.EAGAIN:
-        if error == errno.ECONNRESET:
-            return SecurityConst.errSSLClosedNoNotify
-        return SecurityConst.errSSLClosedAbort
+        if not self and not socket:
+            return 0
 
-    if sent != data_length:
-        pointer_set(data_length_pointer, sent)
-        return SecurityConst.errSSLWouldBlock
+        data_length = deref(data_length_pointer)
+        data = bytes_from_buffer(data_buffer, data_length)
 
-    return 0
+        if self and not self._done_handshake:
+            self._client_hello += data
+
+        error = None
+        try:
+            sent = socket.send(data)
+        except (socket_.error) as e:
+            error = e.errno
+
+        if error is not None and error != errno.EAGAIN:
+            if error == errno.ECONNRESET:
+                return SecurityConst.errSSLClosedNoNotify
+            return SecurityConst.errSSLClosedAbort
+
+        if sent != data_length:
+            pointer_set(data_length_pointer, sent)
+            return SecurityConst.errSSLWouldBlock
+
+        return 0
+    except (KeyboardInterrupt) as e:
+        self._exception = e
+        return SecurityConst.errSSLPeerUserCancelled
 
 _read_callback_pointer = callback(Security, 'SSLReadFunc', _read_callback)
 _write_callback_pointer = callback(Security, 'SSLWriteFunc', _write_callback)
@@ -335,6 +343,7 @@ class TLSSocket(object):
 
     _socket = None
     _session = None
+    _exception = None
 
     _session_context = None
 
@@ -623,8 +632,16 @@ class TLSSocket(object):
             handle_sec_error(result)
 
             handshake_result = Security.SSLHandshake(session_context)
+            if self._exception is not None:
+                exception = self._exception
+                self._exception = None
+                raise exception
             while handshake_result == SecurityConst.errSSLWouldBlock:
                 handshake_result = Security.SSLHandshake(session_context)
+                if self._exception is not None:
+                    exception = self._exception
+                    self._exception = None
+                    raise exception
 
             if osx_version_info < (10, 8) and osx_version_info >= (10, 7):
                 do_validation = explicit_validation and handshake_result == 0
@@ -988,6 +1005,10 @@ class TLSSocket(object):
             to_read,
             processed_pointer
         )
+        if self._exception is not None:
+            exception = self._exception
+            self._exception = None
+            raise exception
         if result and result not in set([SecurityConst.errSSLWouldBlock, SecurityConst.errSSLClosedGraceful]):
             handle_sec_error(result, TLSError)
 
@@ -1146,6 +1167,10 @@ class TLSSocket(object):
                 data_len,
                 processed_pointer
             )
+            if self._exception is not None:
+                exception = self._exception
+                self._exception = None
+                raise exception
             handle_sec_error(result, TLSError)
 
             bytes_written = deref(processed_pointer)
