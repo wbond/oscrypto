@@ -106,6 +106,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
         An integer status code of the result - 0 for success
     """
 
+    self = None
     try:
         self = _connection_refs.get(connection_id)
         if not self:
@@ -147,7 +148,8 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
 
         return 0
     except (KeyboardInterrupt) as e:
-        self._exception = e
+        if self:
+            self._exception = e
         return SecurityConst.errSSLPeerUserCancelled
 
 
