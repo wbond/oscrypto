@@ -345,6 +345,20 @@ class TLSSocket(object):
         return new_socket
 
     def __init__(self, address, port, timeout=10, session=None):
+        """
+        :param address:
+            A unicode string of the domain name or IP address to conenct to
+
+        :param port:
+            An integer of the port number to connect to
+
+        :param timeout:
+            An integer timeout to use for the socket
+
+        :param session:
+            An oscrypto.tls.TLSSession object to allow for session reuse and
+            controlling the protocols and validation performed
+        """
 
         self._received_bytes = b''
         self._decrypted_bytes = b''
