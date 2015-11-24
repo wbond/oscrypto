@@ -125,9 +125,11 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
             while len(data) < bytes_requested:
                 chunk = socket.recv(bytes_requested - len(data))
                 data += chunk
-                if chunk == b'' and socket.gettimeout() is None:
+                if chunk == b'':
                     if len(data) == 0:
-                        return SecurityConst.errSSLClosedNoNotify
+                        if socket.gettimeout() is None:
+                            return SecurityConst.errSSLClosedNoNotify
+                        return SecurityConst.errSSLClosedAbort
                     break
         except (socket_.error) as e:
             error = e.errno
