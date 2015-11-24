@@ -344,7 +344,7 @@ class TLSSocket(object):
 
         return new_socket
 
-    def __init__(self, address, port, timeout=None, session=None):
+    def __init__(self, address, port, timeout=10, session=None):
 
         self._received_bytes = b''
         self._decrypted_bytes = b''
@@ -378,6 +378,7 @@ class TLSSocket(object):
                 ))
 
             self._socket = socket_.create_connection((address, port), timeout)
+            self._socket.settimeout(timeout)
 
         if session is None:
             session = TLSSession()

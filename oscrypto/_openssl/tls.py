@@ -316,7 +316,7 @@ class TLSSocket(object):
 
         return new_socket
 
-    def __init__(self, address, port, timeout=None, session=None):
+    def __init__(self, address, port, timeout=10, session=None):
         """
         :param address:
             A unicode string of the domain name or IP address to conenct to
@@ -363,6 +363,7 @@ class TLSSocket(object):
                 ))
 
             self._socket = socket_.create_connection((address, port), timeout)
+            self._socket.settimeout(timeout)
 
         if session is None:
             session = TLSSession()
