@@ -875,7 +875,10 @@ class TLSSocket(object):
                 if dh_params_length is not None and dh_params_length < 1024:
                     raise_dh_params()
 
-            if handshake_result != SecurityConst.errSSLWouldBlock:
+            would_block = handshake_result == SecurityConst.errSSLWouldBlock
+            server_auth_complete = handshake_result == SecurityConst.errSSLServerAuthCompleted
+            manual_validation = self._session._manual_validation and server_auth_complete
+            if not would_block and not manual_validation:
                 handle_sec_error(handshake_result, TLSError)
 
             self._session_context = session_context
