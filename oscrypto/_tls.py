@@ -254,7 +254,7 @@ def _parse_tls_records(data):
     data_len = len(data)
     while pointer < data_len:
         # Don't try to parse any more once the ChangeCipherSpec is found
-        if data[pointer:pointer + 1] == '\x14':
+        if data[pointer:pointer + 1] == b'\x14':
             break
         length = int_from_bytes(data[pointer + 3:pointer + 5])
         yield (
