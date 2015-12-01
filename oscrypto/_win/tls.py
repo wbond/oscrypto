@@ -724,6 +724,7 @@ class TLSSocket(object):
                 )
 
                 if result == Secur32Const.SEC_E_INCOMPLETE_MESSAGE:
+                    in_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
                     continue
 
                 if result == Secur32Const.SEC_E_ILLEGAL_MESSAGE:
