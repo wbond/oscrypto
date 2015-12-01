@@ -438,6 +438,7 @@ class TLSSocket(object):
                     session._extra_trust_roots
                 )
                 session.__del__()
+                self._received_bytes = b''
                 self._session = new_session
                 self._socket = socket_.create_connection((address, port), timeout)
                 self._socket.settimeout(timeout)
@@ -800,7 +801,6 @@ class TLSSocket(object):
                         alert_number = alert_bytes[6:7]
                         if alert_number == b'\x28' or alert_number == b'\x2b':
                             if 'TLSv1.2' in self._session._protocols and len(self._session._protocols) > 1:
-                                self._received_bytes = b''
                                 chain = extract_chain(handshake_server_bytes)
                                 raise _TLSDowngradeError(
                                     'Server certificate verification failed - weak certificate signature algorithm',
