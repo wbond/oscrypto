@@ -205,7 +205,7 @@ class TLSSession(object):
         for index, alg in enumerate(algs):
             alg_array[index] = alg
 
-        flags = Secur32Const.SCH_USE_STRONG_CRYPTO
+        flags = Secur32Const.SCH_USE_STRONG_CRYPTO | Secur32Const.SCH_CRED_NO_DEFAULT_CREDS
         if not self._manual_validation and not self._extra_trust_roots:
             flags |= Secur32Const.SCH_CRED_AUTO_CRED_VALIDATION
         else:
@@ -639,6 +639,7 @@ class TLSSocket(object):
                 Secur32Const.ISC_REQ_ALLOCATE_MEMORY: 'memory allocation',
                 Secur32Const.ISC_REQ_INTEGRITY: 'integrity',
                 Secur32Const.ISC_REQ_STREAM: 'stream orientation',
+                Secur32Const.ISC_REQ_USE_SUPPLIED_CREDS: 'disable automatic client auth',
             }
 
             self._context_flags = 0
