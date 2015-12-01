@@ -30,7 +30,7 @@ from ._secur32 import secur32, Secur32Const, handle_error
 from ._crypt32 import crypt32, Crypt32Const, handle_error as handle_crypt32_error
 from ._kernel32 import kernel32
 from .._types import type_name, str_cls, byte_cls, int_types
-from ..errors import TLSError
+from ..errors import TLSError, TLSVerificationError
 from .._tls import (
     extract_chain,
     get_dh_params_length,
@@ -65,6 +65,13 @@ _line_regex = re.compile(b'(\r\n|\r|\n)')
 
 _gwv = sys.getwindowsversion()
 _win_version_info = (_gwv[0], _gwv[1])
+
+
+
+class _TLSDowngradeError(TLSVerificationError):
+
+    pass
+
 
 
 class TLSSession(object):
@@ -343,7 +350,15 @@ class TLSSocket(object):
         new_socket = cls(None, None, session=session)
         new_socket._socket = socket
         new_socket._hostname = hostname
-        new_socket._handshake()
+
+        # Since we don't create the socket connection here, we can't try to
+        # reconnect with a lower version of the TLS protocol, so we just
+        # move the data to public exception type TLSVerificationError()
+        try:
+            new_socket._handshake()
+        except (_TLSDowngradeError) as e:
+            new_e = TLSVerificationError(e.message, e.certificate)
+            raise new_e
 
         return new_socket
 
@@ -412,7 +427,22 @@ class TLSSocket(object):
 
         if self._socket:
             self._hostname = address
-            self._handshake()
+
+            try:
+                self._handshake()
+            except (_TLSDowngradeError):
+                self.close()
+                new_session = TLSSession(
+                    session._protocols - set(['TLSv1.2']),
+                    session._manual_validation,
+                    session._extra_trust_roots
+                )
+                session.__del__()
+                self._session = new_session
+                self._socket = socket_.create_connection((address, port), timeout)
+                self._socket.settimeout(timeout)
+                self._handshake()
+
 
     def _create_buffers(self, number):
         """
@@ -757,7 +787,28 @@ class TLSSocket(object):
                     raise_weak_signature(cert)
 
                 if result == Secur32Const.SEC_E_INVALID_TOKEN:
-                    raise_protocol_error(handshake_server_bytes)
+                    # If an alert it present, there may have been a handshake
+                    # error due to the server using a certificate path with a
+                    # trust root using MD2 or MD5 combined with TLS 1.2. To
+                    # work around this, if the user allows anything other than
+                    # TLS 1.2, we just remove it from the acceptable protocols
+                    # and try again.
+                    if out_buffers[1].cbBuffer > 0:
+                        alert_bytes = bytes_from_buffer(out_buffers[1].pvBuffer, out_buffers[1].cbBuffer)
+                        handshake_client_bytes += alert_bytes
+                        # self._socket.send(alert_bytes)
+                        # in_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
+                        # continue
+                        alert_level = alert_bytes[5:6]
+                        alert_number = alert_bytes[6:7]
+                        if alert_number == b'\x28' or alert_number == b'\x2b':
+                            if 'TLSv1.2' in self._session._protocols and len(self._session._protocols) > 1:
+                                self._received_bytes = b''
+                                chain = extract_chain(handshake_server_bytes)
+                                cert = chain[0]
+                                message = 'Server certificate verification failed - weak certificate signature algorithm'
+                                raise _TLSDowngradeError(message, cert)
+                    raise_handshake()
 
                 if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
