@@ -32,6 +32,8 @@ from ._kernel32 import kernel32
 from .._types import type_name, str_cls, byte_cls, int_types
 from ..errors import TLSError, TLSVerificationError
 from .._tls import (
+    detect_client_auth_request,
+    detect_other_protocol,
     extract_chain,
     get_dh_params_length,
     parse_session_info,
@@ -758,6 +760,8 @@ class TLSSocket(object):
                     continue
 
                 if result == Secur32Const.SEC_E_ILLEGAL_MESSAGE:
+                    if detect_client_auth_request(handshake_server_bytes):
+                        raise_client_auth()
                     raise_handshake()
 
                 if result == Secur32Const.SEC_E_WRONG_PRINCIPAL:
@@ -808,6 +812,8 @@ class TLSSocket(object):
                                 cert = chain[0]
                                 message = 'Server certificate verification failed - weak certificate signature algorithm'
                                 raise _TLSDowngradeError(message, cert)
+                    if detect_other_protocol(handshake_server_bytes):
+                        raise_protocol_error(handshake_server_bytes)
                     raise_handshake()
 
                 if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
