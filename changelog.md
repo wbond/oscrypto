@@ -1,5 +1,22 @@
 # changelog
 
+## 0.14.0
+
+ - `tls.TLSSocket()` now has a default connect, read and write timeout of `10`
+   seconds
+ - Fixed bugs with `manual_validation` keyword param for `tls.TLSSession()` on
+   all three platforms
+ - Fixed a bug in `asymmetric.PublicKey.self_signed` that would always force
+   signature verification
+ - Improved parsing of TLS records during handshakes to improve error messaging
+ - `tls.TLSSocket()` on OS X now respects `KeyboardInterrupt` while in a read
+   or write callback
+ - TLS connections on Windows will fallback to TLSv1.1 if TLSv1.2 is negotiated
+   but a trust root with an MD2 or MD5 certificate is part of the certificate
+   path. Previously the connection would fail.
+ - TLS connections with optional client authentication no longer fail on Windows
+ - `trust_list.get_list()` on Windows now returns a de-duplicated list
+
 ## 0.13.1
 
  - Improved handling of signature errors to always raise `errors.SignatureError`

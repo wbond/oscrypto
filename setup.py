@@ -68,7 +68,7 @@ setup(
 
     keywords='crypto pki tls ssl x509 certificate encrypt decrypt sign verify rsa dsa ec',
 
-    install_requires=['asn1crypto>=0.13'],
+    install_requires=['asn1crypto>=0.15'],
     packages=find_packages(exclude=['tests*', 'dev*']),
 
     cmdclass={
