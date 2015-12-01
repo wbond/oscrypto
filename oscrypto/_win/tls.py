@@ -189,9 +189,6 @@ class TLSSession(object):
             Secur32Const.CALG_AES_128,
             Secur32Const.CALG_AES_256,
             Secur32Const.CALG_3DES,
-            Secur32Const.CALG_SHA512,
-            Secur32Const.CALG_SHA384,
-            Secur32Const.CALG_SHA256,
             Secur32Const.CALG_SHA1,
             Secur32Const.CALG_ECDHE,
             Secur32Const.CALG_DH_EPHEM,
@@ -200,6 +197,12 @@ class TLSSession(object):
             Secur32Const.CALG_ECDSA,
             Secur32Const.CALG_DSS_SIGN,
         ]
+        if 'TLSv1.2' in self._protocols:
+            algs.extend([
+                Secur32Const.CALG_SHA512,
+                Secur32Const.CALG_SHA384,
+                Secur32Const.CALG_SHA256,
+            ])
 
         alg_array = new(secur32, 'ALG_ID[%s]' % len(algs))
         for index, alg in enumerate(algs):
