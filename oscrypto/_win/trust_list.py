@@ -2,6 +2,7 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import datetime
+import hashlib
 import struct
 
 from .._ffi import buffer_from_bytes, bytes_from_buffer, deref, struct_from_buffer, new, null, is_null, unwrap, cast
@@ -30,7 +31,7 @@ def extract_from_system():
         A list of byte strings - each a DER-encoded certificate
     """
 
-    output = []
+    output = {}
 
     now = datetime.datetime.utcnow()
 
@@ -109,7 +110,7 @@ def extract_from_system():
 
             if not skip:
                 data = bytes_from_buffer(context.pbCertEncoded, int(context.cbCertEncoded))
-                output.append(data)
+                output[hashlib.sha1(data).digest()] = data
 
             context_pointer = crypt32.CertEnumCertificatesInStore(store_handle, context_pointer)
 
@@ -117,7 +118,7 @@ def extract_from_system():
         handle_error(result)
         store_handle = None
 
-    return output
+    return output.values()
 
 
 def _convert_filetime_to_timestamp(filetime):
