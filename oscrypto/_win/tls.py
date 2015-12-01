@@ -700,7 +700,7 @@ class TLSSocket(object):
 
             while result != Secur32Const.SEC_E_OK:
                 bytes_read = self._socket.recv(8192)
-                if bytes_read == b'' and self._socket.gettimeout() is None:
+                if bytes_read == b'':
                     raise_disconnection()
                 handshake_server_bytes += bytes_read
                 self._received_bytes += bytes_read
