@@ -557,13 +557,14 @@ class TLSSocket(object):
                     libssl.SSL_SESSION_free(self._session._ssl_session)
                 self._session._ssl_session = libssl.SSL_get1_session(ssl)
 
-            if self.certificate.hash_algo in set(['md5', 'md2']):
-                raise_weak_signature(self.certificate)
+            if not self._session._manual_validation:
+                if self.certificate.hash_algo in set(['md5', 'md2']):
+                    raise_weak_signature(self.certificate)
 
-            # OpenSSL does not do hostname or IP address checking in the end
-            # entity certificate, so we must perform that check
-            if not self.certificate.is_valid_domain_ip(self._hostname):
-                raise_hostname(self.certificate, self._hostname)
+                # OpenSSL does not do hostname or IP address checking in the end
+                # entity certificate, so we must perform that check
+                if not self.certificate.is_valid_domain_ip(self._hostname):
+                    raise_hostname(self.certificate, self._hostname)
 
         except (OSError, socket_.error):
             if ssl:
