@@ -441,7 +441,7 @@ class TLSSocket(object):
                 error = libssl.SSL_get_error(ssl, result)
                 if error == LibsslConst.SSL_ERROR_WANT_READ:
                     chunk = self._raw_read(self._rbio)
-                    if chunk == b'' and self._socket.gettimeout() is None:
+                    if chunk == b'':
                         if handshake_server_bytes == b'':
                             raise_disconnection()
                         raise_protocol_error(handshake_server_bytes)
