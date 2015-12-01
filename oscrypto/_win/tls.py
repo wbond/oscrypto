@@ -69,11 +69,9 @@ _gwv = sys.getwindowsversion()
 _win_version_info = (_gwv[0], _gwv[1])
 
 
-
 class _TLSDowngradeError(TLSVerificationError):
 
     pass
-
 
 
 class TLSSession(object):
@@ -445,7 +443,6 @@ class TLSSocket(object):
                 self._socket.settimeout(timeout)
                 self._handshake()
 
-
     def _create_buffers(self, number):
         """
         Creates a SecBufferDesc struct and contained SecBuffer structs
@@ -800,18 +797,15 @@ class TLSSocket(object):
                     if out_buffers[1].cbBuffer > 0:
                         alert_bytes = bytes_from_buffer(out_buffers[1].pvBuffer, out_buffers[1].cbBuffer)
                         handshake_client_bytes += alert_bytes
-                        # self._socket.send(alert_bytes)
-                        # in_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
-                        # continue
-                        alert_level = alert_bytes[5:6]
                         alert_number = alert_bytes[6:7]
                         if alert_number == b'\x28' or alert_number == b'\x2b':
                             if 'TLSv1.2' in self._session._protocols and len(self._session._protocols) > 1:
                                 self._received_bytes = b''
                                 chain = extract_chain(handshake_server_bytes)
-                                cert = chain[0]
-                                message = 'Server certificate verification failed - weak certificate signature algorithm'
-                                raise _TLSDowngradeError(message, cert)
+                                raise _TLSDowngradeError(
+                                    'Server certificate verification failed - weak certificate signature algorithm',
+                                    chain[0]
+                                )
                     if detect_other_protocol(handshake_server_bytes):
                         raise_protocol_error(handshake_server_bytes)
                     raise_handshake()
