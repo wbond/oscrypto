@@ -682,7 +682,7 @@ class TLSSocket(object):
             in_sec_buffer_desc_pointer, in_buffers = self._create_buffers(2)
             in_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
 
-            out_sec_buffer_desc_pointer, out_buffers = self._create_buffers(2)
+            out_sec_buffer_desc_pointer, out_buffers = self._create_buffers(3)
             out_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
             out_buffers[1].BufferType = Secur32Const.SECBUFFER_ALERT
 
@@ -899,6 +899,8 @@ class TLSSocket(object):
                     secur32.FreeContextBuffer(out_buffers[0].pvBuffer)
                 if not is_null(out_buffers[1].pvBuffer):
                     secur32.FreeContextBuffer(out_buffers[1].pvBuffer)
+                if not is_null(out_buffers[2].pvBuffer):
+                    secur32.FreeContextBuffer(out_buffers[2].pvBuffer)
             if new_context_handle_pointer:
                 secur32.DeleteSecurityContext(new_context_handle_pointer)
 
