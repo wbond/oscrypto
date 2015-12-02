@@ -3,7 +3,15 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from ctypes.util import find_library
 
-from .._ffi import LibraryNotFoundError, FFIEngineError, deref, new, register_ffi
+from .._ffi import (
+    buffer_from_bytes,
+    byte_string_from_buffer,
+    deref,
+    FFIEngineError,
+    LibraryNotFoundError,
+    new,
+    register_ffi,
+)
 
 try:
     from cffi import FFI
@@ -71,6 +79,7 @@ ffi.cdef("""
     CFIndex CFDictionaryGetCount(CFDictionaryRef theDict);
 
     const char *CFStringGetCStringPtr(CFStringRef theString, CFStringEncoding encoding);
+    Boolean CFStringGetCString(CFStringRef theString, char *buffer, CFIndex bufferSize, CFStringEncoding encoding);
     CFStringRef CFStringCreateWithCString(CFAllocatorRef alloc, const char *cStr, CFStringEncoding encoding);
 
     CFNumberRef CFNumberCreate(CFAllocatorRef allocator, CFNumberType theType, const void *valuePtr);
@@ -237,6 +246,17 @@ class CFHelpers():
             kCFStringEncodingUTF8
         )
         string = ffi.string(string_ptr)
+        if string is None:
+            buffer = buffer_from_bytes(1024)
+            result = CoreFoundation.CFStringGetCString(
+                value,
+                buffer,
+                1024,
+                kCFStringEncodingUTF8
+            )
+            if not result:
+                raise OSError('Error copying C string from CFStringRef')
+            string = byte_string_from_buffer(buffer)
         if string is not None:
             string = string.decode('utf-8')
         return string

@@ -6,7 +6,7 @@ from ctypes import c_void_p, c_long, c_uint32, c_char_p, c_byte, c_ulong, c_bool
 from ctypes import CDLL, string_at, cast, POINTER, byref
 import ctypes
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import LibraryNotFoundError, FFIEngineError, buffer_from_bytes, byte_string_from_buffer
 
 
 __all__ = [
@@ -87,6 +87,14 @@ try:
         CFStringEncoding
     ]
     CoreFoundation.CFStringGetCStringPtr.restype = c_char_p
+
+    CoreFoundation.CFStringGetCString.argtypes = [
+        CFStringRef,
+        c_char_p,
+        CFIndex,
+        CFStringEncoding
+    ]
+    CoreFoundation.CFStringGetCString.restype = c_bool
 
     CoreFoundation.CFStringCreateWithCString.argtypes = [
         CFAllocatorRef,
@@ -337,6 +345,17 @@ class CFHelpers():
             _cast_pointer_p(value),
             kCFStringEncodingUTF8
         )
+        if string is None:
+            buffer = buffer_from_bytes(1024)
+            result = CoreFoundation.CFStringGetCString(
+                _cast_pointer_p(value),
+                buffer,
+                1024,
+                kCFStringEncodingUTF8
+            )
+            if not result:
+                raise OSError('Error copying C string from CFStringRef')
+            string = byte_string_from_buffer(buffer)
         if string is not None:
             string = string.decode('utf-8')
         return string
