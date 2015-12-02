@@ -41,6 +41,9 @@ def handle_sec_error(error, exception_class=None):
     output = CFHelpers.cf_string_to_unicode(cf_error_string)
     CoreFoundation.CFRelease(cf_error_string)
 
+    if output is None or output == '':
+        output = 'OSStatus %s' % error
+
     if exception_class is None:
         exception_class = OSError
 
