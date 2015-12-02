@@ -293,6 +293,9 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
         kdf_hmac = 'sha256'
         kdf_salt = rand_bytes(key_length)
         iterations = pbkdf2_iteration_calculator(kdf_hmac, key_length, target_ms=target_ms, quiet=True)
+        # Need a bare minimum of 10,000 iterations for PBKDF2 as of 2015
+        if iterations < 10000:
+            iterations = 10000
 
         passphrase_bytes = passphrase.encode('utf-8')
         key = pbkdf2(kdf_hmac, passphrase_bytes, kdf_salt, iterations, key_length)
