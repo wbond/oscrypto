@@ -13,8 +13,10 @@ from .symmetric import aes_cbc_pkcs7_encrypt
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
 from .util import rand_bytes
 from ._errors import pretty_message
+from ._ffi import LibraryNotFoundError
 from ._types import type_name, str_cls
 
+_shim_generate_pair = False
 
 if sys.platform == 'darwin':
     from ._osx.asymmetric import (
@@ -39,6 +41,25 @@ if sys.platform == 'darwin':
         rsa_oaep_encrypt,
         rsa_oaep_decrypt,
     )
+
+    # Detect an issue where virtualenv'ed system python will cause
+    # generate_pair() to fail with the error:
+    #
+    # "The user name or passphrase you entered is not correct"
+    # errSecAuthFailed
+    # -25293
+    #
+    # After spending hours trying all different ways to export generate and
+    # export the keys, this workaround was created. OpenSSL may be removed in
+    # a future version of OS X, but the current implementation should work
+    # until that happens.
+    _system_prefix = '/System/Library/Frameworks/Python.framework/Versions/'
+    if hasattr(sys, 'real_prefix') and sys.real_prefix.startswith(_system_prefix):
+        try:
+            from ._openssl.asymmetric import generate_pair as _openssl_generate_pair
+            _shim_generate_pair = True
+        except (LibraryNotFoundError):
+            pass
 
 elif sys.platform == 'win32':
     from ._win.asymmetric import (
@@ -400,3 +421,37 @@ def dump_openssl_private_key(private_key, passphrase):
         object_type = 'DSA PRIVATE KEY'
 
     return asn1crypto.pem.armor(object_type, output, headers=headers)
+
+
+if _shim_generate_pair:
+    def generate_pair(algorithm, bit_size=None, curve=None):  # noqa
+        """
+        Generates a public/private key pair
+
+        :param algorithm:
+            The key algorithm - "rsa", "dsa" or "ec"
+
+        :param bit_size:
+            An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
+            2048, 3072 or 4096. For "dsa" the value may be 1024.
+
+        :param curve:
+            A unicode string - used for "ec" keys. Valid values include "secp256r1",
+            "secp384r1" and "secp521r1".
+
+        :raises:
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
+
+        :return:
+            A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
+            may be saved by calling .asn1.dump().
+        """
+
+        openssl_pub, openssl_priv = _openssl_generate_pair(algorithm, bit_size, curve)
+        pub = load_public_key(openssl_pub.asn1.dump())
+        priv = load_private_key(openssl_priv.asn1.dump())
+        return (pub, priv)
+
+    generate_pair.shimmed = True

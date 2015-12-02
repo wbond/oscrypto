@@ -458,6 +458,8 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
     return (load_public_key(public_key), load_private_key(private_key))
 
+generate_pair.shimmed = False
+
 
 def _interpret_rsa_key_blob(key_type, blob_struct, blob):
     """
