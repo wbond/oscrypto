@@ -1,5 +1,10 @@
 # changelog
 
+## 0.14.1
+
+ - Fixed a bug where `asymmetric.generate_pair()` would raise an exception on
+   OS X when the system Python was used to create a virtualenv
+
 ## 0.14.0
 
  - `tls.TLSSocket()` now has a default connect, read and write timeout of `10`
