@@ -104,10 +104,13 @@ class AsymmetricTests(unittest.TestCase):
     def test_dump_private(self):
         def do_run():
             private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
-            pem_serialized = asymmetric.dump_private_key(private, 'password123', target_ms=20)
-            private_reloaded = asymmetric.load_private_key(pem_serialized, 'password123')
-            self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
-            self.assertEqual('rsa', private_reloaded.algorithm)
+
+            for password in [None, 'password123']:
+                pem_serialized = asymmetric.dump_private_key(private, password, target_ms=20)
+                private_reloaded = asymmetric.load_private_key(pem_serialized, password)
+                self.assertTrue(pem_serialized.startswith('-----'))
+                self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
+                self.assertEqual('rsa', private_reloaded.algorithm)
 
         # OpenSSL 0.9.8 doesn't have PBKDF2 implemented in C, thus the dump
         # operation fails since there is no reasonable way to ensure we are

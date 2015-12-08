@@ -328,12 +328,12 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
             'encrypted_data': ciphertext
         }).dump()
 
-        if encoding == 'pem':
-            if passphrase is None:
-                object_type = 'PRIVATE KEY'
-            else:
-                object_type = 'ENCRYPTED PRIVATE KEY'
-            output = asn1crypto.pem.armor(object_type, output)
+    if encoding == 'pem':
+        if passphrase is None:
+            object_type = 'PRIVATE KEY'
+        else:
+            object_type = 'ENCRYPTED PRIVATE KEY'
+        output = asn1crypto.pem.armor(object_type, output)
 
     return output
 
