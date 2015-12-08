@@ -5,6 +5,7 @@ import unittest
 import sys
 import os
 
+from asn1crypto import pem
 from oscrypto import asymmetric, errors
 
 from ._unittest_compat import patch
@@ -108,7 +109,7 @@ class AsymmetricTests(unittest.TestCase):
             for password in [None, 'password123']:
                 pem_serialized = asymmetric.dump_private_key(private, password, target_ms=20)
                 private_reloaded = asymmetric.load_private_key(pem_serialized, password)
-                self.assertTrue(pem_serialized.startswith('-----'))
+                self.assertTrue(pem.detect(pem_serialized))
                 self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
                 self.assertEqual('rsa', private_reloaded.algorithm)
 
