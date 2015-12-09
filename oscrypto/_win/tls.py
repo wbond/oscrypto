@@ -724,7 +724,7 @@ class TLSSocket(object):
                 token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
                 handshake_client_bytes += token
                 self._socket.send(token)
-                out_buffers[0].cBuffers = 0
+                out_buffers[0].cbBuffer = 0
                 secur32.FreeContextBuffer(out_buffers[0].pvBuffer)
                 out_buffers[0].pvBuffer = null()
 
@@ -820,7 +820,7 @@ class TLSSocket(object):
                     token = bytes_from_buffer(out_buffers[0].pvBuffer, out_buffers[0].cbBuffer)
                     handshake_client_bytes += token
                     self._socket.send(token)
-                    out_buffers[0].cBuffers = 0
+                    out_buffers[0].cbBuffer = 0
                     secur32.FreeContextBuffer(out_buffers[0].pvBuffer)
                     out_buffers[0].pvBuffer = null()
 
