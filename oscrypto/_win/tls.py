@@ -74,6 +74,17 @@ class _TLSDowngradeError(TLSVerificationError):
     pass
 
 
+class _TLSRetryError(TLSError):
+
+    """
+    TLSv1.2 on Windows 7 and 8 seems to have isuses with some DHE_RSA
+    ServerKeyExchange messages due to variable length integer encoding. This
+    exception is used to trigger a reconnection to attempt the handshake again.
+    """
+
+    pass
+
+
 class TLSSession(object):
     """
     A TLS session object that multiple TLSSocket objects can share for the
@@ -359,6 +370,9 @@ class TLSSocket(object):
         except (_TLSDowngradeError) as e:
             new_e = TLSVerificationError(e.message, e.certificate)
             raise new_e
+        except (_TLSRetryError) as e:
+            new_e = TLSError(e.message)
+            raise new_e
 
         return new_socket
 
@@ -443,6 +457,12 @@ class TLSSocket(object):
                 self._socket = socket_.create_connection((address, port), timeout)
                 self._socket.settimeout(timeout)
                 self._handshake()
+            except (_TLSRetryError):
+                self._received_bytes = b''
+                self._socket = socket_.create_connection((address, port), timeout)
+                self._socket.settimeout(timeout)
+                self._handshake()
+
 
     def _create_buffers(self, number):
         """
@@ -812,6 +832,14 @@ class TLSSocket(object):
                     if detect_other_protocol(handshake_server_bytes):
                         raise_protocol_error(handshake_server_bytes)
                     raise_handshake()
+
+                # These are semi-common errors with TLSv1.2 on Windows 7 an 8
+                # that appears to be due to poor handling of the
+                # ServerKeyExchange for DHE_RSA cipher suites. The solution
+                # is to retry the handshake.
+                if result == Secur32Const.SEC_E_BUFFER_TOO_SMALL or result == Secur32Const.SEC_E_MESSAGE_ALTERED:
+                    if 'TLSv1.2' in self._session._protocols:
+                        raise _TLSRetryError('TLS handshake failed')
 
                 if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
