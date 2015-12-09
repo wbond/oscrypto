@@ -463,7 +463,6 @@ class TLSSocket(object):
                 self._socket.settimeout(timeout)
                 self._handshake()
 
-
     def _create_buffers(self, number):
         """
         Creates a SecBufferDesc struct and contained SecBuffer structs
