@@ -117,6 +117,7 @@ class SecurityConst():
 
     errSecVerifyFailed = -67808
     errSecNoTrustSettings = -25263
+    errSecItemNotFound = -25300
 
     kSecPaddingNone = 0
     kSecPaddingPKCS1 = 1

@@ -65,6 +65,11 @@ def extract_from_system():
 
             trust_settings_pointer_pointer = new(CoreFoundation, 'CFArrayRef *')
             res = Security.SecTrustSettingsCopyTrustSettings(cert_pointer, domain, trust_settings_pointer_pointer)
+            # In OS X 10.11, this value started being seen. From the comments in
+            # the Security Framework Reference, the lack of any settings should
+            # indicate "always strut this certificate"
+            if res == SecurityConst.errSecItemNotFound:
+                continue
             handle_sec_error(res)
 
             trust_settings_pointer = unwrap(trust_settings_pointer_pointer)
