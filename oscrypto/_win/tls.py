@@ -777,6 +777,15 @@ class TLSSocket(object):
 
                 if result == Secur32Const.SEC_E_INCOMPLETE_MESSAGE:
                     in_buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
+                    # Windows 10 seems to fill the second input buffer with
+                    # a BufferType of SECBUFFER_MISSING (4), which if not
+                    # cleared causes the handshake to fail.
+                    if in_buffers[1].BufferType != Secur32Const.SECBUFFER_EMPTY:
+                        in_buffers[1].BufferType = Secur32Const.SECBUFFER_EMPTY
+                        in_buffers[1].cbBuffer = 0
+                        if not is_null(in_buffers[1].pvBuffer):
+                            secur32.FreeContextBuffer(in_buffers[1].pvBuffer)
+                            in_buffers[1].pvBuffer = null()
                     continue
 
                 if result == Secur32Const.SEC_E_ILLEGAL_MESSAGE:
