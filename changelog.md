@@ -1,5 +1,16 @@
 # changelog
 
+## 0.14.2
+
+ - Fixed `trust_list` to work with new Security.framework behavior on OS X
+   10.11 El Capitan
+ - Fixed an occasional bug with `tls.TLSSocket()` on Windows when using TLSv1.2
+   and the server negotiated using a `DHE_RSA` key exchange
+ - Fixed a bug on Windows 10 where a TLS handshake would fail if the TLS record
+   was not completely received within one call to `socket.recv()`
+ - Fixed a bug where a private key would not be encoded with PEM encoding when
+   requested, if no passphrase was provided to `asymmetric.dump_private_key()`
+
 ## 0.14.1
 
  - Fixed a bug where `asymmetric.generate_pair()` would raise an exception on

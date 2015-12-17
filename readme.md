@@ -32,6 +32,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - Windows 7
      - Windows 8.1
      - Windows Server 2012
+     - Windows 10
  - OS X 10.7 or newer
    - Uses:
      - [Security.framework](https://developer.apple.com/library/prerelease/mac/documentation/Security/Reference/SecurityFrameworkReference/index.html)
@@ -173,7 +174,7 @@ Some downsides include:
 
 ## Current Release
 
-0.14.1 - [changelog](changelog.md)
+0.14.2 - [changelog](changelog.md)
 
 ## Dependencies
 
