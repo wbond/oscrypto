@@ -22,6 +22,23 @@ from tests.test_tls import TLSTests
 test_classes = [KDFTests, KeyTests, AsymmetricTests, SymmetricTests, TrustListTests, TLSTests]
 
 
+def make_suite():
+    """
+    Constructs a unittest.TestSuite() of all tests for the package. For use
+    with setuptools.
+
+    :return:
+        A unittest.TestSuite() object
+    """
+
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    for test_class in test_classes:
+        tests = loader.loadTestsFromTestCase(test_class)
+        suite.addTests(tests)
+    return suite
+
+
 def run(matcher=None, repeat=1):
     """
     Runs the tests

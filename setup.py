@@ -71,6 +71,8 @@ setup(
     install_requires=['asn1crypto>=0.15'],
     packages=find_packages(exclude=['tests*', 'dev*']),
 
+    test_suite='dev.tests.make_suite',
+
     cmdclass={
         'clean': CleanCommand,
     }
