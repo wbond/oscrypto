@@ -244,3 +244,11 @@ The following will regenerate the API documentation:
 ```bash
 python run.py api_docs
 ```
+
+After creating a [semver](http://semver.org/) git tag, a `.tar.gz` and `.whl`
+of the package can be created and uploaded to
+[PyPi](https://pypi.python.org/pypi/oscrypto) by executing:
+
+```bash
+python run.py release
+```
