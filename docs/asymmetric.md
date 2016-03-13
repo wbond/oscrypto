@@ -1,6 +1,6 @@
-# oscrypto.assymetric API Documentation
+# oscrypto.asymmetric API Documentation
 
-The *oscrypto.assymetric* submodule implements public key signing, verification,
+The *oscrypto.asymmetric* submodule implements public key signing, verification,
 encryption and decryption. The following functions comprise the public API:
 
  - Keys/Certificates
