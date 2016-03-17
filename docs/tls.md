@@ -43,7 +43,7 @@ The API consists of:
 > ##### constructor
 >
 > > ```python
-> > def __init__(self, address, port, timeout=None, session=None):
+> > def __init__(self, address, port, timeout=10, session=None):
 > >     """
 > >     :param address:
 > >         A unicode string of the domain name or IP address to conenct to
