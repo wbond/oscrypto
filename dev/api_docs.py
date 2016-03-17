@@ -131,6 +131,11 @@ def _find_sections(md_ast, sections, last, last_class, total_lines=None):
     for child in md_ast.children:
         if child.t == 'ATXHeader':
 
+            if child.level == 2:
+                if last:
+                    sections[(last['type_name'], last['identifier'])] = (last['start_line'], child.start_line - 1)
+                    last.clear()
+
             if child.level in set([3, 5]) and len(child.inline_content) == 2:
                 first = child.inline_content[0]
                 second = child.inline_content[1]

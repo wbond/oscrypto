@@ -3,7 +3,7 @@
 The *oscrypto.asymmetric* submodule implements public key signing, verification,
 encryption and decryption. The following functions comprise the public API:
 
- - Keys/Certificates
+ - [Keys/Certificates](#keys-certificates)
    - [`generate_pair()`](#generate_pair-function)
    - [`load_certificate()`](#load_certificate-function)
    - [`load_public_key()`](#load_public_key-function)
@@ -13,7 +13,7 @@ encryption and decryption. The following functions comprise the public API:
    - [`dump_certificate()`](#dump_certificate-function)
    - [`dump_private_key()`](#dump_private_key-function)
    - [`dump_openssl_private_key()`](#dump_openssl_private_key-function)
- - RSA
+ - [RSA](#rsa)
    - [`rsa_pkcs1v15_sign()`](#rsa_pkcs1v15_sign-function)
    - [`rsa_pkcs1v15_verify()`](#rsa_pkcs1v15_verify-function)
    - [`rsa_pss_sign()`](#rsa_pss_sign-function)
@@ -22,12 +22,14 @@ encryption and decryption. The following functions comprise the public API:
    - [`rsa_pkcs1v15_decrypt()`](#rsa_pkcs1v15_decrypt-function)
    - [`rsa_oaep_encrypt()`](#rsa_oaep_encrypt-function)
    - [`rsa_oaep_decrypt()`](#rsa_oaep_decrypt-function)
- - DSA
+ - [DSA](#dsa)
    - [`dsa_sign()`](#dsa_sign-function)
    - [`dsa_verify()`](#dsa_verify-function)
- - ECDSA
+ - [ECDSA](#ecdsa)
    - [`ecdsa_sign()`](#ecdsa_sign-function)
    - [`ecdsa_verify()`](#ecdsa_verify-function)
+
+## Keys/Certificates
 
 ### `generate_pair()` function
 
@@ -256,6 +258,8 @@ encryption and decryption. The following functions comprise the public API:
 > OpenSSL formats don't stretch the passphrase, making it very easy to
 > brute-force.
 
+## RSA
+
 ### `rsa_pkcs1v15_sign()` function
 
 > ```python
@@ -477,6 +481,8 @@ encryption and decryption. The following functions comprise the public API:
 > Decrypts a byte string using an RSA private key. Uses PKCS#1 OAEP padding
 > with SHA1.
 
+## DSA
+
 ### `dsa_sign()` function
 
 > ```python
@@ -529,6 +535,8 @@ encryption and decryption. The following functions comprise the public API:
 > ```
 >
 > Verifies a DSA signature
+
+## ECDSA
 
 ### `ecdsa_sign()` function
 
