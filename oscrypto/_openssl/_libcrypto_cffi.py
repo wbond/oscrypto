@@ -60,6 +60,7 @@ ffi.cdef("""
     typedef ... ENGINE;
     typedef uintptr_t EVP_PKEY;
     typedef uintptr_t X509;
+    typedef uintptr_t DH;
     typedef uintptr_t RSA;
     typedef uintptr_t DSA;
     typedef uintptr_t EC_KEY;
@@ -148,6 +149,11 @@ ffi.cdef("""
 
     void BN_free(BIGNUM *a);
     int BN_dec2bn(BIGNUM **a, const char *str);
+
+    DH *DH_new(void);
+    int DH_generate_parameters_ex(DH *dh, int prime_len, int generator, BN_GENCB *cb);
+    int i2d_DHparams(const DH *a, char **pp);
+    void DH_free(DH *dh);
 
     RSA *RSA_new(void);
     int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);

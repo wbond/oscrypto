@@ -1,7 +1,9 @@
 # oscrypto.asymmetric API Documentation
 
 The *oscrypto.asymmetric* submodule implements public key signing, verification,
-encryption and decryption. The following functions comprise the public API:
+encryption and decryption. Additionally, it can generate, load and dump keys of
+various types and DH parameters. The following functions comprise the public
+API:
 
  - [Keys/Certificates](#keys-certificates)
    - [`generate_pair()`](#generate_pair-function)
@@ -13,6 +15,9 @@ encryption and decryption. The following functions comprise the public API:
    - [`dump_certificate()`](#dump_certificate-function)
    - [`dump_private_key()`](#dump_private_key-function)
    - [`dump_openssl_private_key()`](#dump_openssl_private_key-function)
+ - [DH](#dh)
+   - [`generate_dh_parameters()`](#generate_dh_parameters-function)
+   - [`dump_dh_parameters()`](#dump_dh_parameters-function)
  - [RSA](#rsa)
    - [`rsa_pkcs1v15_sign()`](#rsa_pkcs1v15_sign-function)
    - [`rsa_pkcs1v15_verify()`](#rsa_pkcs1v15_verify-function)
@@ -257,6 +262,54 @@ encryption and decryption. The following functions comprise the public API:
 > far superior to the OpenSSL formats. This is due to the fact that the
 > OpenSSL formats don't stretch the passphrase, making it very easy to
 > brute-force.
+
+## DH
+
+### `generate_dh_parameters()` function
+
+> ```python
+> def generate_dh_parameters(bit_size):
+>     """
+>     :param bit_size:
+>         The integer bit size of the parameters to generate. Must be between 64
+>         and 4096, and divisible by 64. Minimum secure value as of early 2016 is
+>         1024.
+>
+>     :raises:
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
+>
+>     :return:
+>         An asn1crypto.algos.DHParameters object. Use
+>         oscrypto.asymmetric.dump_dh_parameters() to save to disk for usage with
+>         web servers.
+>     """
+> ```
+>
+> Generates DH parameters for use with Diffie-Hellman key exchange. Returns
+> a structure in the format of DHParameter defined in PKCS#3, which is also
+> used by the OpenSSL dhparam tool.
+>
+> THIS CAN BE VERY TIME CONSUMING!
+
+### `dump_dh_parameters()` function
+
+> ```python
+> def dump_dh_parameters(dh_parameters, encoding='pem'):
+>     """
+>     :param dh_parameters:
+>         An ans1crypto.algos.DHParameters object
+>
+>     :param encoding:
+>         A unicode string of "pem" or "der"
+>
+>     :return:
+>         A byte string of the encoded DH parameters
+>     """
+> ```
+>
+> Serializes an asn1crypto.algos.DHParameters object into a byte string
 
 ## RSA
 

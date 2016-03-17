@@ -58,6 +58,7 @@ P_EVP_PKEY = c_void_p
 EVP_PKEY_CTX = c_void_p
 P_EVP_PKEY_CTX = POINTER(c_void_p)
 P_X509 = POINTER(c_void_p)
+P_DH = c_void_p
 P_RSA = c_void_p
 P_DSA = c_void_p
 P_EC_KEY = c_void_p
@@ -345,6 +346,28 @@ try:
         c_char_p
     ]
     libcrypto.BN_dec2bn.restype = c_int
+
+    libcrypto.DH_new.argtypes = []
+    libcrypto.DH_new.restype = P_DH
+
+    libcrypto.DH_generate_parameters_ex.argtypes = [
+        P_DH,
+        c_int,
+        c_int,
+        P_BN_GENCB
+    ]
+    libcrypto.DH_generate_parameters_ex.restype = c_int
+
+    libcrypto.i2d_DHparams.argtypes = [
+        P_DH,
+        POINTER(c_char_p)
+    ]
+    libcrypto.i2d_DHparams.restype = c_int
+
+    libcrypto.DH_free.argtypes = [
+        P_DH
+    ]
+    libcrypto.DH_free.restype = None
 
     libcrypto.RSA_new.argtypes = []
     libcrypto.RSA_new.restype = P_RSA

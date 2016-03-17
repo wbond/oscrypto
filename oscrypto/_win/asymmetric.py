@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 import hashlib
 
-from asn1crypto import core, keys, x509
+from asn1crypto import algos, core, keys, x509
 from asn1crypto.util import int_from_bytes, int_to_bytes
 
 from .._errors import pretty_message
@@ -459,6 +459,89 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     return (load_public_key(public_key), load_private_key(private_key))
 
 generate_pair.shimmed = False
+
+
+def generate_dh_parameters(bit_size):
+    """
+    Generates DH parameters for use with Diffie-Hellman key exchange. Returns
+    a structure in the format of DHParameter defined in PKCS#3, which is also
+    used by the OpenSSL dhparam tool.
+
+    THIS CAN BE VERY TIME CONSUMING!
+
+    :param bit_size:
+        The integer bit size of the parameters to generate. Must be between 64
+        and 4096, and divisible by 64. Minimum secure value as of early 2016 is
+        1024.
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        An asn1crypto.algos.DHParameters object. Use
+        oscrypto.asymmetric.dump_dh_parameters() to save to disk for usage with
+        web servers.
+    """
+
+    if not isinstance(bit_size, int_types):
+        raise TypeError(pretty_message(
+            '''
+            bit_size must be an integer, not %s
+            ''',
+            type_name(bit_size)
+        ))
+
+    if bit_size < 1:
+        raise ValueError('bit_size must be greater than 0')
+
+    if bit_size > 4096:
+        raise ValueError('bit_size must be less than or equal to 4096')
+
+    if bit_size % 64 != 0:
+        raise ValueError('bit_size must be a multiple of 64')
+
+    public_blob_type = BcryptConst.BCRYPT_DH_PUBLIC_BLOB
+
+    alg_handle = open_alg_handle(BcryptConst.BCRYPT_DH_ALGORITHM)
+    key_handle_pointer = new(bcrypt, 'BCRYPT_KEY_HANDLE *')
+    res = bcrypt.BCryptGenerateKeyPair(alg_handle, key_handle_pointer, bit_size, 0)
+    handle_error(res)
+    key_handle = unwrap(key_handle_pointer)
+
+    res = bcrypt.BCryptFinalizeKeyPair(key_handle, 0)
+    handle_error(res)
+
+    public_out_len = new(bcrypt, 'ULONG *')
+    res = bcrypt.BCryptExportKey(key_handle, null(), public_blob_type, null(), 0, public_out_len, 0)
+    handle_error(res)
+
+    public_buffer_length = deref(public_out_len)
+    public_buffer = buffer_from_bytes(public_buffer_length)
+    res = bcrypt.BCryptExportKey(
+        key_handle,
+        null(),
+        public_blob_type,
+        public_buffer,
+        public_buffer_length,
+        public_out_len,
+        0
+    )
+    handle_error(res)
+    public_blob_struct_pointer = struct_from_buffer(bcrypt, 'BCRYPT_DH_KEY_BLOB', public_buffer)
+    public_blob_struct = unwrap(public_blob_struct_pointer)
+    struct_size = sizeof(bcrypt, public_blob_struct)
+    public_blob = bytes_from_buffer(public_buffer, public_buffer_length)[struct_size:]
+
+    key_byte_length = native(int, public_blob_struct.cbKey)
+
+    p = int_from_bytes(blob[0:key_byte_length])
+    g = int_from_bytes(blob[key_byte_length:key_byte_length * 2])
+
+    return algos.DHParameters({'p': p, 'g': g})
+
+generate_dh_parameters.shimmed = False
 
 
 def _interpret_rsa_key_blob(key_type, blob_struct, blob):

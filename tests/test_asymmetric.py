@@ -5,7 +5,7 @@ import unittest
 import sys
 import os
 
-from asn1crypto import pem
+from asn1crypto import pem, algos
 from oscrypto import asymmetric, errors
 
 from ._unittest_compat import patch
@@ -20,8 +20,10 @@ else:
 
 if sys.version_info < (3,):
     byte_cls = str
+    int_types = (int, long)  # noqa
 else:
     byte_cls = bytes
+    int_types = (int,)
 
 
 tests_root = os.path.dirname(__file__)
@@ -128,6 +130,12 @@ class AsymmetricTests(unittest.TestCase):
         private_reloaded = asymmetric.load_private_key(pem_serialized, 'password123')
         self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
         self.assertEqual('rsa', private_reloaded.algorithm)
+
+    def test_dh_generate(self):
+        dh_parameters = asymmetric.generate_dh_parameters(512)
+        self.assertIsInstance(dh_parameters, algos.DHParameters)
+        self.assertIsInstance(dh_parameters['p'].native, int_types)
+        self.assertIsInstance(dh_parameters['g'].native, int_types)
 
     def test_rsa_generate(self):
         public, private = asymmetric.generate_pair('rsa', bit_size=2048)

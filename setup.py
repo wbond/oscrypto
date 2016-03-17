@@ -66,9 +66,9 @@ setup(
         'Topic :: Security :: Cryptography',
     ],
 
-    keywords='crypto pki tls ssl x509 certificate encrypt decrypt sign verify rsa dsa ec',
+    keywords='crypto pki tls ssl x509 certificate encrypt decrypt sign verify rsa dsa ec dh',
 
-    install_requires=['asn1crypto>=0.15'],
+    install_requires=['asn1crypto>=0.16'],
     packages=find_packages(exclude=['tests*', 'dev*']),
 
     test_suite='dev.tests.make_suite',

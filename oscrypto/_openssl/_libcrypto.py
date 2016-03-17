@@ -125,3 +125,5 @@ class LibcryptoConst():
     NID_secp521r1 = 716
 
     OPENSSL_EC_NAMED_CURVE = 1
+
+    DH_GENERATOR_2 = 2

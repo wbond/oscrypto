@@ -25,6 +25,11 @@ ffi.cdef("""
     typedef char *PBYTE;
 
 
+    typedef struct _BCRYPT_DH_KEY_BLOB {
+        ULONG dwMagic;
+        ULONG cbKey;
+    } BCRYPT_DH_KEY_BLOB;
+
     typedef struct _BCRYPT_RSAKEY_BLOB {
         ULONG Magic;
         ULONG BitLength;

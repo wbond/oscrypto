@@ -91,6 +91,7 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
      Windows 8)
    - EC (secp256r1, secp384r1, secp521r1 curves)
+ - [Generating DH parameters](docs/asymmetric.md)
  - [Signing and verification](docs/asymmetric.md)
    - RSA PKCSv1.5
    - RSA PSS

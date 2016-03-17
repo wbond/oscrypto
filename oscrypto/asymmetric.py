@@ -16,7 +16,7 @@ from ._errors import pretty_message
 from ._ffi import LibraryNotFoundError
 from ._types import type_name, str_cls
 
-_shim_generate_pair = False
+_shim_generate_funcs = False
 
 if sys.platform == 'darwin':
     from ._osx.asymmetric import (
@@ -26,6 +26,7 @@ if sys.platform == 'darwin':
         ecdsa_sign,
         ecdsa_verify,
         generate_pair,
+        generate_dh_parameters,
         load_certificate,
         load_pkcs12,
         load_private_key,
@@ -56,8 +57,8 @@ if sys.platform == 'darwin':
     _system_prefix = '/System/Library/Frameworks/Python.framework/Versions/'
     if hasattr(sys, 'real_prefix') and sys.real_prefix.startswith(_system_prefix):
         try:
-            from ._openssl.asymmetric import generate_pair as _openssl_generate_pair
-            _shim_generate_pair = True
+            from ._openssl import asymmetric as _openssl_asymmetric
+            _shim_generate_funcs = True
         except (LibraryNotFoundError):
             pass
 
@@ -69,6 +70,7 @@ elif sys.platform == 'win32':
         ecdsa_sign,
         ecdsa_verify,
         generate_pair,
+        generate_dh_parameters,
         load_certificate,
         load_pkcs12,
         load_private_key,
@@ -93,6 +95,7 @@ else:
         ecdsa_sign,
         ecdsa_verify,
         generate_pair,
+        generate_dh_parameters,
         load_certificate,
         load_pkcs12,
         load_private_key,
@@ -121,6 +124,7 @@ __all__ = [
     'ecdsa_sign',
     'ecdsa_verify',
     'generate_pair',
+    'generate_dh_parameters',
     'load_certificate',
     'load_pkcs12',
     'load_private_key',
@@ -136,6 +140,43 @@ __all__ = [
     'rsa_pss_sign',
     'rsa_pss_verify',
 ]
+
+
+def dump_dh_parameters(dh_parameters, encoding='pem'):
+    """
+    Serializes an asn1crypto.algos.DHParameters object into a byte string
+
+    :param dh_parameters:
+        An ans1crypto.algos.DHParameters object
+
+    :param encoding:
+        A unicode string of "pem" or "der"
+
+    :return:
+        A byte string of the encoded DH parameters
+    """
+
+    if encoding not in set(['pem', 'der']):
+        raise ValueError(pretty_message(
+            '''
+            encoding must be one of "pem", "der", not %s
+            ''',
+            repr(encoding)
+        ))
+
+    if not isinstance(dh_parameters, algos.DHParameters):
+        raise TypeError(pretty_message(
+            '''
+            dh_parameters must be an instance of asn1crypto.algos.DHParameters,
+            not %s
+            ''',
+            type_name(dh_parameters)
+        ))
+
+    output = dh_parameters.dump()
+    if encoding == 'pem':
+        output = asn1crypto.pem.armor('DH PARAMETERS', output)
+    return output
 
 
 def dump_public_key(public_key, encoding='pem'):
@@ -426,7 +467,7 @@ def dump_openssl_private_key(private_key, passphrase):
     return asn1crypto.pem.armor(object_type, output, headers=headers)
 
 
-if _shim_generate_pair:
+if _shim_generate_funcs:
     def generate_pair(algorithm, bit_size=None, curve=None):  # noqa
         """
         Generates a public/private key pair
@@ -452,9 +493,37 @@ if _shim_generate_pair:
             may be saved by calling .asn1.dump().
         """
 
-        openssl_pub, openssl_priv = _openssl_generate_pair(algorithm, bit_size, curve)
+        openssl_pub, openssl_priv = _openssl_asymmetric.generate_pair(algorithm, bit_size, curve)
         pub = load_public_key(openssl_pub.asn1.dump())
         priv = load_private_key(openssl_priv.asn1.dump())
         return (pub, priv)
 
     generate_pair.shimmed = True
+
+    def generate_dh_parameters(bit_size):
+        """
+        Generates DH parameters for use with Diffie-Hellman key exchange. Returns
+        a structure in the format of DHParameter defined in PKCS#3, which is also
+        used by the OpenSSL dhparam tool.
+
+        THIS CAN BE VERY TIME CONSUMING!
+
+        :param bit_size:
+            The integer bit size of the parameters to generate. Must be between 64
+            and 4096, and divisible by 64. Minimum secure value as of early 2016 is
+            1024.
+
+        :raises:
+            ValueError - when any of the parameters contain an invalid value
+            TypeError - when any of the parameters are of the wrong type
+            OSError - when an error is returned by the OS crypto library
+
+        :return:
+            An asn1crypto.algos.DHParameters object. Use
+            oscrypto.asymmetric.dump_dh_parameters() to save to disk for usage with
+            web servers.
+        """
+
+        return _openssl_asymmetric.generate_dh_parameters(bit_size)
+
+    generate_dh_parameters.shimmed = True
