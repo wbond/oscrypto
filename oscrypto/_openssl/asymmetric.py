@@ -477,9 +477,9 @@ def generate_dh_parameters(bit_size):
     THIS CAN BE VERY TIME CONSUMING!
 
     :param bit_size:
-        The integer bit size of the parameters to generate. Must be between 64
-        and 4096, and divisible by 64. Minimum secure value as of early 2016 is
-        1024.
+        The integer bit size of the parameters to generate. Must be between 512
+        and 4096, and divisible by 64. Recommended secure value as of early 2016
+        is 2048, with an absolute minimum of 1024.
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -500,8 +500,8 @@ def generate_dh_parameters(bit_size):
             type_name(bit_size)
         ))
 
-    if bit_size < 1:
-        raise ValueError('bit_size must be greater than 0')
+    if bit_size < 512:
+        raise ValueError('bit_size must be greater than or equal to 512')
 
     if bit_size > 4096:
         raise ValueError('bit_size must be less than or equal to 4096')
