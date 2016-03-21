@@ -1336,7 +1336,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 signature_pointer = buffer_pointer(signature_buffer)
                 dsa_sig = libcrypto.d2i_DSA_SIG(null(), signature_pointer, len(signature))
                 if is_null(dsa_sig):
-                    handle_openssl_error(0)
+                    raise SignatureError('Signature is invalid')
 
                 dsa = libcrypto.EVP_PKEY_get1_DSA(certificate_or_public_key.evp_pkey)
                 if is_null(dsa):
@@ -1351,7 +1351,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 signature_pointer = buffer_pointer(signature_buffer)
                 ecdsa_sig = libcrypto.d2i_ECDSA_SIG(null(), signature_pointer, len(signature))
                 if is_null(ecdsa_sig):
-                    handle_openssl_error(0)
+                    raise SignatureError('Signature is invalid')
 
                 ec_key = libcrypto.EVP_PKEY_get1_EC_KEY(certificate_or_public_key.evp_pkey)
                 if is_null(ec_key):
