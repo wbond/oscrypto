@@ -136,6 +136,7 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(dh_parameters, algos.DHParameters)
         self.assertIsInstance(dh_parameters['p'].native, int_types)
         self.assertIsInstance(dh_parameters['g'].native, int_types)
+        self.assertEqual(2, dh_parameters['g'].native)
 
     def test_rsa_generate(self):
         public, private = asymmetric.generate_pair('rsa', bit_size=2048)
