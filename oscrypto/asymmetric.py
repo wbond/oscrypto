@@ -118,6 +118,7 @@ __all__ = [
     'dsa_sign',
     'dsa_verify',
     'dump_certificate',
+    'dump_dh_parameters',
     'dump_openssl_private_key',
     'dump_private_key',
     'dump_public_key',
