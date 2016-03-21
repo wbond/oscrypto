@@ -180,13 +180,6 @@ except (AttributeError):
     raise FFIEngineError('Error initializing ctypes')
 
 
-class BCRYPT_DH_KEY_BLOB(Structure):  # noqa
-    _fields_ = [
-        ('dwMagic', ULONG),
-        ('cbKey', ULONG),
-    ]
-
-
 class BCRYPT_RSAKEY_BLOB(Structure):  # noqa
     _fields_ = [
         ('Magic', ULONG),
@@ -258,7 +251,6 @@ class BCRYPT_KEY_DATA_BLOB_HEADER(Structure):  # noqa
 setattr(bcrypt, 'BCRYPT_ALG_HANDLE', BCRYPT_ALG_HANDLE)
 setattr(bcrypt, 'BCRYPT_KEY_HANDLE', BCRYPT_KEY_HANDLE)
 
-setattr(bcrypt, 'BCRYPT_DH_KEY_BLOB', BCRYPT_DH_KEY_BLOB)
 setattr(bcrypt, 'BCRYPT_RSAKEY_BLOB', BCRYPT_RSAKEY_BLOB)
 setattr(bcrypt, 'BCRYPT_DSA_KEY_BLOB', BCRYPT_DSA_KEY_BLOB)
 setattr(bcrypt, 'BCRYPT_DSA_KEY_BLOB_V2', BCRYPT_DSA_KEY_BLOB_V2)
