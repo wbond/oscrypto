@@ -21,7 +21,7 @@ from .._ffi import (
 from ._libcrypto import libcrypto, LibcryptoConst, libcrypto_version_info, handle_openssl_error
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
-from .._types import type_name, str_cls, byte_cls
+from .._types import type_name, str_cls, byte_cls, int_types
 from ..util import constant_compare
 
 
