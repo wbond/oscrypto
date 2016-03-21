@@ -500,7 +500,7 @@ if _shim_generate_funcs:
 
     generate_pair.shimmed = True
 
-    def generate_dh_parameters(bit_size):
+    def generate_dh_parameters(bit_size):  # noqa
         """
         Generates DH parameters for use with Diffie-Hellman key exchange. Returns
         a structure in the format of DHParameter defined in PKCS#3, which is also
