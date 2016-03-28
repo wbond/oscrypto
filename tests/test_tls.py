@@ -25,7 +25,7 @@ tests_root = os.path.dirname(__file__)
 fixtures_dir = os.path.join(tests_root, 'fixtures')
 
 digicert_ca_path = os.path.join(fixtures_dir, 'digicert_ca.crt')
-tls_o_matic_ca_path = os.path.join(fixtures_dir, 'tls_o_matic_ca.crt')
+badtls_ca_path = os.path.join(fixtures_dir, 'badtls.io_ca.crt')
 
 
 @data_decorator
@@ -64,55 +64,48 @@ class TLSTests(unittest.TestCase):
     def test_tls_error_missing_issuer(self):
         expected = 'certificate issuer not found in trusted root certificate store'
         with self.assertRaisesRegexp(errors.TLSVerificationError, expected):
-            tls.TLSSocket('test1.tls-o-matic.com', 443)
+            tls.TLSSocket('domain-match.badtls.io', 10000)
 
     def test_tls_error_domain_mismatch(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'does not match'):
-            tls.TLSSocket('test2.tls-o-matic.com', 402, session=session)
+            tls.TLSSocket('domain-mismatch.badtls.io', 11002, session=session)
 
     def test_tls_error_san_mismatch(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'does not match'):
-            tls.TLSSocket('test3.tls-o-matic.com', 403, session=session)
+            tls.TLSSocket('san-mismatch.badtls.io', 11003, session=session)
 
     def test_tls_wildcard_success(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
-        tls.TLSSocket('test4.tls-o-matic.com', 404, session=session)
-        tls.TLSSocket('test4test.tls-o-matic.com', 404, session=session)
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        tls.TLSSocket('wildcard-match.badtls.io', 10001, session=session)
 
     def test_tls_error_not_yet_valid(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'not valid until'):
-            tls.TLSSocket('test5.tls-o-matic.com', 405, session=session)
+            tls.TLSSocket('future.badtls.io', 11001, session=session)
 
     def test_tls_error_expired_2(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         # This test allows past or future since cert is 1963, which some systems
         # will intepret as 2063
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'certificate expired|not valid until'):
-            tls.TLSSocket('test6.tls-o-matic.com', 406, session=session)
-
-    def test_tls_error_missing_issuer_2(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
-        expected = 'certificate issuer not found in trusted root certificate store'
-        with self.assertRaisesRegexp(errors.TLSVerificationError, expected):
-            tls.TLSSocket('test7.tls-o-matic.com', 407, session=session)
+            tls.TLSSocket('expired-1963.badtls.io', 11000, session=session)
 
     def test_tls_error_client_cert_required(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSError, 'client authentication'):
-            tls.TLSSocket('test8.tls-o-matic.com', 408, session=session)
+            tls.TLSSocket('required-auth.badtls.io', 10003, session=session)
 
     def test_tls_error_handshake_error_3(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSError, 'weak certificate signature algorithm'):
-            tls.TLSSocket('test9.tls-o-matic.com', 409, session=session)
+            tls.TLSSocket('weak-sig.badtls.io', 11004, session=session)
 
     def test_tls_error_non_web(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'verification failed'):
-            tls.TLSSocket('test14.tls-o-matic.com', 414, session=session)
+            tls.TLSSocket('bad-key-usage.badtls.io', 11005, session=session)
 
     def test_tls_error_wildcard_mismatch(self):
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'does not match'):
@@ -142,8 +135,8 @@ class TLSTests(unittest.TestCase):
         expected = 'certificate issuer not found in trusted root certificate store'
         with self.assertRaisesRegexp(errors.TLSVerificationError, expected):
             session = tls.TLSSession(extra_trust_roots=[digicert_ca_path])
-            tls.TLSSocket('test1.tls-o-matic.com', 443, session=session)
+            tls.TLSSocket('domain-match.badtls.io', 10000, session=session)
 
     def test_tls_extra_trust_roots(self):
-        session = tls.TLSSession(extra_trust_roots=[tls_o_matic_ca_path, digicert_ca_path])
-        tls.TLSSocket('test1.tls-o-matic.com', 443, session=session)
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path, digicert_ca_path])
+        tls.TLSSocket('domain-match.badtls.io', 10000, session=session)
