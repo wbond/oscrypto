@@ -9,3 +9,4 @@ tests/output/
 oscrypto.sublime-project
 oscrypto.sublime-workspace
 .coverage
+.tox
