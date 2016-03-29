@@ -634,12 +634,12 @@ class TLSSocket(object):
             )
             handle_crypt32_error(result)
 
+            cert_context = unwrap(cert_context_pointer)
+            cert_data = bytes_from_buffer(cert_context.pbCertEncoded, native(int, cert_context.cbCertEncoded))
+            cert = x509.Certificate.load(cert_data)
+
             error = cert_chain_policy_status.dwError
             if error:
-                cert_context = unwrap(cert_context_pointer)
-                cert_data = bytes_from_buffer(cert_context.pbCertEncoded, native(int, cert_context.cbCertEncoded))
-                cert = x509.Certificate.load(cert_data)
-
                 if error == Crypt32Const.CERT_E_EXPIRED:
                     raise_expired_not_yet_valid(cert)
                 if error == Crypt32Const.CERT_E_UNTRUSTEDROOT:
@@ -658,6 +658,9 @@ class TLSSocket(object):
                     raise_revoked(cert)
 
                 raise_verification(cert)
+
+            if cert.hash_algo in set(['md5', 'md2']):
+                raise_weak_signature(cert)
 
         finally:
             if store:
