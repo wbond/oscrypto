@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import unittest
 import sys
 import os
+import re
 
 from oscrypto import tls, errors
 from asn1crypto import x509
@@ -50,8 +51,8 @@ class TLSTests(unittest.TestCase):
         self.assertIsInstance(connection.certificate, x509.Certificate)
         self.assertLess(10, len(connection.cipher_suite))
         connection.write(b'GET / HTTP/1.1\r\nHost: ' + hostname.encode('utf-8') + b'\r\n\r\n')
-        html = connection.read_until(b'</html>')
-        self.assertIn(b'</html>', html)
+        html = connection.read_until(re.compile(b'</html>', re.I))
+        self.assertNotEqual(None, re.search(b'</html>', html, re.I))
 
     def test_tls_error_http(self):
         with self.assertRaisesRegexp(errors.TLSError, 'server responded using HTTP'):
