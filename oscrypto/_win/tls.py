@@ -759,7 +759,7 @@ class TLSSocket(object):
                     bytes_read = self._socket.recv(8192)
                     if bytes_read == b'':
                         raise_disconnection()
-                except (WindowsError):
+                except (OSError):
                     fail_late = True
                 handshake_server_bytes += bytes_read
                 self._received_bytes += bytes_read
