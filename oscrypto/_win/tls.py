@@ -751,9 +751,13 @@ class TLSSocket(object):
             in_buffers[0].pvBuffer = cast(secur32, 'char *', in_data_buffer)
 
             while result != Secur32Const.SEC_E_OK:
-                bytes_read = self._socket.recv(8192)
-                if bytes_read == b'':
-                    raise_disconnection()
+                try:
+                    fail_late = False
+                    bytes_read = self._socket.recv(8192)
+                    if bytes_read == b'':
+                        raise_disconnection()
+                except (WindowsError):
+                    fail_late = True
                 handshake_server_bytes += bytes_read
                 self._received_bytes += bytes_read
 
@@ -786,6 +790,10 @@ class TLSSocket(object):
                         if not is_null(in_buffers[1].pvBuffer):
                             secur32.FreeContextBuffer(in_buffers[1].pvBuffer)
                             in_buffers[1].pvBuffer = null()
+
+                    if fail_late:
+                        raise_disconnection()
+
                     continue
 
                 if result == Secur32Const.SEC_E_ILLEGAL_MESSAGE:
@@ -837,6 +845,8 @@ class TLSSocket(object):
                                     'Server certificate verification failed - weak certificate signature algorithm',
                                     chain[0]
                                 )
+                    if detect_client_auth_request(handshake_server_bytes):
+                        raise_client_auth()
                     if detect_other_protocol(handshake_server_bytes):
                         raise_protocol_error(handshake_server_bytes)
                     raise_handshake()
@@ -848,6 +858,9 @@ class TLSSocket(object):
                 if result == Secur32Const.SEC_E_BUFFER_TOO_SMALL or result == Secur32Const.SEC_E_MESSAGE_ALTERED:
                     if 'TLSv1.2' in self._session._protocols:
                         raise _TLSRetryError('TLS handshake failed')
+
+                if fail_late:
+                    raise_disconnection()
 
                 if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
