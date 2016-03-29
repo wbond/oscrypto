@@ -50,8 +50,8 @@ class TLSTests(unittest.TestCase):
         self.assertIsInstance(connection.certificate, x509.Certificate)
         self.assertLess(10, len(connection.cipher_suite))
         connection.write(b'GET / HTTP/1.1\r\nHost: ' + hostname.encode('utf-8') + b'\r\n\r\n')
-        html = connection.read_until(b'</html>')
-        self.assertIn(b'</html>', html)
+        html = connection.read(1024 * 5)
+        self.assertTrue(b'<html' in html or b'<HTML' in html, html)
 
     def test_tls_error_http(self):
         with self.assertRaisesRegexp(errors.TLSError, 'server responded using HTTP'):
