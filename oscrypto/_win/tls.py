@@ -608,7 +608,7 @@ class TLSSocket(object):
             ssl_extra_cert_chain_policy_para_pointer = struct(crypt32, 'SSL_EXTRA_CERT_CHAIN_POLICY_PARA')
             ssl_extra_cert_chain_policy_para = unwrap(ssl_extra_cert_chain_policy_para_pointer)
             ssl_extra_cert_chain_policy_para.cbSize = sizeof(crypt32, ssl_extra_cert_chain_policy_para)
-            ssl_extra_cert_chain_policy_para.dwAuthType = Crypt32Const.AUTHTYPE_CLIENT
+            ssl_extra_cert_chain_policy_para.dwAuthType = Crypt32Const.AUTHTYPE_SERVER
             ssl_extra_cert_chain_policy_para.fdwChecks = 0
             ssl_extra_cert_chain_policy_para.pwszServerName = cast(
                 crypt32,
