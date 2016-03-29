@@ -55,6 +55,9 @@ from ..keys import parse_certificate
 
 if sys.version_info < (3,):
     range = xrange  # noqa
+    socket_error_cls = socket_.error
+else:
+    socket_error_cls = WindowsError
 
 
 __all__ = [
@@ -759,7 +762,7 @@ class TLSSocket(object):
                     bytes_read = self._socket.recv(8192)
                     if bytes_read == b'':
                         raise_disconnection()
-                except (OSError):
+                except (socket_error_cls):
                     fail_late = True
                 handshake_server_bytes += bytes_read
                 self._received_bytes += bytes_read
