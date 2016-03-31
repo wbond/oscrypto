@@ -1,5 +1,13 @@
 # changelog
 
+## 0.15.0
+
+ - Added `asymmetric.generate_dh_parameters()` and
+   `asymmetric.dump_dh_parameters()`
+ - Improve disconnection handling of `tls.TLSSocket` on Windows
+ - Ensure that certificates signed using MD5 and MD2 are rejected on Windows
+   when using the `extra_trust_roots` parameter of `tls.TLSSession`
+
 ## 0.14.2
 
  - Fixed `trust_list` to work with new Security.framework behavior on OS X
