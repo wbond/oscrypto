@@ -28,19 +28,18 @@ X509 = c_void_p
 P_X509 = POINTER(X509)
 P_X509_STORE = POINTER(c_void_p)
 P_X509_STORE_CTX = POINTER(c_void_p)
+_STACK = c_void_p
+P_STACK = POINTER(_STACK)
 
 try:
     stack_cmp_func = CFUNCTYPE(c_int, c_void_p, c_void_p)
     setattr(libssl, 'stack_cmp_func', stack_cmp_func)
 
-    class _STACK(Structure):
-        _fields_ = [
-            ('num', c_int),
-            ('data', POINTER(P_X509)),
-            ('sorted', c_int),
-            ('num_alloc', c_int),
-            ('comp', stack_cmp_func),
-        ]
+    libssl.sk_num.argtypes = [P_STACK]
+    libssl.sk_num.restype = c_int
+
+    libssl.sk_value.argtypes = [P_STACK, c_int]
+    libssl.sk_value.restype = P_X509
 
     libssl.SSL_library_init.argtypes = []
     libssl.SSL_library_init.restype = c_int
@@ -179,7 +178,7 @@ try:
     libssl.SSL_get_peer_cert_chain.argtypes = [
         P_SSL
     ]
-    libssl.SSL_get_peer_cert_chain.restype = POINTER(_STACK)
+    libssl.SSL_get_peer_cert_chain.restype = P_STACK
 
     libssl.SSL_get1_session.argtypes = [
         P_SSL

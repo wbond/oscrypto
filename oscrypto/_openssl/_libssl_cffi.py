@@ -36,16 +36,11 @@ ffi.cdef("""
     typedef uintptr_t X509;
     typedef ... X509_STORE;
     typedef ... X509_STORE_CTX;
+    typedef ... _STACK;
 
     typedef int (*stack_cmp_func)(const void *a, const void *b);
-
-    typedef struct stack_st {
-        int num;
-        X509 **data;
-        int sorted;
-        int num_alloc;
-        stack_cmp_func comp;
-    } _STACK;
+    int sk_num(const _STACK *);
+    X509 *sk_value(const _STACK *, int);
 
     int SSL_library_init(void);
     void OPENSSL_add_all_algorithms_noconf(void);

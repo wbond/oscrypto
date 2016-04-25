@@ -922,14 +922,12 @@ class TLSSocket(object):
         if is_null(stack_pointer):
             handle_openssl_error(0, TLSError)
 
-        stack = unwrap(stack_pointer)
-
-        number_certs = native(int, stack.num)
+        number_certs = libssl.sk_num(stack_pointer)
 
         self._intermediates = []
 
         for index in range(0, number_certs):
-            x509_ = stack.data[index]
+            x509_ = libssl.sk_value(stack_pointer, index)
             buffer_size = libcrypto.i2d_X509(x509_, null())
             cert_buffer = buffer_from_bytes(buffer_size)
             cert_pointer = buffer_pointer(cert_buffer)
