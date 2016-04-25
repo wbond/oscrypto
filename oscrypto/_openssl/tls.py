@@ -585,7 +585,10 @@ class TLSSocket(object):
             raise
 
     def _raw_read(self, rbio):
-        to_write = self._socket.recv(8192)
+        try:
+            to_write = self._socket.recv(8192)
+        except (socket_.error):
+            to_write = b''
         output = to_write
         while to_write != b'':
             written = libssl.BIO_write(rbio, to_write, len(to_write))
