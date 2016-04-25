@@ -2,7 +2,7 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 from ctypes.util import find_library
-from ctypes import CDLL, CFUNCTYPE, POINTER, Structure, c_void_p, c_char_p, c_int, c_size_t, c_long
+from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t, c_long
 
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
