@@ -36,7 +36,7 @@ ffi.cdef("""
     typedef uintptr_t X509;
     typedef ... X509_STORE;
     typedef ... X509_STORE_CTX;
-    typedef ... _STACK;
+    typedef uintptr_t _STACK;
 
     typedef int (*stack_cmp_func)(const void *a, const void *b);
     int sk_num(const _STACK *);
