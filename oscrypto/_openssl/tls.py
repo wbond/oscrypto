@@ -16,6 +16,7 @@ from .._ffi import null, bytes_from_buffer, buffer_from_bytes, is_null, buffer_p
 from .._types import type_name, str_cls, byte_cls, int_types
 from ..errors import TLSError
 from .._tls import (
+    detect_client_auth_request,
     extract_chain,
     get_dh_params_length,
     parse_session_info,
@@ -444,6 +445,8 @@ class TLSSocket(object):
                     if chunk == b'':
                         if handshake_server_bytes == b'':
                             raise_disconnection()
+                        if detect_client_auth_request(handshake_server_bytes):
+                            raise_client_auth()
                         raise_protocol_error(handshake_server_bytes)
                     handshake_server_bytes += chunk
 
