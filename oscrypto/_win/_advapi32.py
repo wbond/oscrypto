@@ -41,8 +41,14 @@ def handle_error(result):
 
 
 class Advapi32Const():
+    PROV_RSA_FULL = 1
+    PROV_DSS = 3
     PROV_DSS_DH = 13
+    PROV_RSA_AES = 24
     MS_ENH_DSS_DH_PROV = "Microsoft Enhanced DSS and Diffie-Hellman Cryptographic Provider"
+    MS_ENHANCED_PROV = "Microsoft Enhanced Cryptographic Provider"
+    # This is the Windows XP name for the provider
+    MS_ENH_RSA_AES_PROV = "Microsoft Enhanced RSA and AES Cryptographic Provider (Prototype)"
     CRYPT_VERIFYCONTEXT = 0xF0000000
     CRYPT_EXPORTABLE = 1
     CRYPT_PREGEN = 0x40
