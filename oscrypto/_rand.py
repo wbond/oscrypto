@@ -3,8 +3,8 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import os
 
-from .._errors import pretty_message
-from .._types import type_name, int_types
+from ._errors import pretty_message
+from ._types import type_name, int_types
 
 
 __all__ = [
