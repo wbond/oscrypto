@@ -1,11 +1,29 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import sys
+
 from .._errors import pretty_message
-from .._ffi import new, null, buffer_from_bytes, bytes_from_buffer, deref, struct, struct_bytes, unwrap
-from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
+from .._ffi import (
+    buffer_from_bytes,
+    bytes_from_buffer,
+    deref,
+    new,
+    null,
+    struct,
+    struct_bytes,
+    unwrap,
+    write_to_buffer,
+)
 from .util import rand_bytes
 from .._types import type_name, byte_cls
+
+_xp = sys.getwindowsversion()[0] < 6
+
+if _xp:
+    from ._advapi32 import advapi32, Advapi32Const, handle_error, open_context_handle, close_context_handle
+else:
+    from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
 
 
 __all__ = [
@@ -535,7 +553,118 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
     return _decrypt('des', key, data, iv, True)
 
 
-def _create_key_handle(cipher, key):
+def _advapi32_create_handles(cipher, key, iv):
+    """
+    Creates an HCRYPTPROV and HCRYPTKEY for symmetric encryption/decryption. The
+    HCRYPTPROV must be released by close_context_handle() and the
+    HCRYPTKEY must be released by advapi32.CryptDestroyKey() when done.
+
+    :param cipher:
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key",
+        "rc2", "rc4"
+
+    :param key:
+        A byte string of the symmetric key
+
+    :param iv:
+        The initialization vector - a byte string - unused for RC4
+
+    :return:
+        A tuple of (HCRYPTPROV, HCRYPTKEY)
+    """
+
+    context_handle = None
+
+    if cipher == 'aes':
+        algorithm_id = {
+            16: Advapi32Const.CALG_AES_128,
+            24: Advapi32Const.CALG_AES_192,
+            32: Advapi32Const.CALG_AES_256,
+        }[len(key)]
+    else:
+        algorithm_id = {
+            'des': Advapi32Const.CALG_DES,
+            'tripledes_2key': Advapi32Const.CALG_3DES_112,
+            'tripledes_3key': Advapi32Const.CALG_3DES,
+            'rc2': Advapi32Const.CALG_RC2,
+            'rc4': Advapi32Const.CALG_RC4,
+        }[cipher]
+
+    if cipher in set(['rc2', 'rc4']) and len(key) < 16:
+        provider = Advapi32Const.MS_ENHANCED_PROV
+    else:
+        provider = Advapi32Const.MS_ENH_RSA_AES_PROV
+
+    context_handle = open_context_handle(provider)
+
+    blob_header_pointer = struct(advapi32, 'BLOBHEADER')
+    blob_header = unwrap(blob_header_pointer)
+    blob_header.bType = Advapi32Const.PLAINTEXTKEYBLOB
+    blob_header.bVersion = Advapi32Const.CUR_BLOB_VERSION
+    blob_header.reserved = 0
+    blob_header.aiKeyAlg = algorithm_id
+
+    blob_struct_pointer = struct(advapi32, 'PLAINTEXTKEYBLOB')
+    blob_struct = unwrap(blob_struct_pointer)
+    blob_struct.hdr = blob_header
+    blob_struct.dwKeySize = len(key)
+
+    blob = struct_bytes(blob_struct_pointer) + key
+
+    key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
+    res = advapi32.CryptImportKey(
+        context_handle,
+        blob,
+        len(blob),
+        null(),
+        0,
+        key_handle_pointer
+    )
+    handle_error(res)
+
+    key_handle = unwrap(key_handle_pointer)
+
+    if cipher != 'rc4':
+        res = advapi32.CryptSetKeyParam(
+            key_handle,
+            Advapi32Const.KP_IV,
+            iv,
+            0
+        )
+        handle_error(res)
+
+        buf = new(advapi32, 'DWORD *', Advapi32Const.CRYPT_MODE_CBC)
+        res = advapi32.CryptSetKeyParam(
+            key_handle,
+            Advapi32Const.KP_MODE,
+            buf,
+            0
+        )
+        handle_error(res)
+
+        buf = new(advapi32, 'DWORD *', Advapi32Const.PKCS5_PADDING)
+        res = advapi32.CryptSetKeyParam(
+            key_handle,
+            Advapi32Const.KP_PADDING,
+            buf,
+            0
+        )
+        handle_error(res)
+
+    if cipher == 'rc2':
+        buf = new(advapi32, 'DWORD *', len(key) * 8)
+        res = advapi32.CryptSetKeyParam(
+            key_handle,
+            Advapi32Const.KP_EFFECTIVE_KEYLEN,
+            buf,
+            0
+        )
+        handle_error(res)
+
+    return (context_handle, key_handle)
+
+
+def _bcrypt_create_key_handle(cipher, key):
     """
     Creates a BCRYPT_KEY_HANDLE for symmetric encryption/decryption. The
     handle must be released by bcrypt.BCryptDestroyKey() when done.
@@ -662,10 +791,124 @@ def _encrypt(cipher, key, data, iv, padding):
     if cipher != 'rc4' and not padding:
         raise ValueError('padding must be specified')
 
+    if _xp:
+        return _advapi32_encrypt(cipher, key, data, iv, padding)
+    return _bcrypt_encrypt(cipher, key, data, iv, padding)
+
+
+def _advapi32_encrypt(cipher, key, data, iv, padding):
+    """
+    Encrypts plaintext via CryptoAPI
+
+    :param cipher:
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key",
+        "rc2", "rc4"
+
+    :param key:
+        The encryption key - a byte string 5-16 bytes long
+
+    :param data:
+        The plaintext - a byte string
+
+    :param iv:
+        The initialization vector - a byte string - unused for RC4
+
+    :param padding:
+        Boolean, if padding should be used - unused for RC4
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the ciphertext
+    """
+
+    context_handle = None
     key_handle = None
 
     try:
-        key_handle = _create_key_handle(cipher, key)
+        context_handle, key_handle = _advapi32_create_handles(cipher, key, iv)
+
+        out_len = new(advapi32, 'DWORD *')
+        res = advapi32.CryptEncrypt(
+            key_handle,
+            null(),
+            True,
+            0,
+            null(),
+            out_len,
+            len(data)
+        )
+        handle_error(res)
+
+        buffer_len = deref(out_len)
+        buffer = buffer_from_bytes(buffer_len)
+        write_to_buffer(buffer, data)
+
+        res = advapi32.CryptEncrypt(
+            key_handle,
+            null(),
+            True,
+            0,
+            buffer,
+            out_len,
+            len(data)
+        )
+        handle_error(res)
+
+        output = bytes_from_buffer(buffer, deref(out_len))
+
+        # Remove padding when not required. CryptoAPI doesn't support this, so
+        # we just manually remove it.
+        if cipher == 'aes' and not padding:
+            if output[-16:] != (b'\x10' * 16):
+                raise ValueError('Invalid padding generated by OS crypto library')
+            output = output[:-16]
+
+        return output
+
+    finally:
+        if key_handle:
+            advapi32.CryptDestroyKey(key_handle)
+        if context_handle:
+            close_context_handle(context_handle)
+
+
+def _bcrypt_encrypt(cipher, key, data, iv, padding):
+    """
+    Encrypts plaintext via CNG
+
+    :param cipher:
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key",
+        "rc2", "rc4"
+
+    :param key:
+        The encryption key - a byte string 5-16 bytes long
+
+    :param data:
+        The plaintext - a byte string
+
+    :param iv:
+        The initialization vector - a byte string - unused for RC4
+
+    :param padding:
+        Boolean, if padding should be used - unused for RC4
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the ciphertext
+    """
+
+    key_handle = None
+
+    try:
+        key_handle = _bcrypt_create_key_handle(cipher, key)
 
         if iv is None:
             iv_len = 0
@@ -772,10 +1015,105 @@ def _decrypt(cipher, key, data, iv, padding):
     if cipher != 'rc4' and padding is None:
         raise ValueError('padding must be specified')
 
+    if _xp:
+        return _advapi32_decrypt(cipher, key, data, iv, padding)
+    return _bcrypt_decrypt(cipher, key, data, iv, padding)
+
+
+def _advapi32_decrypt(cipher, key, data, iv, padding):
+    """
+    Decrypts AES/RC4/RC2/3DES/DES ciphertext via CryptoAPI
+
+    :param cipher:
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key",
+        "rc2", "rc4"
+
+    :param key:
+        The encryption key - a byte string 5-16 bytes long
+
+    :param data:
+        The ciphertext - a byte string
+
+    :param iv:
+        The initialization vector - a byte string - unused for RC4
+
+    :param padding:
+        Boolean, if padding should be used - unused for RC4
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the plaintext
+    """
+
+    context_handle = None
     key_handle = None
 
     try:
-        key_handle = _create_key_handle(cipher, key)
+        context_handle, key_handle = _advapi32_create_handles(cipher, key, iv)
+
+        # Add removed padding when not required. CryptoAPI doesn't support no
+        # padding, so we just add it back in
+        if cipher == 'aes' and not padding:
+            data += (b'\x10' * 16)
+
+        buffer = buffer_from_bytes(data)
+        out_len = new(advapi32, 'DWORD *', len(data))
+        res = advapi32.CryptDecrypt(
+            key_handle,
+            null(),
+            True,
+            0,
+            buffer,
+            out_len
+        )
+        handle_error(res)
+
+        return bytes_from_buffer(buffer, deref(out_len))
+
+    finally:
+        if key_handle:
+            bcrypt.BCryptDestroyKey(key_handle)
+        if context_handle:
+            close_context_handle(context_handle)
+
+
+def _bcrypt_decrypt(cipher, key, data, iv, padding):
+    """
+    Decrypts AES/RC4/RC2/3DES/DES ciphertext via CNG
+
+    :param cipher:
+        A unicode string of "aes", "des", "tripledes_2key", "tripledes_3key",
+        "rc2", "rc4"
+
+    :param key:
+        The encryption key - a byte string 5-16 bytes long
+
+    :param data:
+        The ciphertext - a byte string
+
+    :param iv:
+        The initialization vector - a byte string - unused for RC4
+
+    :param padding:
+        Boolean, if padding should be used - unused for RC4
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the plaintext
+    """
+
+    key_handle = None
+
+    try:
+        key_handle = _bcrypt_create_key_handle(cipher, key)
 
         if iv is None:
             iv_len = 0

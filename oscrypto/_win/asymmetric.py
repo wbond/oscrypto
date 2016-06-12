@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import os
 import sys
 import hashlib
 import random
@@ -24,12 +25,30 @@ from .._ffi import (
     struct_bytes,
     struct_from_buffer,
     unwrap,
+    write_to_buffer,
 )
-from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
 from .._int import fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
 from .._types import type_name, str_cls, byte_cls, int_types
+from .._pkcs1 import (
+    add_pkcs1v15_signature_padding,
+    add_pss_padding,
+    raw_rsa_private_crypt,
+    raw_rsa_public_crypt,
+    remove_pkcs1v15_signature_padding,
+    verify_pss_padding,
+)
+from ..util import constant_compare
+
+_gwv = sys.getwindowsversion()
+_win_version_info = (_gwv[0], _gwv[1])
+_xp = _win_version_info < (6,)
+
+if _xp:
+    from ._advapi32 import advapi32, Advapi32Const, handle_error, open_context_handle, close_context_handle
+else:
+    from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
 
 
 __all__ = [
@@ -54,10 +73,6 @@ __all__ = [
     'rsa_pss_sign',
     'rsa_pss_verify',
 ]
-
-
-_gwv = sys.getwindowsversion()
-_win_version_info = (_gwv[0], _gwv[1])
 
 
 # A list of primes from OpenSSL's bn_prime.h to use when testing primality of a
@@ -327,19 +342,23 @@ class PrivateKey():
     Container for the OS crypto library representation of a private key
     """
 
-    bcrypt_key_handle = None
+    # A CNG BCRYPT_KEY_HANDLE on Vista and newer, an HCRYPTKEY on XP and 2003
+    key_handle = None
+    # On XP and 2003, we have to carry around the context also
+    context_handle = None
     asn1 = None
 
-    def __init__(self, bcrypt_key_handle, asn1):
+    def __init__(self, key_handle, asn1):
         """
-        :param bcrypt_key_handle:
-            A CNG BCRYPT_KEY_HANDLE value from loading/importing the key
+        :param key_handle:
+            A CNG BCRYPT_KEY_HANDLE value (Vista and newer) or an HCRYPTKEY
+            (XP and 2003) from loading/importing the key
 
         :param asn1:
             An asn1crypto.keys.PrivateKeyInfo object
         """
 
-        self.bcrypt_key_handle = bcrypt_key_handle
+        self.key_handle = key_handle
         self.asn1 = asn1
 
     @property
@@ -379,10 +398,16 @@ class PrivateKey():
         return self.asn1.byte_size
 
     def __del__(self):
-        if self.bcrypt_key_handle:
-            res = bcrypt.BCryptDestroyKey(self.bcrypt_key_handle)
+        if self.key_handle:
+            if _xp:
+                res = advapi32.CryptDestroyKey(self.key_handle)
+            else:
+                res = bcrypt.BCryptDestroyKey(self.key_handle)
             handle_error(res)
-            self.bcrypt_key_handle = None
+            self.key_handle = None
+        if self.context_handle and _xp:
+            close_context_handle(self.context_handle)
+            self.context_handle = None
 
 
 class PublicKey(PrivateKey):
@@ -390,16 +415,17 @@ class PublicKey(PrivateKey):
     Container for the OS crypto library representation of a public key
     """
 
-    def __init__(self, bcrypt_key_handle, asn1):
+    def __init__(self, key_handle, asn1):
         """
-        :param bcrypt_key_handle:
-            A CNG BCRYPT_KEY_HANDLE value from loading/importing the key
+        :param key_handle:
+            A CNG BCRYPT_KEY_HANDLE value (Vista and newer) or an HCRYPTKEY
+            (XP and 2003) from loading/importing the key
 
         :param asn1:
             An asn1crypto.keys.PublicKeyInfo object
         """
 
-        PrivateKey.__init__(self, bcrypt_key_handle, asn1)
+        PrivateKey.__init__(self, key_handle, asn1)
 
 
 class Certificate(PublicKey):
@@ -409,16 +435,17 @@ class Certificate(PublicKey):
 
     _self_signed = None
 
-    def __init__(self, bcrypt_key_handle, asn1):
+    def __init__(self, key_handle, asn1):
         """
-        :param bcrypt_key_handle:
-            A CNG BCRYPT_KEY_HANDLE value from loading/importing the certificate
+        :param key_handle:
+            A CNG BCRYPT_KEY_HANDLE value (Vista and newer) or an HCRYPTKEY
+            (XP and 2003) from loading/importing the certificate
 
         :param asn1:
             An asn1crypto.x509.Certificate object
         """
 
-        PublicKey.__init__(self, bcrypt_key_handle, asn1)
+        PublicKey.__init__(self, key_handle, asn1)
 
     @property
     def algorithm(self):
@@ -512,7 +539,7 @@ class Signature(core.Sequence):
     ]
 
     @classmethod
-    def from_bcrypt(cls, data):
+    def from_p1363(cls, data):
         """
         Reads a signature from a byte string created by Microsoft's
         BCryptSignHash() function.
@@ -528,7 +555,7 @@ class Signature(core.Sequence):
         s = int_from_bytes(data[len(data) // 2:])
         return cls({'r': r, 's': s})
 
-    def to_bcrypt(self):
+    def to_p1363(self):
         """
         Dumps a signature to a byte string compatible with Microsoft's
         BCryptVerifySignature() function.
@@ -610,6 +637,13 @@ def generate_pair(algorithm, bit_size=None, curve=None):
                 ))
 
     elif algorithm == 'ec':
+        if _xp:
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                Windows XP and 2003 do not support EC keys
+                '''
+            ))
+
         if curve not in set(['secp256r1', 'secp384r1', 'secp521r1']):
             raise ValueError(pretty_message(
                 '''
@@ -617,6 +651,152 @@ def generate_pair(algorithm, bit_size=None, curve=None):
                 ''',
                 repr(curve)
             ))
+
+    if _xp:
+        return _advapi32_generate_pair(algorithm, bit_size)
+    else:
+        return _bcrypt_generate_pair(algorithm, bit_size, curve)
+
+
+def _advapi32_generate_pair(algorithm, bit_size=None):
+    """
+    Generates a public/private key pair using CryptoAPI
+
+    :param algorithm:
+        The key algorithm - "rsa" or "dsa"
+
+    :param bit_size:
+        An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
+        2048, 3072 or 4096. For "dsa" the value may be 1024.
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
+        may be saved by calling .asn1.dump().
+    """
+
+    if algorithm == 'rsa':
+        provider = Advapi32Const.MS_ENH_RSA_AES_PROV
+        algorithm = Advapi32Const.CALG_RSA_SIGN
+        struct_type = advapi32.RSABLOBHEADER
+    else:
+        provider = Advapi32Const.MS_ENH_DSS_DH_PROV
+        algorithm = Advapi32Const.CALG_DSS_SIGN
+        struct_type = advapi32.DSSBLOBHEADER
+
+    context_handle = None
+    key_handle = None
+
+    try:
+        context_handle = open_context_handle(provider)
+
+        key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
+        flags = (bit_size << 16) | Advapi32Const.CRYPT_EXPORTABLE
+        res = advapi32.CryptGenKey(context_handle, algorithm, flags, key_handle_pointer)
+        handle_error(res)
+
+        key_handle = unwrap(key_handle_pointer)
+
+        out_len = new(advapi32, 'DWORD *')
+        res = advapi32.CryptExportKey(
+            key_handle,
+            null(),
+            Advapi32Const.PRIVATEKEYBLOB,
+            0,
+            null(),
+            out_len
+        )
+        handle_error(res)
+
+        buffer_length = deref(out_len)
+        buffer_ = buffer_from_bytes(buffer_length)
+        res = advapi32.CryptExportKey(
+            key_handle,
+            null(),
+            Advapi32Const.PRIVATEKEYBLOB,
+            0,
+            buffer_,
+            out_len
+        )
+        handle_error(res)
+
+        blob_struct_pointer = struct_from_buffer(advapi32, struct_type, buffer_)
+        blob_struct = unwrap(blob_struct_pointer)
+        struct_size = sizeof(advapi32, blob_struct)
+
+        private_blob = bytes_from_buffer(buffer_, buffer_length)[struct_size:]
+
+        if algorithm == 'rsa':
+            public_info, private_info = _advapi32_interpret_rsa_key_blob(bit_size, blob_struct, private_blob)
+
+        else:
+            # The public key for a DSA key is not available in from the private
+            # key blob, so we have to separately export the public key
+            public_out_len = new(advapi32, 'DWORD *')
+            res = advapi32.CryptExportKey(
+                key_handle,
+                null(),
+                Advapi32Const.PUBLICKEYBLOB,
+                0,
+                null(),
+                public_out_len
+            )
+            handle_error(res)
+
+            public_buffer_length = deref(public_out_len)
+            public_buffer = buffer_from_bytes(public_buffer_length)
+            res = advapi32.CryptExportKey(
+                key_handle,
+                null(),
+                Advapi32Const.PUBLICKEYBLOB,
+                0,
+                public_buffer,
+                public_out_len
+            )
+            handle_error(res)
+
+            public_blob = bytes_from_buffer(public_buffer, public_buffer_length)[struct_size:]
+
+            public_info, private_info = _advapi32_interpret_dsa_key_blob(bit_size, public_blob, private_blob)
+
+        return (load_public_key(public_info), load_private_key(private_info))
+
+    finally:
+        if context_handle:
+            close_context_handle(context_handle)
+        if key_handle:
+            advapi32.CryptDestroyKey(key_handle)
+
+
+def _bcrypt_generate_pair(algorithm, bit_size=None, curve=None):
+    """
+    Generates a public/private key pair using CNG
+
+    :param algorithm:
+        The key algorithm - "rsa", "dsa" or "ec"
+
+    :param bit_size:
+        An integer - used for "rsa" and "dsa". For "rsa" the value maye be 1024,
+        2048, 3072 or 4096. For "dsa" the value may be 1024, plus 2048 or 3072
+        if on Windows 8 or newer.
+
+    :param curve:
+        A unicode string - used for "ec" keys. Valid values include "secp256r1",
+        "secp384r1" and "secp521r1".
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A 2-element tuple of (PublicKey, PrivateKey). The contents of each key
+        may be saved by calling .asn1.dump().
+    """
 
     if algorithm == 'rsa':
         alg_constant = BcryptConst.BCRYPT_RSA_ALGORITHM
@@ -679,14 +859,14 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     private_blob = bytes_from_buffer(private_buffer, private_buffer_length)[struct_size:]
 
     if algorithm == 'rsa':
-        private_key = _interpret_rsa_key_blob('private', private_blob_struct, private_blob)
+        private_key = _bcrypt_interpret_rsa_key_blob('private', private_blob_struct, private_blob)
     elif algorithm == 'dsa':
         if bit_size > 1024:
-            private_key = _interpret_dsa_key_blob('private', 2, private_blob_struct, private_blob)
+            private_key = _bcrypt_interpret_dsa_key_blob('private', 2, private_blob_struct, private_blob)
         else:
-            private_key = _interpret_dsa_key_blob('private', 1, private_blob_struct, private_blob)
+            private_key = _bcrypt_interpret_dsa_key_blob('private', 1, private_blob_struct, private_blob)
     else:
-        private_key = _interpret_ec_key_blob('private', private_blob_struct, private_blob)
+        private_key = _bcrypt_interpret_ec_key_blob('private', private_blob_struct, private_blob)
 
     public_out_len = new(bcrypt, 'ULONG *')
     res = bcrypt.BCryptExportKey(key_handle, null(), public_blob_type, null(), 0, public_out_len, 0)
@@ -710,14 +890,14 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     public_blob = bytes_from_buffer(public_buffer, public_buffer_length)[struct_size:]
 
     if algorithm == 'rsa':
-        public_key = _interpret_rsa_key_blob('public', public_blob_struct, public_blob)
+        public_key = _bcrypt_interpret_rsa_key_blob('public', public_blob_struct, public_blob)
     elif algorithm == 'dsa':
         if bit_size > 1024:
-            public_key = _interpret_dsa_key_blob('public', 2, public_blob_struct, public_blob)
+            public_key = _bcrypt_interpret_dsa_key_blob('public', 2, public_blob_struct, public_blob)
         else:
-            public_key = _interpret_dsa_key_blob('public', 1, public_blob_struct, public_blob)
+            public_key = _bcrypt_interpret_dsa_key_blob('public', 1, public_blob_struct, public_blob)
     else:
-        public_key = _interpret_ec_key_blob('public', public_blob_struct, public_blob)
+        public_key = _bcrypt_interpret_ec_key_blob('public', public_blob_struct, public_blob)
 
     return (load_public_key(public_key), load_private_key(private_key))
 
@@ -777,14 +957,18 @@ def generate_dh_parameters(bit_size):
     g = 2
 
     try:
-        alg_handle = open_alg_handle(BcryptConst.BCRYPT_RNG_ALGORITHM)
-        byte_size = bit_size // 8
-        buffer = buffer_from_bytes(byte_size)
+        if not _xp:
+            alg_handle = open_alg_handle(BcryptConst.BCRYPT_RNG_ALGORITHM)
+            byte_size = bit_size // 8
+            buffer = buffer_from_bytes(byte_size)
 
         while True:
-            res = bcrypt.BCryptGenRandom(alg_handle, buffer, byte_size, 0)
-            handle_error(res)
-            rb = bytes_from_buffer(buffer)
+            if _xp:
+                rb = os.urandom(byte_size)
+            else:
+                res = bcrypt.BCryptGenRandom(alg_handle, buffer, byte_size, 0)
+                handle_error(res)
+                rb = bytes_from_buffer(buffer)
 
             p = int_from_bytes(rb)
 
@@ -868,7 +1052,139 @@ def _is_prime(bit_size, n):
     return True
 
 
-def _interpret_rsa_key_blob(key_type, blob_struct, blob):
+def _advapi32_interpret_rsa_key_blob(bit_size, blob_struct, blob):
+    """
+    Takes a CryptoAPI RSA private key blob and converts it into the ASN.1
+    structures for the public and private keys
+
+    :param bit_size:
+        The integer bit size of the key
+
+    :param blob_struct:
+        An instance of the advapi32.RSAPUBKEY struct
+
+    :param blob:
+        A byte string of the binary data after the header
+
+    :return:
+        A 2-element tuple of (asn1crypto.keys.PublicKeyInfo,
+        asn1crypto.keys.PrivateKeyInfo)
+    """
+
+    len1 = bit_size / 8
+    len2 = bit_size / 16
+
+    prime1_offset = len1
+    prime2_offset = prime1_offset + len2
+    exponent1_offset = prime2_offset + len2
+    exponent2_offset = exponent1_offset + len2
+    coefficient_offset = exponent2_offset + len2
+    private_exponent_offset = coefficient_offset + len2
+
+    public_exponent = blob_struct.pubexp
+    modulus = int_from_bytes(blob[0:prime1_offset])
+    prime1 = int_from_bytes(blob[prime1_offset:prime2_offset])
+    prime2 = int_from_bytes(blob[prime2_offset:exponent1_offset])
+    exponent1 = int_from_bytes(blob[exponent1_offset:exponent2_offset])
+    exponent2 = int_from_bytes(blob[exponent2_offset:coefficient_offset])
+    coefficient = int_from_bytes(blob[coefficient_offset:private_exponent_offset])
+    private_exponent = int_from_bytes(blob[private_exponent_offset:private_exponent_offset + len1])
+
+    public_key_info = keys.PublicKeyInfo({
+        'algorithm': keys.PublicKeyAlgorithm({
+            'algorithm': 'rsa',
+        }),
+        'public_key': keys.RSAPublicKey({
+            'modulus': modulus,
+            'public_exponent': public_exponent,
+        }),
+    })
+
+    rsa_private_key = keys.RSAPrivateKey({
+        'version': 'two-prime',
+        'modulus': modulus,
+        'public_exponent': public_exponent,
+        'private_exponent': private_exponent,
+        'prime1': prime1,
+        'prime2': prime2,
+        'exponent1': exponent1,
+        'exponent2': exponent2,
+        'coefficient': coefficient,
+    })
+
+    private_key_info = keys.PrivateKeyInfo({
+        'version': 0,
+        'private_key_algorithm': keys.PrivateKeyAlgorithm({
+            'algorithm': 'rsa',
+        }),
+        'private_key': rsa_private_key,
+    })
+
+    return (public_key_info, private_key_info)
+
+
+def _advapi32_interpret_dsa_key_blob(bit_size, public_blob, private_blob):
+    """
+    Takes a CryptoAPI DSS private key blob and converts it into the ASN.1
+    structures for the public and private keys
+
+    :param bit_size:
+        The integer bit size of the key
+
+    :param public_blob:
+        A byte string of the binary data after the public key header
+
+    :param private_blob:
+        A byte string of the binary data after the private key header
+
+    :return:
+        A 2-element tuple of (asn1crypto.keys.PublicKeyInfo,
+        asn1crypto.keys.PrivateKeyInfo)
+    """
+
+    len1 = 20
+    len2 = bit_size / 8
+
+    q_offset = len2
+    g_offset = q_offset + len1
+    x_offset = g_offset + len2
+    y_offset = x_offset
+
+    p = int_from_bytes(private_blob[0:q_offset])
+    q = int_from_bytes(private_blob[q_offset:g_offset])
+    g = int_from_bytes(private_blob[g_offset:x_offset])
+    x = int_from_bytes(private_blob[x_offset:x_offset + len1])
+    y = int_from_bytes(public_blob[y_offset:y_offset + len2])
+
+    public_key_info = keys.PublicKeyInfo({
+        'algorithm': keys.PublicKeyAlgorithm({
+            'algorithm': 'dsa',
+            'parameters': keys.DSAParams({
+                'p': p,
+                'q': q,
+                'g': g,
+            })
+        }),
+        'public_key': core.Integer(y),
+    })
+
+    private_key_info = keys.PrivateKeyInfo({
+        'version': 0,
+        'private_key_algorithm': keys.PrivateKeyAlgorithm({
+            'algorithm': 'dsa',
+            'parameters': keys.DSAParams({
+                'p': p,
+                'q': q,
+                'g': g,
+            })
+        }),
+        'private_key': core.Integer(x),
+    })
+
+    return (public_key_info, private_key_info)
+
+
+def _bcrypt_interpret_rsa_key_blob(key_type, blob_struct, blob):
     """
     Take a CNG BCRYPT_RSAFULLPRIVATE_BLOB and converts it into an ASN.1
     structure
@@ -953,7 +1269,7 @@ def _interpret_rsa_key_blob(key_type, blob_struct, blob):
         ))
 
 
-def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
+def _bcrypt_interpret_dsa_key_blob(key_type, version, blob_struct, blob):
     """
     Take a CNG BCRYPT_DSA_KEY_BLOB or BCRYPT_DSA_KEY_BLOB_V2 and converts it
     into an ASN.1 structure
@@ -1044,7 +1360,7 @@ def _interpret_dsa_key_blob(key_type, version, blob_struct, blob):
         ))
 
 
-def _interpret_ec_key_blob(key_type, blob_struct, blob):
+def _bcrypt_interpret_ec_key_blob(key_type, blob_struct, blob):
     """
     Take a CNG BCRYPT_ECCKEY_BLOB and converts it into an ASN.1 structure
 
@@ -1163,7 +1479,7 @@ def _load_key(key_object, container):
         asn1crypto.keys.PrivateKeyInfo object
 
     :param container:
-        The class of the object to hold the bcrypt_key_handle
+        The class of the object to hold the key_handle
 
     :raises:
         ValueError - when any of the parameters contain an invalid value
@@ -1179,59 +1495,207 @@ def _load_key(key_object, container):
     if isinstance(key_object, x509.Certificate):
         key_info = key_object['tbs_certificate']['subject_public_key_info']
 
+    algo = key_info.algorithm
+
+    if algo == 'ec':
+        if _xp:
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                Windows XP and 2003 do not support EC keys
+                '''
+            ))
+        curve_type, curve_name = key_info.curve
+        if curve_type != 'named':
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                Windows only supports EC keys using named curves
+                '''
+            ))
+        if curve_name not in set(['secp256r1', 'secp384r1', 'secp521r1']):
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                Windows only supports EC keys using the named curves
+                secp256r1, secp384r1 and secp521r1
+                '''
+            ))
+
+    elif algo == 'dsa':
+        if key_info.hash_algo is None:
+            raise IncompleteAsymmetricKeyError(pretty_message(
+                '''
+                The DSA key does not contain the necessary p, q and g
+                parameters and can not be used
+                '''
+            ))
+        elif key_info.bit_size > 1024 and _win_version_info < (6, 2):
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                Windows XP, 2003, Vista, 7 and Server 2008 only support DSA
+                keys based on SHA1 (1024 bits or less) - this key is based
+                on %s and is %s bits
+                ''',
+                key_info.hash_algo.upper(),
+                key_info.bit_size
+            ))
+        elif key_info.bit_size == 2048 and key_info.hash_algo == 'sha1':
+            raise AsymmetricKeyError(pretty_message(
+                '''
+                Windows only supports 2048 bit DSA keys based on SHA2 - this
+                key is 2048 bits and based on SHA1, a non-standard
+                combination that is usually generated by old versions
+                of OpenSSL
+                '''
+            ))
+
+    if _xp:
+        return _advapi32_load_key(key_object, key_info, container)
+    return _bcrypt_load_key(key_object, key_info, container)
+
+
+def _advapi32_load_key(key_object, key_info, container):
+    """
+    Loads a certificate, public key or private key into a Certificate,
+    PublicKey or PrivateKey object via CryptoAPI
+
+    :param key_object:
+        An asn1crypto.x509.Certificate, asn1crypto.keys.PublicKeyInfo or
+        asn1crypto.keys.PrivateKeyInfo object
+
+    :param key_info:
+        An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
+        object
+
+    :param container:
+        The class of the object to hold the key_handle
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A PrivateKey, PublicKey or Certificate object, based on container
+    """
+
     key_type = 'public' if isinstance(key_info, keys.PublicKeyInfo) else 'private'
+    algo = key_info.algorithm
+
+    if key_type == 'public':
+        struct_type = Advapi32Const.X509_PUBLIC_KEY_INFO
+    else:
+        struct_type = Advapi32Const.PKCS_PRIVATE_KEY_INFO
+
+    if algo == 'rsa':
+        provider = Advapi32Const.MS_ENH_RSA_AES_PROV
+    else:
+        provider = Advapi32Const.MS_ENH_DSS_DH_PROV
+
+    context_handle = None
+    key_handle = None
+
+    try:
+        der_bytes = key_object.dump()
+
+        out_len = new(advapi32, 'DWORD *')
+        res = advapi32.CryptDecodeObjectExW(
+            Advapi32Const.X509_ASN_ENCODING,
+            struct_type,
+            der_bytes,
+            len(der_bytes),
+            0,
+            null(),
+            null(),
+            out_len
+        )
+        handle_error(res)
+
+        buffer_length = deref(out_len)
+        buffer_ = buffer_from_bytes(buffer_length)
+        res = advapi32.CryptDecodeObjectExW(
+            Advapi32Const.X509_ASN_ENCODING,
+            struct_type,
+            der_bytes,
+            len(der_bytes),
+            0,
+            null(),
+            buffer_,
+            out_len
+        )
+        handle_error(res)
+
+        context_handle = open_context_handle(provider)
+
+        key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
+
+        if key_type == 'public':
+            struct_pointer = struct_from_buffer(advapi32, advapi32.CERT_PUBLIC_KEY_INFO, buffer_)
+            res = advapi32.CryptImportPublicKeyInfo(
+                context_handle,
+                Advapi32Const.X509_ASN_ENCODING,
+                struct_pointer,
+                key_handle_pointer
+            )
+
+        else:
+            res = advapi32.CryptImportKey(
+                context_handle,
+                buffer_,
+                buffer_length,
+                null(),
+                0,
+                key_handle_pointer
+            )
+
+        handle_error(res)
+
+        key_handle = unwrap(key_handle_pointer)
+        output = container(key_handle, key_object)
+        output.context_handle = context_handle
+        return output
+
+    except (Exception):
+        if key_handle:
+            advapi32.CryptDestroyKey(key_handle)
+        if context_handle:
+            close_context_handle(context_handle)
+        raise
+
+
+def _bcrypt_load_key(key_object, key_info, container):
+    """
+    Loads a certificate, public key or private key into a Certificate,
+    PublicKey or PrivateKey object via CNG
+
+    :param key_object:
+        An asn1crypto.x509.Certificate, asn1crypto.keys.PublicKeyInfo or
+        asn1crypto.keys.PrivateKeyInfo object
+
+    :param key_info:
+        An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
+        object
+
+    :param container:
+        The class of the object to hold the key_handle
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        oscrypto.errors.AsymmetricKeyError - when the key is incompatible with the OS crypto library
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A PrivateKey, PublicKey or Certificate object, based on container
+    """
 
     alg_handle = None
     key_handle = None
     curve_name = None
 
+    key_type = 'public' if isinstance(key_info, keys.PublicKeyInfo) else 'private'
     algo = key_info.algorithm
 
     try:
-        if algo == 'ec':
-            curve_type, curve_name = key_info.curve
-            if curve_type != 'named':
-                raise AsymmetricKeyError(pretty_message(
-                    '''
-                    Windows only supports EC keys using named curves
-                    '''
-                ))
-            if curve_name not in set(['secp256r1', 'secp384r1', 'secp521r1']):
-                raise AsymmetricKeyError(pretty_message(
-                    '''
-                    Windows only supports EC keys using the named curves
-                    secp256r1, secp384r1 and secp521r1
-                    '''
-                ))
-
-        elif algo == 'dsa':
-            if key_info.hash_algo is None:
-                raise IncompleteAsymmetricKeyError(pretty_message(
-                    '''
-                    The DSA key does not contain the necessary p, q and g
-                    parameters and can not be used
-                    '''
-                ))
-            elif key_info.bit_size > 1024 and _win_version_info < (6, 2):
-                raise AsymmetricKeyError(pretty_message(
-                    '''
-                    Windows Vista, 7 and Server 2008 only support DSA keys based
-                    on SHA1 (1024 bits or less) - this key is based on %s and
-                    is %s bits
-                    ''',
-                    key_info.hash_algo.upper(),
-                    key_info.bit_size
-                ))
-            elif key_info.bit_size == 2048 and key_info.hash_algo == 'sha1':
-                raise AsymmetricKeyError(pretty_message(
-                    '''
-                    Windows only supports 2048 bit DSA keys based on SHA2 - this
-                    key is 2048 bits and based on SHA1, a non-standard
-                    combination that is usually generated by old versions
-                    of OpenSSL
-                    '''
-                ))
-
         alg_selector = key_info.curve[1] if algo == 'ec' else algo
         alg_constant = {
             'rsa': BcryptConst.BCRYPT_RSA_ALGORITHM,
@@ -1786,6 +2250,144 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 certificate_or_public_key.byte_size,
                 len(data)
             ))
+
+    if _xp:
+        return _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding)
+    return _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding)
+
+
+def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=False):
+    """
+    Verifies an RSA, DSA or ECDSA signature via CryptoAPI
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to verify the signature with
+
+    :param signature:
+        A byte string of the signature to verify
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
+
+    :param rsa_pss_padding:
+        If PSS padding should be used for RSA keys
+
+    :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+    """
+
+    algo = certificate_or_public_key.algorithm
+
+    if algo == 'rsa' and rsa_pss_padding:
+        hash_length = {
+            'sha1': 20,
+            'sha224': 28,
+            'sha256': 32,
+            'sha384': 48,
+            'sha512': 64
+        }.get(hash_algorithm, 0)
+        decrypted_signature = raw_rsa_public_crypt(certificate_or_public_key, signature)
+        key_size = certificate_or_public_key.bit_size
+        if not verify_pss_padding(hash_algorithm, hash_length, key_size, data, decrypted_signature):
+            raise SignatureError('Signature is invalid')
+        return
+
+    if algo == 'rsa' and hash_algorithm == 'raw':
+        padded_plaintext = raw_rsa_public_crypt(certificate_or_public_key, signature)
+        try:
+            plaintext = remove_pkcs1v15_signature_padding(certificate_or_public_key.byte_size, padded_plaintext)
+            if not constant_compare(plaintext, data):
+                raise ValueError()
+        except (ValueError):
+            raise SignatureError('Signature is invalid')
+        return
+
+    hash_handle = None
+
+    try:
+        alg_id = {
+            'md5': Advapi32Const.CALG_MD5,
+            'sha1': Advapi32Const.CALG_SHA1,
+            'sha256': Advapi32Const.CALG_SHA_256,
+            'sha384': Advapi32Const.CALG_SHA_384,
+            'sha512': Advapi32Const.CALG_SHA_512,
+        }
+
+        hash_handle_pointer = new(advapi32, 'HCRYPTHASH *')
+        res = advapi32.CryptCreateHash(
+            certificate_or_public_key.context_handle,
+            alg_id,
+            null(),
+            0,
+            hash_handle_pointer
+        )
+        handle_error(res)
+
+        hash_handle = unwrap(hash_handle_pointer)
+
+        res = advapi32.CryptHashData(hash_handle, data, len(data), 0)
+        handle_error(res)
+
+        if algo == 'dsa':
+            # Windows doesn't use the ASN.1 Sequence for DSA signatures,
+            # so we have to convert it here for the verification to work
+            try:
+                signature = Signature.load(signature).to_p1363()
+            except (ValueError, OverflowError, TypeError):
+                raise SignatureError('Signature is invalid')
+
+        # The CryptoAPI expects signatures to be in little endian byte order,
+        # which is the opposite of other systems, so we must reverse it
+        reversed_signature = signature[::-1]
+
+        res = advapi32.CryptVerifySignatureW(
+            hash_handle,
+            reversed_signature,
+            len(signature),
+            certificate_or_public_key.key_handle,
+            null(),
+            0
+        )
+        handle_error(res)
+
+    finally:
+        if hash_handle:
+            advapi32.CryptDestroyHash(hash_handle)
+
+
+def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=False):
+    """
+    Verifies an RSA, DSA or ECDSA signature via CNG
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to verify the signature with
+
+    :param signature:
+        A byte string of the signature to verify
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
+
+    :param rsa_pss_padding:
+        If PSS padding should be used for RSA keys
+
+    :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+    """
+
+    if hash_algorithm == 'raw':
         digest = data
     else:
         hash_constant = {
@@ -1821,15 +2423,15 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
     else:
-        # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
+        # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
         try:
-            signature = Signature.load(signature).to_bcrypt()
+            signature = Signature.load(signature).to_p1363()
         except (ValueError, OverflowError, TypeError):
             raise SignatureError('Signature is invalid')
 
     res = bcrypt.BCryptVerifySignature(
-        certificate_or_public_key.bcrypt_key_handle,
+        certificate_or_public_key.key_handle,
         padding_info,
         digest,
         len(digest),
@@ -2042,6 +2644,156 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 private_key.byte_size,
                 len(data)
             ))
+
+    if _xp:
+        return _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding)
+    return _bcrypt_sign(private_key, data, hash_algorithm, rsa_pss_padding)
+
+
+def _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
+    """
+    Generates an RSA, DSA or ECDSA signature via CryptoAPI
+
+    :param private_key:
+        The PrivateKey to generate the signature with
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
+
+    :param rsa_pss_padding:
+        If PSS padding should be used for RSA keys
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the signature
+    """
+
+    algo = private_key.algorithm
+
+    if algo == 'rsa' and hash_algorithm == 'raw':
+        padded_data = add_pkcs1v15_signature_padding(private_key.byte_size, data)
+        return raw_rsa_private_crypt(private_key, padded_data)
+
+    if algo == 'rsa' and rsa_pss_padding:
+        hash_length = {
+            'sha1': 20,
+            'sha224': 28,
+            'sha256': 32,
+            'sha384': 48,
+            'sha512': 64
+        }.get(hash_algorithm, 0)
+        digest = getattr(hashlib, hash_algorithm)(data).digest()
+        padded_data = add_pss_padding(hash_algorithm, hash_length, private_key.bit_size, digest)
+        return raw_rsa_private_crypt(private_key, padded_data)
+
+    if private_key.algorithm == 'dsa' and hash_algorithm == 'md5':
+        raise ValueError(pretty_message(
+            '''
+            Windows does not support md5 signatures with DSA keys
+            '''
+        ))
+
+    hash_handle = None
+
+    try:
+        alg_id = {
+            'md5': Advapi32Const.CALG_MD5,
+            'sha1': Advapi32Const.CALG_SHA1,
+            'sha256': Advapi32Const.CALG_SHA_256,
+            'sha384': Advapi32Const.CALG_SHA_384,
+            'sha512': Advapi32Const.CALG_SHA_512,
+        }
+
+        hash_handle_pointer = new(advapi32, 'HCRYPTHASH *')
+        res = advapi32.CryptCreateHash(
+            private_key.context_handle,
+            alg_id,
+            null(),
+            0,
+            hash_handle_pointer
+        )
+        handle_error(res)
+
+        hash_handle = unwrap(hash_handle_pointer)
+
+        res = advapi32.CryptHashData(hash_handle, data, len(data), 0)
+        handle_error(res)
+
+        out_len = new(advapi32, 'DWORD *')
+        res = advapi32.CryptSignHashW(
+            hash_handle,
+            Advapi32Const.AT_SIGNATURE,
+            null(),
+            0,
+            null(),
+            out_len
+        )
+        handle_error(res)
+
+        buffer_length = deref(out_len)
+        buffer_ = buffer_from_bytes(buffer_length)
+
+        res = advapi32.CryptSignHashW(
+            hash_handle,
+            Advapi32Const.AT_SIGNATURE,
+            null(),
+            0,
+            buffer_,
+            out_len
+        )
+        handle_error(res)
+
+        output = bytes_from_buffer(buffer_, deref(out_len))
+
+        # CryptoAPI outputs the signature in little endian byte order, so we
+        # must swap it for compatibility with other systems
+        output = output[::-1]
+
+        if algo == 'dsa':
+            # Windows doesn't use the ASN.1 Sequence for DSA signatures,
+            # so we have to convert it here for the verification to work
+            output = Signature.from_p1363(output).dump()
+
+        return output
+
+    finally:
+        if hash_handle:
+            advapi32.CryptDestroyHash(hash_handle)
+
+
+def _bcrypt_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
+    """
+    Generates an RSA, DSA or ECDSA signature via CNG
+
+    :param private_key:
+        The PrivateKey to generate the signature with
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "md5", "sha1", "sha256", "sha384", "sha512" or "raw"
+
+    :param rsa_pss_padding:
+        If PSS padding should be used for RSA keys
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the signature
+    """
+
+    if hash_algorithm == 'raw':
         digest = data
     else:
         hash_constant = {
@@ -2096,7 +2848,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
 
     out_len = new(bcrypt, 'DWORD *')
     res = bcrypt.BCryptSignHash(
-        private_key.bcrypt_key_handle,
+        private_key.key_handle,
         padding_info,
         digest,
         len(digest),
@@ -2114,7 +2866,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         padding_info = cast(bcrypt, 'void *', padding_info_struct_pointer)
 
     res = bcrypt.BCryptSignHash(
-        private_key.bcrypt_key_handle,
+        private_key.key_handle,
         padding_info,
         digest,
         len(digest),
@@ -2127,9 +2879,9 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     signature = bytes_from_buffer(buffer, deref(out_len))
 
     if private_key.algorithm != 'rsa':
-        # Bcrypt doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
+        # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
-        signature = Signature.from_bcrypt(signature).dump()
+        signature = Signature.from_p1363(signature).dump()
 
     return signature
 
@@ -2181,6 +2933,89 @@ def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
             type_name(rsa_oaep_padding)
         ))
 
+    if _xp:
+        return _advapi32_encrypt(certificate_or_public_key, data, rsa_oaep_padding)
+    return _bcrypt_encrypt(certificate_or_public_key, data, rsa_oaep_padding)
+
+
+def _advapi32_encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
+    """
+    Encrypts a value using an RSA public key via CryptoAPI
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to encrypt with
+
+    :param data:
+        A byte string of the data to encrypt
+
+    :param rsa_oaep_padding:
+        If OAEP padding should be used instead of PKCS#1 v1.5
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the ciphertext
+    """
+
+    flags = 0
+    if rsa_oaep_padding:
+        flags = Advapi32Const.CRYPT_OAEP
+
+    out_len = new(advapi32, 'DWORD *')
+    res = advapi32.CryptEncrypt(
+        certificate_or_public_key.key_handle,
+        null(),
+        True,
+        flags,
+        null(),
+        out_len,
+        len(data)
+    )
+    handle_error(res)
+
+    buffer_len = deref(out_len)
+    buffer = buffer_from_bytes(buffer_len)
+    write_to_buffer(buffer, data)
+
+    res = advapi32.CryptEncrypt(
+        certificate_or_public_key.key_handle,
+        null(),
+        True,
+        flags,
+        buffer,
+        out_len,
+        len(data)
+    )
+    handle_error(res)
+
+    return bytes_from_buffer(buffer, deref(out_len))
+
+
+def _bcrypt_encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
+    """
+    Encrypts a value using an RSA public key via CNG
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to encrypt with
+
+    :param data:
+        A byte string of the data to encrypt
+
+    :param rsa_oaep_padding:
+        If OAEP padding should be used instead of PKCS#1 v1.5
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the ciphertext
+    """
+
     flags = BcryptConst.BCRYPT_PAD_PKCS1
     if rsa_oaep_padding is True:
         flags = BcryptConst.BCRYPT_PAD_OAEP
@@ -2198,7 +3033,7 @@ def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
 
     out_len = new(bcrypt, 'ULONG *')
     res = bcrypt.BCryptEncrypt(
-        certificate_or_public_key.bcrypt_key_handle,
+        certificate_or_public_key.key_handle,
         data,
         len(data),
         padding_info,
@@ -2215,7 +3050,7 @@ def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
     buffer = buffer_from_bytes(buffer_len)
 
     res = bcrypt.BCryptEncrypt(
-        certificate_or_public_key.bcrypt_key_handle,
+        certificate_or_public_key.key_handle,
         data,
         len(data),
         padding_info,
@@ -2277,6 +3112,74 @@ def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
             type_name(rsa_oaep_padding)
         ))
 
+    if _xp:
+        return _advapi32_decrypt(private_key, ciphertext, rsa_oaep_padding)
+    return _bcrypt_decrypt(private_key, ciphertext, rsa_oaep_padding)
+
+
+def _advapi32_decrypt(private_key, ciphertext, rsa_oaep_padding=False):
+    """
+    Encrypts a value using an RSA private key via CryptoAPI
+
+    :param private_key:
+        A PrivateKey instance to decrypt with
+
+    :param ciphertext:
+        A byte string of the data to decrypt
+
+    :param rsa_oaep_padding:
+        If OAEP padding should be used instead of PKCS#1 v1.5
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the plaintext
+    """
+
+    flags = 0
+    if rsa_oaep_padding:
+        flags = Advapi32Const.CRYPT_OAEP
+
+    buffer = buffer_from_bytes(ciphertext)
+    out_len = new(advapi32, 'DWORD *', len(ciphertext))
+    res = advapi32.CryptDecrypt(
+        private_key.key_handle,
+        null(),
+        True,
+        flags,
+        buffer,
+        out_len
+    )
+    handle_error(res)
+
+    return bytes_from_buffer(buffer, deref(out_len))
+
+
+def _bcrypt_decrypt(private_key, ciphertext, rsa_oaep_padding=False):
+    """
+    Encrypts a value using an RSA private key via CNG
+
+    :param private_key:
+        A PrivateKey instance to decrypt with
+
+    :param ciphertext:
+        A byte string of the data to decrypt
+
+    :param rsa_oaep_padding:
+        If OAEP padding should be used instead of PKCS#1 v1.5
+
+    :raises:
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+
+    :return:
+        A byte string of the plaintext
+    """
+
     flags = BcryptConst.BCRYPT_PAD_PKCS1
     if rsa_oaep_padding is True:
         flags = BcryptConst.BCRYPT_PAD_OAEP
@@ -2294,7 +3197,7 @@ def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
 
     out_len = new(bcrypt, 'ULONG *')
     res = bcrypt.BCryptDecrypt(
-        private_key.bcrypt_key_handle,
+        private_key.key_handle,
         ciphertext,
         len(ciphertext),
         padding_info,
@@ -2311,7 +3214,7 @@ def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
     buffer = buffer_from_bytes(buffer_len)
 
     res = bcrypt.BCryptDecrypt(
-        private_key.bcrypt_key_handle,
+        private_key.key_handle,
         ciphertext,
         len(ciphertext),
         padding_info,
