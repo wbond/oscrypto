@@ -192,7 +192,7 @@ def parse_session_info(server_handshake_bytes, client_handshake_bytes):
             continue
         for message_type, message_data in _parse_handshake_messages(record_data):
             # Ensure we are working with a ClientHello message
-            if message_type != b'\x02':
+            if message_type != b'\x01':
                 continue
 
             session_id_length = int_from_bytes(message_data[34:35])
