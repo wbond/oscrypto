@@ -23,12 +23,13 @@ The library integrates with the encryption library that is part of the operating
 system. This means that a compiler is never needed, and OS security updates take
 care of patching vulnerabilities. Supported operating systems include:
 
- - Windows Vista or newer
+ - Windows XP or newer
    - Uses:
      - [Cryptography API: Next Generation (CNG)](https://msdn.microsoft.com/en-us/library/windows/desktop/aa376210(v=vs.85).aspx)
      - [Secure Channel](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380123(v=vs.85).aspx) for TLS
-     - [CryptoAPI](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380256(v=vs.85).aspx) for trust lists
+     - [CryptoAPI](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380256(v=vs.85).aspx) for trust lists and XP support
    - Tested on:
+     - Windows XP (no SNI or EC key support)
      - Windows 7
      - Windows 8.1
      - Windows Server 2012
@@ -56,7 +57,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - Ubuntu 12.04 with OpenSSL 1.0.1
      - Ubuntu 15.04 with OpenSSL 1.0.1
 
-*Windows XP and OS X 10.6 will not be supported due to a lack of available
+*OS X 10.6 will not be supported due to a lack of available
 cryptographic primitives and due to lack of vendor support.*
 
 ## Features
@@ -68,7 +69,7 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
  - [TLSv1.x socket wrappers](docs/tls.md)
    - Certificate verification performed by OS trust roots
    - Custom CA certificate support
-   - SNI support
+   - SNI support (except Windows XP)
    - Session reuse via IDs/tickets
    - Modern cipher suites (RC4, DES, anon and NULL ciphers disabled)
    - Weak DH parameters and certificate signatures rejected
@@ -90,16 +91,17 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - RSA (1024, 2048, 3072, 4096 bit)
    - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
      Windows 8)
-   - EC (secp256r1, secp384r1, secp521r1 curves)
+   - EC (secp256r1, secp384r1, secp521r1 curves) (except Windows XP)
  - [Generating DH parameters](docs/asymmetric.md)
  - [Signing and verification](docs/asymmetric.md)
    - RSA PKCSv1.5
    - RSA PSS
    - DSA
-   - EC
+   - EC (except Windows XP)
  - [Loading and normalizing DER and PEM formatted keys](docs/keys.md)
-   - RSA, DSA and EC Public keys
-   - RSA, DSA and EC Private keys
+   - RSA public and private keys
+   - DSA public and private keys
+   - EC public and private keys (except Windows XP)
    - X.509 Certificates
    - PKCS#12 archives (`.pfx`/`.p12`)
  - [Key derivation](docs/kdf.md)
