@@ -1498,6 +1498,7 @@ def _load_key(key_object, container):
         key_info = key_object['tbs_certificate']['subject_public_key_info']
 
     algo = key_info.algorithm
+    curve_name = None
 
     if algo == 'ec':
         if _xp:
@@ -1551,7 +1552,7 @@ def _load_key(key_object, container):
 
     if _xp:
         return _advapi32_load_key(key_object, key_info, container)
-    return _bcrypt_load_key(key_object, key_info, container)
+    return _bcrypt_load_key(key_object, key_info, container, curve_name)
 
 
 def _advapi32_load_key(key_object, key_info, container):
@@ -1742,7 +1743,7 @@ def _advapi32_create_blob(key_info, key_type, algo, signing=True):
     return struct_bytes(blob_struct_pointer) + blob_data
 
 
-def _bcrypt_load_key(key_object, key_info, container):
+def _bcrypt_load_key(key_object, key_info, container, curve_name):
     """
     Loads a certificate, public key or private key into a Certificate,
     PublicKey or PrivateKey object via CNG
@@ -1758,6 +1759,9 @@ def _bcrypt_load_key(key_object, key_info, container):
     :param container:
         The class of the object to hold the key_handle
 
+    :param curve_name:
+        None or a unicode string of the curve name for an EC key
+
     :raises:
         ValueError - when any of the parameters contain an invalid value
         TypeError - when any of the parameters are of the wrong type
@@ -1770,7 +1774,6 @@ def _bcrypt_load_key(key_object, key_info, container):
 
     alg_handle = None
     key_handle = None
-    curve_name = None
 
     key_type = 'public' if isinstance(key_info, keys.PublicKeyInfo) else 'private'
     algo = key_info.algorithm
