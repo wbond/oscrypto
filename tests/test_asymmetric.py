@@ -35,6 +35,9 @@ def _win_version_pair():
     return (ver_info[0], ver_info[1])
 
 
+xp = sys.platform == 'win32' and _win_version_pair() < (6,)
+
+
 def _should_support_sha2():
     if sys.platform == 'darwin':
         return False
@@ -43,6 +46,10 @@ def _should_support_sha2():
     if openssl_098:
         return False
     return True
+
+
+def _should_support_ec():
+    return not xp
 
 
 class AsymmetricTests(unittest.TestCase):
@@ -70,25 +77,46 @@ class AsymmetricTests(unittest.TestCase):
         self.assertEqual('rsa', private_key.algorithm)
 
     def test_cert_ec_attributes(self):
-        cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
-        self.assertEqual(256, cert.bit_size)
-        self.assertEqual(32, cert.byte_size)
-        self.assertEqual('secp256r1', cert.curve)
-        self.assertEqual('ec', cert.algorithm)
+        def do_run():
+            cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
+            self.assertEqual(256, cert.bit_size)
+            self.assertEqual(32, cert.byte_size)
+            self.assertEqual('secp256r1', cert.curve)
+            self.assertEqual('ec', cert.algorithm)
+
+        if not _should_support_ec():
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_public_key_ec_attributes(self):
-        pub_key = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
-        self.assertEqual(256, pub_key.bit_size)
-        self.assertEqual(32, pub_key.byte_size)
-        self.assertEqual('secp256r1', pub_key.curve)
-        self.assertEqual('ec', pub_key.algorithm)
+        def do_run():
+            pub_key = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
+            self.assertEqual(256, pub_key.bit_size)
+            self.assertEqual(32, pub_key.byte_size)
+            self.assertEqual('secp256r1', pub_key.curve)
+            self.assertEqual('ec', pub_key.algorithm)
+
+        if not _should_support_ec():
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_private_key_ec_attributes(self):
-        private_key = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
-        self.assertEqual(256, private_key.bit_size)
-        self.assertEqual(32, private_key.byte_size)
-        self.assertEqual('secp256r1', private_key.curve)
-        self.assertEqual('ec', private_key.algorithm)
+        def do_run():
+            private_key = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
+            self.assertEqual(256, private_key.bit_size)
+            self.assertEqual(32, private_key.byte_size)
+            self.assertEqual('secp256r1', private_key.curve)
+            self.assertEqual('ec', private_key.algorithm)
+
+        if not _should_support_ec():
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_dump_public(self):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
@@ -115,10 +143,10 @@ class AsymmetricTests(unittest.TestCase):
                 self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
                 self.assertEqual('rsa', private_reloaded.algorithm)
 
-        # OpenSSL 0.9.8 doesn't have PBKDF2 implemented in C, thus the dump
-        # operation fails since there is no reasonable way to ensure we are
-        # using a good number of iterations of PBKDF2
-        if openssl_098:
+        # OpenSSL 0.9.8 and Windows XP/2003 don't have PBKDF2 implemented in C,
+        # thus the dump operation fails since there is no reasonable way to
+        # ensure we are using a good number of iterations of PBKDF2
+        if openssl_098 or xp:
             with self.assertRaises(OSError):
                 do_run()
         else:
@@ -161,15 +189,22 @@ class AsymmetricTests(unittest.TestCase):
         asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
     def test_ec_generate(self):
-        public, private = asymmetric.generate_pair('ec', curve='secp256r1')
+        def do_run():
+            public, private = asymmetric.generate_pair('ec', curve='secp256r1')
 
-        self.assertEqual('ec', public.algorithm)
-        self.assertEqual('secp256r1', public.asn1.curve[1])
+            self.assertEqual('ec', public.algorithm)
+            self.assertEqual('secp256r1', public.asn1.curve[1])
 
-        original_data = b'This is data to sign'
-        signature = asymmetric.ecdsa_sign(private, original_data, 'sha1')
-        self.assertIsInstance(signature, byte_cls)
-        asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+            original_data = b'This is data to sign'
+            signature = asymmetric.ecdsa_sign(private, original_data, 'sha1')
+            self.assertIsInstance(signature, byte_cls)
+            asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+
+        if not _should_support_ec():
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_rsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
@@ -272,12 +307,19 @@ class AsymmetricTests(unittest.TestCase):
                 asymmetric.dsa_verify(public, signature, original_data+ b'1', 'sha1')
 
     def test_ecdsa_verify(self):
-        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
-            original_data = f.read()
-        with open(os.path.join(fixtures_dir, 'ecdsa_signature'), 'rb') as f:
-            signature = f.read()
-        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
-        asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+        def do_run():
+            with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+                original_data = f.read()
+            with open(os.path.join(fixtures_dir, 'ecdsa_signature'), 'rb') as f:
+                signature = f.read()
+            public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
+            asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+
+        if not _should_support_ec():
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()
 
     def test_rsa_pkcs1v15_encrypt(self):
         original_data = b'This is data to encrypt'
@@ -443,11 +485,18 @@ class AsymmetricTests(unittest.TestCase):
             do_run()
 
     def test_ecdsa_sign(self):
-        original_data = b'This is data to sign'
-        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
-        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
+        def do_run():
+            original_data = b'This is data to sign'
+            private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
+            public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
 
-        signature = asymmetric.ecdsa_sign(private, original_data, 'sha1')
-        self.assertIsInstance(signature, byte_cls)
+            signature = asymmetric.ecdsa_sign(private, original_data, 'sha1')
+            self.assertIsInstance(signature, byte_cls)
 
-        asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+            asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+
+        if not _should_support_ec():
+            with self.assertRaises(errors.AsymmetricKeyError):
+                do_run()
+        else:
+            do_run()

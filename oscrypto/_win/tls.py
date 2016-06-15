@@ -756,6 +756,7 @@ class TLSSocket(object):
             in_data_buffer = buffer_from_bytes(32768)
             in_buffers[0].pvBuffer = cast(secur32, 'char *', in_data_buffer)
 
+            bytes_read = b''
             while result != Secur32Const.SEC_E_OK:
                 try:
                     fail_late = False

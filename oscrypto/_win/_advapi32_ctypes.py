@@ -120,6 +120,12 @@ try:
             # rgbKeyData omitted since it is a flexible array member
         ]
 
+    class DSSSEED(Structure):
+        _fields_ = [
+            ('counter', DWORD),
+            ('seed', wintypes.BYTE * 20),
+        ]
+
     advapi32.CryptAcquireContextW.argtypes = [
         POINTER(HCRYPTPROV),
         wintypes.LPCWSTR,
@@ -135,18 +141,6 @@ try:
     ]
     advapi32.CryptReleaseContext.restype = wintypes.BOOL
 
-    advapi32.CryptDecodeObjectExW.argtypes = [
-        DWORD,
-        wintypes.LPCWSTR,
-        PBYTE,
-        DWORD,
-        DWORD,
-        c_void_p,
-        c_void_p,
-        POINTER(DWORD)
-    ]
-    advapi32.CryptDecodeObjectExW.restype = BOOL
-
     advapi32.CryptImportKey.argtypes = [
         HCRYPTPROV,
         PBYTE,
@@ -156,13 +150,6 @@ try:
         POINTER(HCRYPTKEY)
     ]
     advapi32.CryptImportKey.restype = BOOL
-    advapi32.CryptImportPublicKeyInfo.argtypes = [
-        HCRYPTPROV,
-        DWORD,
-        POINTER(CERT_PUBLIC_KEY_INFO),
-        POINTER(HCRYPTKEY)
-    ]
-    advapi32.CryptImportPublicKeyInfo.restype = BOOL
 
     advapi32.CryptGenKey.argtypes = [
         HCRYPTPROV,
@@ -299,6 +286,7 @@ setattr(advapi32, 'RSAPUBKEY', RSAPUBKEY)
 setattr(advapi32, 'RSABLOBHEADER', RSABLOBHEADER)
 setattr(advapi32, 'BLOBHEADER', BLOBHEADER)
 setattr(advapi32, 'PLAINTEXTKEYBLOB', PLAINTEXTKEYBLOB)
+setattr(advapi32, 'DSSSEED', DSSSEED)
 
 
 def get_error():

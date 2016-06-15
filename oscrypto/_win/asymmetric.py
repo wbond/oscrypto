@@ -20,6 +20,7 @@ from .._ffi import (
     native,
     new,
     null,
+    pointer_set,
     sizeof,
     struct,
     struct_bytes,
@@ -344,8 +345,9 @@ class PrivateKey():
 
     # A CNG BCRYPT_KEY_HANDLE on Vista and newer, an HCRYPTKEY on XP and 2003
     key_handle = None
-    # On XP and 2003, we have to carry around the context also
+    # On XP and 2003, we have to carry around more info
     context_handle = None
+    ex_key_handle = None
     asn1 = None
 
     def __init__(self, key_handle, asn1):
@@ -681,22 +683,22 @@ def _advapi32_generate_pair(algorithm, bit_size=None):
 
     if algorithm == 'rsa':
         provider = Advapi32Const.MS_ENH_RSA_AES_PROV
-        algorithm = Advapi32Const.CALG_RSA_SIGN
-        struct_type = advapi32.RSABLOBHEADER
+        algorithm_id = Advapi32Const.CALG_RSA_SIGN
+        struct_type = 'RSABLOBHEADER'
     else:
         provider = Advapi32Const.MS_ENH_DSS_DH_PROV
-        algorithm = Advapi32Const.CALG_DSS_SIGN
-        struct_type = advapi32.DSSBLOBHEADER
+        algorithm_id = Advapi32Const.CALG_DSS_SIGN
+        struct_type = 'DSSBLOBHEADER'
 
     context_handle = None
     key_handle = None
 
     try:
-        context_handle = open_context_handle(provider)
+        context_handle = open_context_handle(provider, verify_only=False)
 
         key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
         flags = (bit_size << 16) | Advapi32Const.CRYPT_EXPORTABLE
-        res = advapi32.CryptGenKey(context_handle, algorithm, flags, key_handle_pointer)
+        res = advapi32.CryptGenKey(context_handle, algorithm_id, flags, key_handle_pointer)
         handle_error(res)
 
         key_handle = unwrap(key_handle_pointer)
@@ -957,9 +959,9 @@ def generate_dh_parameters(bit_size):
     g = 2
 
     try:
+        byte_size = bit_size // 8
         if not _xp:
             alg_handle = open_alg_handle(BcryptConst.BCRYPT_RNG_ALGORITHM)
-            byte_size = bit_size // 8
             buffer = buffer_from_bytes(byte_size)
 
         while True:
@@ -1071,8 +1073,8 @@ def _advapi32_interpret_rsa_key_blob(bit_size, blob_struct, blob):
         asn1crypto.keys.PrivateKeyInfo)
     """
 
-    len1 = bit_size / 8
-    len2 = bit_size / 16
+    len1 = bit_size // 8
+    len2 = bit_size // 16
 
     prime1_offset = len1
     prime2_offset = prime1_offset + len2
@@ -1081,14 +1083,14 @@ def _advapi32_interpret_rsa_key_blob(bit_size, blob_struct, blob):
     coefficient_offset = exponent2_offset + len2
     private_exponent_offset = coefficient_offset + len2
 
-    public_exponent = blob_struct.pubexp
-    modulus = int_from_bytes(blob[0:prime1_offset])
-    prime1 = int_from_bytes(blob[prime1_offset:prime2_offset])
-    prime2 = int_from_bytes(blob[prime2_offset:exponent1_offset])
-    exponent1 = int_from_bytes(blob[exponent1_offset:exponent2_offset])
-    exponent2 = int_from_bytes(blob[exponent2_offset:coefficient_offset])
-    coefficient = int_from_bytes(blob[coefficient_offset:private_exponent_offset])
-    private_exponent = int_from_bytes(blob[private_exponent_offset:private_exponent_offset + len1])
+    public_exponent = blob_struct.rsapubkey.pubexp
+    modulus = int_from_bytes(blob[0:prime1_offset][::-1])
+    prime1 = int_from_bytes(blob[prime1_offset:prime2_offset][::-1])
+    prime2 = int_from_bytes(blob[prime2_offset:exponent1_offset][::-1])
+    exponent1 = int_from_bytes(blob[exponent1_offset:exponent2_offset][::-1])
+    exponent2 = int_from_bytes(blob[exponent2_offset:coefficient_offset][::-1])
+    coefficient = int_from_bytes(blob[coefficient_offset:private_exponent_offset][::-1])
+    private_exponent = int_from_bytes(blob[private_exponent_offset:private_exponent_offset + len1][::-1])
 
     public_key_info = keys.PublicKeyInfo({
         'algorithm': keys.PublicKeyAlgorithm({
@@ -1143,18 +1145,18 @@ def _advapi32_interpret_dsa_key_blob(bit_size, public_blob, private_blob):
     """
 
     len1 = 20
-    len2 = bit_size / 8
+    len2 = bit_size // 8
 
     q_offset = len2
     g_offset = q_offset + len1
     x_offset = g_offset + len2
     y_offset = x_offset
 
-    p = int_from_bytes(private_blob[0:q_offset])
-    q = int_from_bytes(private_blob[q_offset:g_offset])
-    g = int_from_bytes(private_blob[g_offset:x_offset])
-    x = int_from_bytes(private_blob[x_offset:x_offset + len1])
-    y = int_from_bytes(public_blob[y_offset:y_offset + len2])
+    p = int_from_bytes(private_blob[0:q_offset][::-1])
+    q = int_from_bytes(private_blob[q_offset:g_offset][::-1])
+    g = int_from_bytes(private_blob[g_offset:x_offset][::-1])
+    x = int_from_bytes(private_blob[x_offset:x_offset + len1][::-1])
+    y = int_from_bytes(public_blob[y_offset:y_offset + len2][::-1])
 
     public_key_info = keys.PublicKeyInfo({
         'algorithm': keys.PublicKeyAlgorithm({
@@ -1581,11 +1583,6 @@ def _advapi32_load_key(key_object, key_info, container):
     key_type = 'public' if isinstance(key_info, keys.PublicKeyInfo) else 'private'
     algo = key_info.algorithm
 
-    if key_type == 'public':
-        struct_type = Advapi32Const.X509_PUBLIC_KEY_INFO
-    else:
-        struct_type = Advapi32Const.PKCS_PRIVATE_KEY_INFO
-
     if algo == 'rsa':
         provider = Advapi32Const.MS_ENH_RSA_AES_PROV
     else:
@@ -1595,63 +1592,43 @@ def _advapi32_load_key(key_object, key_info, container):
     key_handle = None
 
     try:
-        der_bytes = key_object.dump()
+        context_handle = open_context_handle(provider, verify_only=key_type == 'public')
 
-        out_len = new(advapi32, 'DWORD *')
-        res = advapi32.CryptDecodeObjectExW(
-            Advapi32Const.X509_ASN_ENCODING,
-            struct_type,
-            der_bytes,
-            len(der_bytes),
-            0,
-            null(),
-            null(),
-            out_len
-        )
-        handle_error(res)
-
-        buffer_length = deref(out_len)
-        buffer_ = buffer_from_bytes(buffer_length)
-        res = advapi32.CryptDecodeObjectExW(
-            Advapi32Const.X509_ASN_ENCODING,
-            struct_type,
-            der_bytes,
-            len(der_bytes),
-            0,
-            null(),
-            buffer_,
-            out_len
-        )
-        handle_error(res)
-
-        context_handle = open_context_handle(provider)
+        blob = _advapi32_create_blob(key_info, key_type, algo)
+        buffer_ = buffer_from_bytes(blob)
 
         key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
-
-        if key_type == 'public':
-            struct_pointer = struct_from_buffer(advapi32, advapi32.CERT_PUBLIC_KEY_INFO, buffer_)
-            res = advapi32.CryptImportPublicKeyInfo(
-                context_handle,
-                Advapi32Const.X509_ASN_ENCODING,
-                struct_pointer,
-                key_handle_pointer
-            )
-
-        else:
-            res = advapi32.CryptImportKey(
-                context_handle,
-                buffer_,
-                buffer_length,
-                null(),
-                0,
-                key_handle_pointer
-            )
-
+        res = advapi32.CryptImportKey(
+            context_handle,
+            buffer_,
+            len(blob),
+            null(),
+            0,
+            key_handle_pointer
+        )
         handle_error(res)
 
         key_handle = unwrap(key_handle_pointer)
         output = container(key_handle, key_object)
         output.context_handle = context_handle
+
+        if algo == 'rsa':
+            ex_blob = _advapi32_create_blob(key_info, key_type, algo, signing=False)
+            ex_buffer = buffer_from_bytes(ex_blob)
+
+            ex_key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
+            res = advapi32.CryptImportKey(
+                context_handle,
+                ex_buffer,
+                len(ex_blob),
+                null(),
+                0,
+                ex_key_handle_pointer
+            )
+            handle_error(res)
+
+            output.ex_key_handle = unwrap(ex_key_handle_pointer)
+
         return output
 
     except (Exception):
@@ -1660,6 +1637,109 @@ def _advapi32_load_key(key_object, key_info, container):
         if context_handle:
             close_context_handle(context_handle)
         raise
+
+
+def _advapi32_create_blob(key_info, key_type, algo, signing=True):
+    """
+    Generates a blob for importing a key to CryptoAPI
+
+    :param key_info:
+        An asn1crypto.keys.PublicKeyInfo or asn1crypto.keys.PrivateKeyInfo
+        object
+
+    :param key_type:
+        A unicode string of "public" or "private"
+
+    :param algo:
+        A unicode string of "rsa" or "dsa"
+
+    :param signing:
+        If the key handle is for signing - may only be False for rsa keys
+
+    :return:
+        A byte string of a blob to pass to advapi32.CryptImportKey()
+    """
+
+    if key_type == 'public':
+        blob_type = Advapi32Const.PUBLICKEYBLOB
+    else:
+        blob_type = Advapi32Const.PRIVATEKEYBLOB
+
+    if algo == 'rsa':
+        struct_type = 'RSABLOBHEADER'
+        if signing:
+            algorithm_id = Advapi32Const.CALG_RSA_SIGN
+        else:
+            algorithm_id = Advapi32Const.CALG_RSA_KEYX
+    else:
+        struct_type = 'DSSBLOBHEADER'
+        algorithm_id = Advapi32Const.CALG_DSS_SIGN
+
+    blob_header_pointer = struct(advapi32, 'BLOBHEADER')
+    blob_header = unwrap(blob_header_pointer)
+    blob_header.bType = blob_type
+    blob_header.bVersion = Advapi32Const.CUR_BLOB_VERSION
+    blob_header.reserved = 0
+    blob_header.aiKeyAlg = algorithm_id
+
+    blob_struct_pointer = struct(advapi32, struct_type)
+    blob_struct = unwrap(blob_struct_pointer)
+    blob_struct.publickeystruc = blob_header
+
+    bit_size = key_info.bit_size
+    len1 = bit_size // 8
+    len2 = bit_size // 16
+
+    if algo == 'rsa':
+        pubkey_pointer = struct(advapi32, 'RSAPUBKEY')
+        pubkey = unwrap(pubkey_pointer)
+        pubkey.bitlen = bit_size
+        if key_type == 'public':
+            parsed_key_info = key_info['public_key'].parsed
+            pubkey.magic = Advapi32Const.RSA1
+            pubkey.pubexp = parsed_key_info['public_exponent'].native
+            blob_data = int_to_bytes(parsed_key_info['modulus'].native, signed=False, width=len1)[::-1]
+        else:
+            parsed_key_info = key_info['private_key'].parsed
+            pubkey.magic = Advapi32Const.RSA2
+            pubkey.pubexp = parsed_key_info['public_exponent'].native
+            blob_data = int_to_bytes(parsed_key_info['modulus'].native, signed=False, width=len1)[::-1]
+            blob_data += int_to_bytes(parsed_key_info['prime1'].native, signed=False, width=len2)[::-1]
+            blob_data += int_to_bytes(parsed_key_info['prime2'].native, signed=False, width=len2)[::-1]
+            blob_data += int_to_bytes(parsed_key_info['exponent1'].native, signed=False, width=len2)[::-1]
+            blob_data += int_to_bytes(parsed_key_info['exponent2'].native, signed=False, width=len2)[::-1]
+            blob_data += int_to_bytes(parsed_key_info['coefficient'].native, signed=False, width=len2)[::-1]
+            blob_data += int_to_bytes(parsed_key_info['private_exponent'].native, signed=False, width=len1)[::-1]
+        blob_struct.rsapubkey = pubkey
+
+    else:
+        pubkey_pointer = struct(advapi32, 'DSSPUBKEY')
+        pubkey = unwrap(pubkey_pointer)
+        pubkey.bitlen = bit_size
+
+        if key_type == 'public':
+            pubkey.magic = Advapi32Const.DSS1
+            params = key_info['algorithm']['parameters'].native
+            key_data = int_to_bytes(key_info['public_key'].parsed.native, signed=False, width=len1)[::-1]
+        else:
+            pubkey.magic = Advapi32Const.DSS2
+            params = key_info['private_key_algorithm']['parameters'].native
+            key_data = int_to_bytes(key_info['private_key'].parsed.native, signed=False, width=20)[::-1]
+        blob_struct.dsspubkey = pubkey
+
+        blob_data = int_to_bytes(params['p'], signed=False, width=len1)[::-1]
+        blob_data += int_to_bytes(params['q'], signed=False, width=20)[::-1]
+        blob_data += int_to_bytes(params['g'], signed=False, width=len1)[::-1]
+        blob_data += key_data
+
+        dssseed_pointer = struct(advapi32, 'DSSSEED')
+        dssseed = unwrap(dssseed_pointer)
+        # This indicates no counter or seed info is available
+        dssseed.counter = 0xffffffff
+
+        blob_data += struct_bytes(dssseed_pointer)
+
+    return struct_bytes(blob_struct_pointer) + blob_data
 
 
 def _bcrypt_load_key(key_object, key_info, container):
@@ -2317,7 +2397,7 @@ def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm,
             'sha256': Advapi32Const.CALG_SHA_256,
             'sha384': Advapi32Const.CALG_SHA_384,
             'sha512': Advapi32Const.CALG_SHA_512,
-        }
+        }[hash_algorithm]
 
         hash_handle_pointer = new(advapi32, 'HCRYPTHASH *')
         res = advapi32.CryptCreateHash(
@@ -2339,6 +2419,10 @@ def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm,
             # so we have to convert it here for the verification to work
             try:
                 signature = Signature.load(signature).to_p1363()
+                # Switch the two integers so that the reversal later will
+                # result in the correct order
+                half_len = len(signature) // 2
+                signature = signature[half_len:] + signature[:half_len]
             except (ValueError, OverflowError, TypeError):
                 raise SignatureError('Signature is invalid')
 
@@ -2689,8 +2773,7 @@ def _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             'sha384': 48,
             'sha512': 64
         }.get(hash_algorithm, 0)
-        digest = getattr(hashlib, hash_algorithm)(data).digest()
-        padded_data = add_pss_padding(hash_algorithm, hash_length, private_key.bit_size, digest)
+        padded_data = add_pss_padding(hash_algorithm, hash_length, private_key.bit_size, data)
         return raw_rsa_private_crypt(private_key, padded_data)
 
     if private_key.algorithm == 'dsa' and hash_algorithm == 'md5':
@@ -2709,7 +2792,7 @@ def _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             'sha256': Advapi32Const.CALG_SHA_256,
             'sha384': Advapi32Const.CALG_SHA_384,
             'sha512': Advapi32Const.CALG_SHA_512,
-        }
+        }[hash_algorithm]
 
         hash_handle_pointer = new(advapi32, 'HCRYPTHASH *')
         res = advapi32.CryptCreateHash(
@@ -2757,6 +2840,10 @@ def _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         output = output[::-1]
 
         if algo == 'dsa':
+            # Switch the two integers because the reversal just before switched
+            # then
+            half_len = len(output) // 2
+            output = output[half_len:] + output[:half_len]
             # Windows doesn't use the ASN.1 Sequence for DSA signatures,
             # so we have to convert it here for the verification to work
             output = Signature.from_p1363(output).dump()
@@ -2964,15 +3051,15 @@ def _advapi32_encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
     if rsa_oaep_padding:
         flags = Advapi32Const.CRYPT_OAEP
 
-    out_len = new(advapi32, 'DWORD *')
+    out_len = new(advapi32, 'DWORD *', len(data))
     res = advapi32.CryptEncrypt(
-        certificate_or_public_key.key_handle,
+        certificate_or_public_key.ex_key_handle,
         null(),
         True,
         flags,
         null(),
         out_len,
-        len(data)
+        0
     )
     handle_error(res)
 
@@ -2980,18 +3067,19 @@ def _advapi32_encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
     buffer = buffer_from_bytes(buffer_len)
     write_to_buffer(buffer, data)
 
+    pointer_set(out_len, len(data))
     res = advapi32.CryptEncrypt(
-        certificate_or_public_key.key_handle,
+        certificate_or_public_key.ex_key_handle,
         null(),
         True,
         flags,
         buffer,
         out_len,
-        len(data)
+        buffer_len
     )
     handle_error(res)
 
-    return bytes_from_buffer(buffer, deref(out_len))
+    return bytes_from_buffer(buffer, deref(out_len))[::-1]
 
 
 def _bcrypt_encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
@@ -3143,10 +3231,12 @@ def _advapi32_decrypt(private_key, ciphertext, rsa_oaep_padding=False):
     if rsa_oaep_padding:
         flags = Advapi32Const.CRYPT_OAEP
 
+    ciphertext = ciphertext[::-1]
+
     buffer = buffer_from_bytes(ciphertext)
     out_len = new(advapi32, 'DWORD *', len(ciphertext))
     res = advapi32.CryptDecrypt(
-        private_key.key_handle,
+        private_key.ex_key_handle,
         null(),
         True,
         flags,

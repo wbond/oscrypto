@@ -19,24 +19,40 @@ __all__ = [
 ]
 
 
-def open_context_handle(provider):
+def open_context_handle(provider, verify_only=True):
     if provider == Advapi32Const.MS_ENH_RSA_AES_PROV:
         provider_type = Advapi32Const.PROV_RSA_AES
     elif provider == Advapi32Const.MS_ENH_DSS_DH_PROV:
-        provider_type = Advapi32Const.PROV_DSS
-    elif provider == Advapi32Const.MS_ENHANCED_PROV:
-        provider_type = Advapi32Const.PROV_RSA_FULL
+        provider_type = Advapi32Const.PROV_DSS_DH
     else:
         raise ValueError('Invalid provider specified: %s' % provider)
+
+    # Ths DSS provider needs a container to allow importing and exporting
+    # private keys, but all of the RSA stuff works fine with CRYPT_VERIFYCONTEXT
+    if verify_only or provider != Advapi32Const.MS_ENH_DSS_DH_PROV:
+        container_name = null()
+        flags = Advapi32Const.CRYPT_VERIFYCONTEXT
+    else:
+        container_name = Advapi32Const.CONTAINER_NAME
+        flags = Advapi32Const.CRYPT_NEWKEYSET
 
     context_handle_pointer = new(advapi32, 'HCRYPTPROV *')
     res = advapi32.CryptAcquireContextW(
         context_handle_pointer,
-        null(),
+        container_name,
         provider,
         provider_type,
-        Advapi32Const.CRYPT_VERIFYCONTEXT
+        flags
     )
+    # If using the DSS provider and the container exists, just open it
+    if not res and get_error()[0] == Advapi32Const.NTE_EXISTS:
+        res = advapi32.CryptAcquireContextW(
+            context_handle_pointer,
+            container_name,
+            provider,
+            provider_type,
+            0
+        )
     handle_error(res)
 
     return unwrap(context_handle_pointer)
@@ -73,28 +89,24 @@ def handle_error(result):
 
 
 class Advapi32Const():
-    PROV_RSA_FULL = 1
-    PROV_DSS = 3
-    # This is required on Windows XP for MS_ENH_RSA_AES_PROV
-    PROV_RSA_AES = 24
-    # PROV_DSS_DH = 13
+    # Name we give to a container used to make DSA private key import/export work
+    CONTAINER_NAME = 'oscrypto temporary DSS keyset'
 
-    X509_ASN_ENCODING = 1
+    PROV_RSA_AES = 24
+    PROV_DSS_DH = 13
+
     X509_PUBLIC_KEY_INFO = 8
     PKCS_PRIVATE_KEY_INFO = 44
     X509_DSS_SIGNATURE = 40
-
-    ERROR_MORE_DATA = 234
+    CRYPT_NO_SALT = 0x00000010
 
     MS_ENH_DSS_DH_PROV = "Microsoft Enhanced DSS and Diffie-Hellman Cryptographic Provider"
-    # This is for RC2/RC4 lower than 128 bits
-    MS_ENHANCED_PROV = "Microsoft Enhanced Cryptographic Provider"
     # This is the Windows XP name for the provider
     MS_ENH_RSA_AES_PROV = "Microsoft Enhanced RSA and AES Cryptographic Provider (Prototype)"
 
     CRYPT_EXPORTABLE = 1
+    CRYPT_NEWKEYSET = 0x00000008
     CRYPT_VERIFYCONTEXT = 0xF0000000
-    # CRYPT_PREGEN = 0x40
 
     CALG_MD5 = 0x00008003
     CALG_SHA1 = 0x00008004
@@ -113,12 +125,9 @@ class Advapi32Const():
 
     CALG_DSS_SIGN = 0x00002200
     CALG_RSA_SIGN = 0x00002400
-
-    # CALG_DH_SF = 0x0000AA01
-    # CALG_DH_EPHEM = 0x0000AA02
+    CALG_RSA_KEYX = 0x0000a400
 
     CRYPT_MODE_CBC = 1
-    CRYPT_MODE_ECB = 2
 
     PKCS5_PADDING = 1
 
@@ -131,15 +140,14 @@ class Advapi32Const():
     KP_PADDING = 3
     KP_MODE = 4
     KP_EFFECTIVE_KEYLEN = 19
-    # KP_KEYVAL = 30
-    # KP_OAEP_PARAMS = 36
-
-    # HP_HASHVAL = 2
 
     CRYPT_OAEP = 0x00000040
 
-    NTE_BAD_SIGNATURE = 0x80090006
+    NTE_BAD_SIGNATURE = -2146893818  # 0x80090006
+    NTE_EXISTS = -2146893809  # 0x8009000F
     AT_SIGNATURE = 2
 
-    # KP_P = 0x0000000b
-    # KP_G = 0x0000000c
+    RSA1 = 0x31415352
+    RSA2 = 0x32415352
+    DSS1 = 0x31535344
+    DSS2 = 0x32535344

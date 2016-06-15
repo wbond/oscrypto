@@ -10,6 +10,7 @@ from .._ffi import (
     deref,
     new,
     null,
+    pointer_set,
     struct,
     struct_bytes,
     unwrap,
@@ -590,12 +591,8 @@ def _advapi32_create_handles(cipher, key, iv):
             'rc4': Advapi32Const.CALG_RC4,
         }[cipher]
 
-    if cipher in set(['rc2', 'rc4']) and len(key) < 16:
-        provider = Advapi32Const.MS_ENHANCED_PROV
-    else:
-        provider = Advapi32Const.MS_ENH_RSA_AES_PROV
-
-    context_handle = open_context_handle(provider)
+    provider = Advapi32Const.MS_ENH_RSA_AES_PROV
+    context_handle = open_context_handle(provider, verify_only=False)
 
     blob_header_pointer = struct(advapi32, 'BLOBHEADER')
     blob_header = unwrap(blob_header_pointer)
@@ -611,18 +608,32 @@ def _advapi32_create_handles(cipher, key, iv):
 
     blob = struct_bytes(blob_struct_pointer) + key
 
+    flags = 0
+    if cipher in set(['rc2', 'rc4']) and len(key) == 5:
+        flags = Advapi32Const.CRYPT_NO_SALT
+
     key_handle_pointer = new(advapi32, 'HCRYPTKEY *')
     res = advapi32.CryptImportKey(
         context_handle,
         blob,
         len(blob),
         null(),
-        0,
+        flags,
         key_handle_pointer
     )
     handle_error(res)
 
     key_handle = unwrap(key_handle_pointer)
+
+    if cipher == 'rc2':
+        buf = new(advapi32, 'DWORD *', len(key) * 8)
+        res = advapi32.CryptSetKeyParam(
+            key_handle,
+            Advapi32Const.KP_EFFECTIVE_KEYLEN,
+            buf,
+            0
+        )
+        handle_error(res)
 
     if cipher != 'rc4':
         res = advapi32.CryptSetKeyParam(
@@ -646,16 +657,6 @@ def _advapi32_create_handles(cipher, key, iv):
         res = advapi32.CryptSetKeyParam(
             key_handle,
             Advapi32Const.KP_PADDING,
-            buf,
-            0
-        )
-        handle_error(res)
-
-    if cipher == 'rc2':
-        buf = new(advapi32, 'DWORD *', len(key) * 8)
-        res = advapi32.CryptSetKeyParam(
-            key_handle,
-            Advapi32Const.KP_EFFECTIVE_KEYLEN,
             buf,
             0
         )
@@ -831,7 +832,7 @@ def _advapi32_encrypt(cipher, key, data, iv, padding):
     try:
         context_handle, key_handle = _advapi32_create_handles(cipher, key, iv)
 
-        out_len = new(advapi32, 'DWORD *')
+        out_len = new(advapi32, 'DWORD *', len(data))
         res = advapi32.CryptEncrypt(
             key_handle,
             null(),
@@ -839,7 +840,7 @@ def _advapi32_encrypt(cipher, key, data, iv, padding):
             0,
             null(),
             out_len,
-            len(data)
+            0
         )
         handle_error(res)
 
@@ -847,6 +848,7 @@ def _advapi32_encrypt(cipher, key, data, iv, padding):
         buffer = buffer_from_bytes(buffer_len)
         write_to_buffer(buffer, data)
 
+        pointer_set(out_len, len(data))
         res = advapi32.CryptEncrypt(
             key_handle,
             null(),
@@ -854,7 +856,7 @@ def _advapi32_encrypt(cipher, key, data, iv, padding):
             0,
             buffer,
             out_len,
-            len(data)
+            buffer_len
         )
         handle_error(res)
 
@@ -1076,7 +1078,7 @@ def _advapi32_decrypt(cipher, key, data, iv, padding):
 
     finally:
         if key_handle:
-            bcrypt.BCryptDestroyKey(key_handle)
+            advapi32.CryptDestroyKey(key_handle)
         if context_handle:
             close_context_handle(context_handle)
 

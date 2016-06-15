@@ -22,6 +22,8 @@ else:
     byte_cls = bytes
 
 
+xp = sys.platform == 'win32' and sys.getwindowsversion()[0] < 6
+
 tests_root = os.path.dirname(__file__)
 fixtures_dir = os.path.join(tests_root, 'fixtures')
 
@@ -35,16 +37,19 @@ class TLSTests(unittest.TestCase):
     @staticmethod
     def tls_hosts():
         return (
-            ('google', 'www.google.com',),
-            ('package_control', 'packagecontrol.io',),
-            ('howsmyssl', 'www.howsmyssl.com',),
-            ('dh1024', 'dh1024.badssl.com'),
-            ('revoked', 'revoked.grc.com'),
+            ('google', 'www.google.com', 443),
+            ('package_control', 'packagecontrol.io', 443),
+            ('howsmyssl', 'www.howsmyssl.com', 443),
+            ('dh1024', 'dh1024.badtls.io', 10005),
+            ('revoked', 'revoked.grc.com', 443),
         )
 
     @data('tls_hosts', True)
-    def tls_connect(self, hostname):
-        connection = tls.TLSSocket(hostname, 443)
+    def tls_connect(self, hostname, port):
+        session = None
+        if hostname == 'dh1024.badtls.io':
+            session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        connection = tls.TLSSocket(hostname, port, session=session)
         self.assertEqual(hostname, connection.hostname)
         self.assertIsInstance(connection.hostname, str_cls)
         self.assertIsInstance(connection.cipher_suite, str_cls)
@@ -109,28 +114,38 @@ class TLSTests(unittest.TestCase):
             tls.TLSSocket('bad-key-usage.badtls.io', 11005, session=session)
 
     def test_tls_error_wildcard_mismatch(self):
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'does not match'):
-            tls.TLSSocket('wrong.host.badssl.com', 443)
+            tls.TLSSocket('wildcard.mismatch.badtls.io', 11007, session=session)
 
     def test_tls_error_expired(self):
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'certificate expired'):
-            tls.TLSSocket('expired.badssl.com', 443)
+            tls.TLSSocket('expired.badtls.io', 11006, session=session)
 
     def test_tls_error_self_signed(self):
         with self.assertRaisesRegexp(errors.TLSVerificationError, 'self-signed'):
             tls.TLSSocket('self-signed.badssl.com', 443)
 
     def test_tls_error_weak_dh_params(self):
-        with self.assertRaisesRegexp(errors.TLSError, 'weak DH parameters'):
+        # badssl.com uses SNI, which Windows XP does not support
+        regex = 'weak DH parameters' if not xp else 'self-signed'
+        # ideally we would use badtls.io since that does not require SNI, however
+        # it is not possible to force a good version of OpenSSL to use such a
+        # small value for DH params, and I don't feel like the headache of trying
+        # to get an old, staticly-linked socat set up just for this text on XP
+        with self.assertRaisesRegexp(errors.TLSError, regex):
             tls.TLSSocket('dh512.badssl.com', 443)
 
     def test_tls_error_handshake_error(self):
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failed'):
-            tls.TLSSocket('rc4-md5.badssl.com', 443)
+            tls.TLSSocket('rc4-md5.badtls.io', 11009, session=session)
 
     def test_tls_error_handshake_error_2(self):
+        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         with self.assertRaisesRegexp(errors.TLSError, 'TLS handshake failed'):
-            tls.TLSSocket('rc4.badssl.com', 443)
+            tls.TLSSocket('rc4.badtls.io', 11008, session=session)
 
     def test_tls_extra_trust_roots_no_match(self):
         expected = 'certificate issuer not found in trusted root certificate store'

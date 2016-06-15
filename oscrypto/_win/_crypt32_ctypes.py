@@ -28,6 +28,7 @@ except (OSError) as e:
 HCERTSTORE = wintypes.HANDLE
 HCERTCHAINENGINE = wintypes.HANDLE
 HCRYPTPROV = wintypes.HANDLE
+HCRYPTKEY = wintypes.HANDLE
 PBYTE = c_char_p
 if sys.maxsize > 2 ** 32:
     ULONG_PTR = ctypes.c_uint64

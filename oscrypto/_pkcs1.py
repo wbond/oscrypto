@@ -465,7 +465,7 @@ def _add_pkcs1v15_padding(key_length, data, operation):
             repr(key_length)
         ))
 
-    if len(data) <= key_length - 11:
+    if len(data) > key_length - 11:
         raise ValueError(pretty_message(
             '''
             data must be between 1 and %s bytes long - is %s
@@ -622,7 +622,7 @@ def raw_rsa_private_crypt(private_key, data):
             type_name(data)
         ))
 
-    rsa_private_key = private_key.asn1['private_key']
+    rsa_private_key = private_key.asn1['private_key'].parsed
     transformed_int = pow(
         int_from_bytes(data),
         rsa_private_key['private_exponent'].native,
@@ -653,7 +653,7 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
 
     has_asn1 = hasattr(certificate_or_public_key, 'asn1')
     valid_types = (PublicKeyInfo, Certificate)
-    if not has_asn1 or isinstance(certificate_or_public_key.asn1, valid_types):
+    if not has_asn1 or not isinstance(certificate_or_public_key.asn1, valid_types):
         raise TypeError(pretty_message(
             '''
             certificate_or_public_key must be an instance of the
@@ -680,7 +680,7 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
             type_name(data)
         ))
 
-    rsa_public_key = certificate_or_public_key.asn1['public_key']
+    rsa_public_key = certificate_or_public_key.asn1['public_key'].parsed
     transformed_int = pow(
         int_from_bytes(data),
         rsa_public_key['public_exponent'].native,

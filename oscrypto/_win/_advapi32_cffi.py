@@ -47,13 +47,6 @@ ffi.cdef("""
         CRYPT_BIT_BLOB             PublicKey;
     } CERT_PUBLIC_KEY_INFO;
 
-    typedef struct _CRYPT_PRIVATE_KEY_INFO {
-        DWORD                      Version;
-        CRYPT_ALGORITHM_IDENTIFIER Algorithm;
-        CRYPT_DER_BLOB             PrivateKey;
-        CRYPT_ATTRIBUTES           *pAttributes;
-    } CRYPT_PRIVATE_KEY_INFO;
-
     typedef struct _CRYPT_ATTRIBUTE {
         LPSTR           pszObjId;
         DWORD           cValue;
@@ -64,6 +57,13 @@ ffi.cdef("""
         DWORD           cAttr;
         CRYPT_ATTRIBUTE *rgAttr;
     } CRYPT_ATTRIBUTES;
+
+    typedef struct _CRYPT_PRIVATE_KEY_INFO {
+        DWORD                      Version;
+        CRYPT_ALGORITHM_IDENTIFIER Algorithm;
+        CRYPT_DER_BLOB             PrivateKey;
+        CRYPT_ATTRIBUTES           *pAttributes;
+    } CRYPT_PRIVATE_KEY_INFO;
 
     typedef struct _PUBLICKEYSTRUC {
         BYTE   bType;
@@ -93,24 +93,23 @@ ffi.cdef("""
         RSAPUBKEY rsapubkey;
     } RSABLOBHEADER;
 
-    typdef struct _PLAINTEXTKEYBLOB {
+    typedef struct _PLAINTEXTKEYBLOB {
         BLOBHEADER hdr;
         DWORD      dwKeySize;
         // rgbKeyData omitted since it is a flexible array member
     } PLAINTEXTKEYBLOB;
 
+    typedef struct _DSSSEED {
+        DWORD counter;
+        BYTE  seed[20];
+    } DSSSEED;
+
     BOOL CryptAcquireContextW(HCRYPTPROV *phProv, LPCWSTR pszContainer, LPCWSTR pszProvider,
                 DWORD dwProvType, DWORD dwFlags);
     BOOL CryptReleaseContext(HCRYPTPROV hProv, DWORD dwFlags);
 
-    BOOL CryptDecodeObjectExW(DWORD dwCertEncodingType, LPCWSTR lpszStructType,
-                const BYTE *pbEncoded, DWORD cbEncoded, DWORD dwFlags,
-                void *pDecodePara, void *pvStructInfo, DWORD *pcbStructInfo);
-
     BOOL CryptImportKey(HCRYPTPROV hProv, BYTE *pbData, DWORD dwDataLen,
                 HCRYPTKEY hPubKey, DWORD dwFlags, HCRYPTKEY *phKey);
-    BOOL CryptImportPublicKeyInfo(HCRYPTPROV hCryptProv, DWORD dwCertEncodingType,
-                CERT_PUBLIC_KEY_INFO *pInfo, HCRYPTKEY *phKey);
     BOOL CryptGenKey(HCRYPTPROV hProv, ALG_ID Algid, DWORD dwFlags, HCRYPTKEY *phKey);
     BOOL CryptGetKeyParam(HCRYPTKEY hKey, DWORD dwParam, BYTE *pbData, DWORD *pdwDataLen, DWORD dwFlags);
     BOOL CryptSetKeyParam(HCRYPTKEY hKey, DWORD dwParam, void *pbData, DWORD dwFlags);
