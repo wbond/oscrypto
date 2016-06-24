@@ -26,7 +26,7 @@ MD_SOURCE_MAP = {
     'docs/symmetric.md': ['oscrypto/_openssl/symmetric.py'],
     'docs/tls.md': ['oscrypto/tls.py', 'oscrypto/_openssl/tls.py'],
     'docs/trust_list.md': ['oscrypto/trust_list.py'],
-    'docs/util.md': ['oscrypto/util.py', 'oscrypto/_openssl/util.py'],
+    'docs/util.md': ['oscrypto/util.py', 'oscrypto/_rand.py'],
 }
 
 # A search/replace dictionary to modify docstring contents before generating
