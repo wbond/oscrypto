@@ -1,5 +1,21 @@
 # changelog
 
+## 0.16.0
+
+ - Backwards compatibility break: `trust_list.get_list()` now returns a list of
+   3-element tuples containing the certificate byte string, a set of trust OIDs
+   and a set of reject OIDs. Previously it returned a list of certificate byte
+   strings.
+ - `trust_list` now makes OS trust information OIDs available via the
+   `trust_list.get_list()` function, and writes OpenSSL-compatible trust
+   information to the CA certs file when calling `trust_info.get_path()` on
+   Windows and OS X.
+ - Removed reliance on opaque OpenSSL struct information for compatibility with
+   upcoming OpenSSL 1.1.0 release
+ - Improved handling of client authentication and socket read errors when using
+   OpenSSL
+ - Added Windows XP support
+
 ## 0.15.0
 
  - Added `asymmetric.generate_dh_parameters()` and
