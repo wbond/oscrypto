@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 import hashlib
 import math
+import platform
 import struct
 import os
 
@@ -27,7 +28,6 @@ else:
 
 __all__ = [
     'add_pss_padding',
-    'add_pkcs1v15_encryption_padding',
     'add_pkcs1v15_signature_padding',
     'raw_rsa_private_crypt',
     'raw_rsa_public_crypt',
@@ -35,6 +35,27 @@ __all__ = [
     'remove_pkcs1v15_signature_padding',
     'verify_pss_padding',
 ]
+
+
+def _is_xp():
+    """
+    :return:
+        A bool if the current machine is running Windows XP
+    """
+
+    return sys.platform == 'win32' and sys.getwindowsversion()[0] == 5
+
+
+def _is_osx_107():
+    """
+    :return:
+        A bool if the current machine is running OS X 10.7
+    """
+
+    if sys.platform != 'darwin':
+        return False
+    version = platform.mac_ver()[0]
+    return tuple(map(int, version.split('.'))) == (10, 7)
 
 
 def add_pss_padding(hash_algorithm, salt_length, key_length, message):
@@ -59,6 +80,14 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     :return:
         The encoded (passed) message
     """
+
+    if not _is_xp() and sys.platform != 'darwin':
+        raise SystemError(pretty_message(
+            '''
+            Pure-python RSA PSS signature padding addition code is only for
+            Windows XP and OS X
+            '''
+        ))
 
     if not isinstance(message, byte_cls):
         raise TypeError(pretty_message(
@@ -140,7 +169,7 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
 
     db = padding + b'\x01' + salt
 
-    db_mask = mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
+    db_mask = _mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
 
     masked_db = int_to_bytes(int_from_bytes(db) ^ int_from_bytes(db_mask))
     masked_db = fill_width(masked_db, len(db_mask))
@@ -179,6 +208,14 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     :return:
         A boolean indicating if the signature is invalid
     """
+
+    if not _is_xp() and sys.platform != 'darwin':
+        raise SystemError(pretty_message(
+            '''
+            Pure-python RSA PSS signature padding verification code is only for
+            Windows XP and OS X
+            '''
+        ))
 
     if not isinstance(message, byte_cls):
         raise TypeError(pretty_message(
@@ -247,7 +284,7 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
 
     m_prime_digest = signature[masked_db_length:masked_db_length + hash_length]
 
-    db_mask = mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
+    db_mask = _mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
 
     left_bit_mask = ('0' * zero_bits) + ('1' * (8 - zero_bits))
     left_int_mask = int(left_bit_mask, 2)
@@ -276,7 +313,7 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
     return constant_compare(m_prime_digest, h_prime)
 
 
-def mgf1(hash_algorithm, seed, mask_length):
+def _mgf1(hash_algorithm, seed, mask_length):
     """
     The PKCS#1 MGF1 mask generation algorithm
 
@@ -363,24 +400,15 @@ def add_pkcs1v15_signature_padding(key_length, data):
         The padded data as a byte string
     """
 
+    if not _is_xp():
+        raise SystemError(pretty_message(
+            '''
+            Pure-python RSA PKCSv1.5 signature padding addition code is only
+            for Windows XP
+            '''
+        ))
+
     return _add_pkcs1v15_padding(key_length, data, 'signing')
-
-
-def add_pkcs1v15_encryption_padding(key_length, data):
-    """
-    Adds PKCS#1 v1.5 padding to a message to be encrypted
-
-    :param key_length:
-        An integer of the number of bytes in the key
-
-    :param data:
-        A byte string to pad
-
-    :return:
-        The padded data as a byte string
-    """
-
-    return _add_pkcs1v15_padding(key_length, data, 'encrypting')
 
 
 def remove_pkcs1v15_signature_padding(key_length, data):
@@ -397,6 +425,14 @@ def remove_pkcs1v15_signature_padding(key_length, data):
     :return:
         The unpadded data as a byte string
     """
+
+    if not _is_xp():
+        raise SystemError(pretty_message(
+            '''
+            Pure-python RSA PKCSv1.5 signature padding removal code is only for
+            Windows XP
+            '''
+        ))
 
     return _remove_pkcs1v15_padding(key_length, data, 'verifying')
 
@@ -415,6 +451,14 @@ def remove_pkcs1v15_encryption_padding(key_length, data):
     :return:
         The unpadded data as a byte string
     """
+
+    if not _is_osx_107():
+        raise SystemError(pretty_message(
+            '''
+            Pure-python RSA PKCSv1.5 encryption padding removal code is only
+            for OS X 10.7
+            '''
+        ))
 
     return _remove_pkcs1v15_padding(key_length, data, 'decrypting')
 
@@ -596,6 +640,9 @@ def raw_rsa_private_crypt(private_key, data):
         A byte string of the transformed data
     """
 
+    if not _is_xp():
+        raise SystemError('Pure-python RSA crypt is only for Windows XP')
+
     if not hasattr(private_key, 'asn1') or not isinstance(private_key.asn1, PrivateKeyInfo):
         raise TypeError(pretty_message(
             '''
@@ -650,6 +697,9 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
     :return:
         A byte string of the transformed data
     """
+
+    if not _is_xp():
+        raise SystemError('Pure-python RSA crypt is only for Windows XP')
 
     has_asn1 = hasattr(certificate_or_public_key, 'asn1')
     valid_types = (PublicKeyInfo, Certificate)
