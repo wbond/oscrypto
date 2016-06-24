@@ -30,8 +30,10 @@ class TrustListTests(unittest.TestCase):
         certs = trust_list.get_list()
         self.assertIsInstance(certs, list)
         self.assertLess(10, len(certs))
-        for cert in certs:
+        for cert, trust_oids, reject_oids in certs:
             self.assertIsInstance(cert, x509.Certificate)
+            self.assertIsInstance(trust_oids, set)
+            self.assertIsInstance(reject_oids, set)
             cert.native
 
     def test_get_list_mutate(self):

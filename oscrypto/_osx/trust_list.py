@@ -1,16 +1,21 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import hashlib
 import sys
 
-from asn1crypto import x509
-
-from .._ffi import new, unwrap, null
+from .._ffi import new, unwrap
 from ._core_foundation import CoreFoundation, CFHelpers
 from ._security import Security, SecurityConst, handle_sec_error
 
 if sys.version_info < (3,):
     range = xrange  # noqa
+
+
+__all__ = [
+    'extract_from_system',
+    'system_path',
+]
 
 
 def system_path():
@@ -25,7 +30,12 @@ def extract_from_system():
         OSError - when an error is returned by the OS crypto library
 
     :return:
-        A list of byte strings - each a DER-encoded certificate
+        A list of 3-element tuples:
+         - 0: a byte string of a DER-encoded certificate
+         - 1: a set of unicode strings that are OIDs of purposes to trust the
+              certificate for
+         - 2: a set of unicode strings that are OIDs of purposes to reject the
+              certificate for
     """
 
     certs_pointer_pointer = new(CoreFoundation, 'CFArrayRef *')
@@ -35,6 +45,11 @@ def extract_from_system():
     certs_pointer = unwrap(certs_pointer_pointer)
 
     certificates = {}
+    trust_info = {}
+
+    all_purposes = '2.5.29.37.0'
+    default_trust = (set(), set())
+
     length = CoreFoundation.CFArrayGetCount(certs_pointer)
     for index in range(0, length):
         cert_pointer = CoreFoundation.CFArrayGetValueAtIndex(certs_pointer, index)
@@ -43,10 +58,8 @@ def extract_from_system():
         der_cert = CFHelpers.cf_data_to_bytes(data_pointer)
         CoreFoundation.CFRelease(data_pointer)
 
-        cert = x509.Certificate.load(der_cert)
-        der_subject = cert.subject.dump()
-
-        certificates[der_subject] = der_cert
+        cert_hash = hashlib.sha1(der_cert).digest()
+        certificates[cert_hash] = der_cert
 
     CoreFoundation.CFRelease(certs_pointer)
 
@@ -74,74 +87,49 @@ def extract_from_system():
 
             trust_settings_pointer = unwrap(trust_settings_pointer_pointer)
 
-            settings = []
+            trust_oids = set()
+            reject_oids = set()
             settings_length = CoreFoundation.CFArrayGetCount(trust_settings_pointer)
             for settings_index in range(0, settings_length):
                 settings_dict_entry = CoreFoundation.CFArrayGetValueAtIndex(trust_settings_pointer, settings_index)
                 settings_dict = CFHelpers.cf_dictionary_to_dict(settings_dict_entry)
 
-                # Expand various information to human-readable form for debugging
-                if 'kSecTrustSettingsAllowedError' in settings_dict:
-                    settings_dict['kSecTrustSettingsAllowedError'] = CFHelpers.cf_string_to_unicode(
-                        Security.SecCopyErrorMessageString(settings_dict['kSecTrustSettingsAllowedError'], null())
-                    )
+                # No policy OID means the trust result is for all purposes
+                policy_oid = settings_dict.get('kSecTrustSettingsPolicy', {}).get('SecPolicyOid', all_purposes)
 
-                if 'kSecTrustSettingsPolicy' in settings_dict:
-                    sub_dict = settings_dict['kSecTrustSettingsPolicy']
-                    if 'SecPolicyOid' in sub_dict:
-                        sub_dict['SecPolicyOid'] = {
-                            '1.2.840.113635.100.1.2': 'kSecPolicyAppleX509Basic',
-                            '1.2.840.113635.100.1.3': 'kSecPolicyAppleSSL',
-                            '1.2.840.113635.100.1.8': 'kSecPolicyAppleSMIME',
-                            '1.2.840.113635.100.1.9': 'kSecPolicyAppleEAP',
-                            '1.2.840.113635.100.1.11': 'kSecPolicyAppleIPsec',
-                            '1.2.840.113635.100.1.12': 'kSecPolicyAppleiChat',
-                            '1.2.840.113635.100.1.14': 'kSecPolicyApplePKINITClient',
-                            '1.2.840.113635.100.1.15': 'kSecPolicyApplePKINITServer',
-                            '1.2.840.113635.100.1.16': 'kSecPolicyAppleCodeSigning',
-                            '1.2.840.113635.100.1.17': 'kSecPolicyMacAppStoreReceipt',
-                            '1.2.840.113635.100.1.18': 'kSecPolicyAppleIDValidation',
-                            '1.2.840.113635.100.1.20': 'kSecPolicyAppleTimeStamping',
-                            '1.2.840.113635.100.1.21': 'kSecPolicyAppleRevocation',
-                            '1.2.840.113635.100.1.22': 'kSecPolicyApplePassbookSigning',
-                            '1.2.840.113635.100.1.23': 'kSecPolicyAppleMobileStore',
-                            '1.2.840.113635.100.1.24': 'kSecPolicyAppleEscrowService',
-                            '1.2.840.113635.100.1.25': 'kSecPolicyAppleProfileSigner',
-                            '1.2.840.113635.100.1.26': 'kSecPolicyAppleQAProfileSigner',
-                            '1.2.840.113635.100.1.27': 'kSecPolicyAppleTestMobileStore',
-                        }[sub_dict['SecPolicyOid']]
-                        settings_dict['kSecTrustSettingsPolicy'] = sub_dict
+                # 0 = kSecTrustSettingsResultInvalid
+                # 1 = kSecTrustSettingsResultTrustRoot
+                # 2 = kSecTrustSettingsResultTrustAsRoot
+                # 3 = kSecTrustSettingsResultDeny
+                # 4 = kSecTrustSettingsResultUnspecified
+                trust_result = settings_dict.get('kSecTrustSettingsResult', 1)
+                should_trust = trust_result != 0 and trust_result != 3
 
-                if 'kSecTrustSettingsResult' in settings_dict:
-                    settings_dict['kSecTrustSettingsResult'] = {
-                        0: 'kSecTrustSettingsResultInvalid',
-                        1: 'kSecTrustSettingsResultTrustRoot',
-                        2: 'kSecTrustSettingsResultTrustAsRoot',
-                        3: 'kSecTrustSettingsResultDeny',
-                        4: 'kSecTrustSettingsResultUnspecified',
-                    }[settings_dict['kSecTrustSettingsResult']]
+                if should_trust:
+                    trust_oids.add(policy_oid)
+                else:
+                    reject_oids.add(policy_oid)
 
-                settings.append(settings_dict)
+            data_pointer = Security.SecCertificateCopyData(cert_pointer)
+            der_cert = CFHelpers.cf_data_to_bytes(data_pointer)
+            CoreFoundation.CFRelease(data_pointer)
 
-            if settings:
-                data_pointer = Security.SecCertificateCopyData(cert_pointer)
-                der_cert = CFHelpers.cf_data_to_bytes(data_pointer)
-                CoreFoundation.CFRelease(data_pointer)
+            cert_hash = hashlib.sha1(der_cert).digest()
 
-                cert = x509.Certificate.load(der_cert)
-                der_subject = cert.subject.dump()
-
-                if der_subject in certificates:
-                    for setting in settings:
-                        # The absence of this key means the trust setting is for the
-                        # cert in general, not just for one usage of the cert
-                        if 'kSecTrustSettingsPolicy' not in setting:
-                            invalid_results = set(['kSecTrustSettingsResultInvalid', 'kSecTrustSettingsResultDeny'])
-                            if setting['kSecTrustSettingsResult'] in invalid_results:
-                                del certificates[der_subject]
+            # If rejected for all purposes, we don't export the certificate
+            if all_purposes in reject_oids:
+                del certificates[cert_hash]
+            else:
+                if all_purposes in trust_oids:
+                    trust_oids = set([all_purposes])
+                trust_info[cert_hash] = (trust_oids, reject_oids)
 
             CoreFoundation.CFRelease(trust_settings_pointer)
 
         CoreFoundation.CFRelease(cert_trust_settings_pointer)
 
-    return list(certificates.values())
+    output = []
+    for cert_hash in certificates:
+        cert_trust_info = trust_info.get(cert_hash, default_trust)
+        output.append((certificates[cert_hash], cert_trust_info[0], cert_trust_info[1]))
+    return output

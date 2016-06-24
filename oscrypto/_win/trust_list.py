@@ -5,7 +5,20 @@ import datetime
 import hashlib
 import struct
 
-from .._ffi import buffer_from_bytes, bytes_from_buffer, deref, struct_from_buffer, new, null, is_null, unwrap, cast
+from asn1crypto.x509 import Certificate
+
+from .._ffi import (
+    array_from_pointer,
+    buffer_from_bytes,
+    bytes_from_buffer,
+    cast,
+    deref,
+    is_null,
+    new,
+    null,
+    struct_from_buffer,
+    unwrap,
+)
 from ._crypt32 import crypt32, Crypt32Const, get_error, handle_error
 from .._types import str_cls
 
@@ -28,10 +41,15 @@ def extract_from_system():
         OSError - when an error is returned by the OS crypto library
 
     :return:
-        A list of byte strings - each a DER-encoded certificate
+        A list of 3-element tuples:
+         - 0: a byte string of a DER-encoded certificate
+         - 1: a set of unicode strings that are OIDs of purposes to trust the
+              certificate for
+         - 2: a set of unicode strings that are OIDs of purposes to reject the
+              certificate for
     """
 
-    output = {}
+    certificates = {}
 
     now = datetime.datetime.utcnow()
 
@@ -44,6 +62,7 @@ def extract_from_system():
             context = unwrap(context_pointer)
 
             skip = False
+            trust_all = False
 
             if context.dwCertEncodingType != Crypt32Const.X509_ASN_ENCODING:
                 skip = True
@@ -79,23 +98,34 @@ def extract_from_system():
                         raise e
 
             if not skip:
-                has_enhanced_usage = True
+                trust_oids = set()
+                reject_oids = set()
 
+                # Here we grab the extended key usage properties that Windows
+                # layers on top of the extended key usage extension that is
+                # part of the certificate itself. For highest security, users
+                # should only use certificates for the intersection of the two
+                # lists of purposes. However, many seen to treat the OS trust
+                # list as an override.
                 to_read = new(crypt32, 'DWORD *', 0)
-                res = crypt32.CertGetEnhancedKeyUsage(context_pointer, 0, null(), to_read)
+                res = crypt32.CertGetEnhancedKeyUsage(
+                    context_pointer,
+                    Crypt32Const.CERT_FIND_PROP_ONLY_ENHKEY_USAGE_FLAG,
+                    null(),
+                    to_read
+                )
                 handle_error(res)
 
-                # This determines if an empty struct indicates the
-                # certificate is valid for all uses or none
+                # Per the Microsoft documentation, if CRYPT_E_NOT_FOUND is returned
+                # from get_error(), it means the certificate is valid for all purposes
                 error_code, _ = get_error()
                 if error_code == Crypt32Const.CRYPT_E_NOT_FOUND:
-                    has_enhanced_usage = False
-
-                if has_enhanced_usage:
+                    trust_all = True
+                else:
                     usage_buffer = buffer_from_bytes(deref(to_read))
                     res = crypt32.CertGetEnhancedKeyUsage(
                         context_pointer,
-                        0,
+                        Crypt32Const.CERT_FIND_PROP_ONLY_ENHKEY_USAGE_FLAG,
                         cast(crypt32, 'CERT_ENHKEY_USAGE *', usage_buffer),
                         to_read
                     )
@@ -104,13 +134,34 @@ def extract_from_system():
                     key_usage_pointer = struct_from_buffer(crypt32, 'CERT_ENHKEY_USAGE', usage_buffer)
                     key_usage = unwrap(key_usage_pointer)
 
-                # Having no enhanced usage properties means a cert is distrusted
-                if has_enhanced_usage and key_usage.cUsageIdentifier == 0:
-                    skip = True
+                    # Having no enhanced usage properties means a cert is distrusted
+                    if key_usage.cUsageIdentifier == 0:
+                        skip = True
+                    else:
+                        oids = array_from_pointer(
+                            crypt32,
+                            'LPCWSTR',
+                            key_usage.rgpszUsageIdentifier,
+                            key_usage.cUsageIdentifier
+                        )
+                        for oid in oids:
+                            trust_oids.add(oid)
 
             if not skip:
                 data = bytes_from_buffer(context.pbCertEncoded, int(context.cbCertEncoded))
-                output[hashlib.sha1(data).digest()] = data
+
+                # If the certificate is not under blanket trust, we have to
+                # determine what purposes it is rejected for by diffing the
+                # set of OIDs from the certificate with the OIDs that are
+                # trusted.
+                if not trust_all:
+                    cert = Certificate.load(data)
+                    for cert_oid in cert.extended_key_usage_value:
+                        oid = cert_oid.dotted
+                        if oid not in trust_oids:
+                            reject_oids.add(oid)
+
+                certificates[hashlib.sha1(data).digest()] = (data, trust_oids, reject_oids)
 
             context_pointer = crypt32.CertEnumCertificatesInStore(store_handle, context_pointer)
 
@@ -118,7 +169,7 @@ def extract_from_system():
         handle_error(result)
         store_handle = None
 
-    return output.values()
+    return certificates.values()
 
 
 def _convert_filetime_to_timestamp(filetime):

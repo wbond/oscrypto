@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import os
 
 from asn1crypto.pem import unarmor
+from asn1crypto.x509 import TrustedCertificate
 
 from .._errors import pretty_message
 
@@ -63,15 +64,43 @@ def extract_from_system():
     Extracts trusted CA certs from the system CA cert bundle
 
     :return:
-        A list of byte strings - each a DER-encoded certificate
+        A list of 3-element tuples:
+         - 0: a byte string of a DER-encoded certificate
+         - 1: a set of unicode strings that are OIDs of purposes to trust the
+              certificate for
+         - 2: a set of unicode strings that are OIDs of purposes to reject the
+              certificate for
     """
 
+    all_purposes = '2.5.29.37.0'
     ca_path = system_path()
 
     output = []
     with open(ca_path, 'rb') as f:
-        for entry_info in unarmor(f.read(), multiple=True):
-            if entry_info[0] == 'CERTIFICATE':
-                output.append(entry_info[2])
+        for armor_type, _, cert_bytes in unarmor(f.read(), multiple=True):
+            # Without more info, a certificate is trusted for all purposes
+            if armor_type == 'CERTIFICATE':
+                output.append((cert_bytes, set(), set()))
+
+            # The OpenSSL TRUSTED CERTIFICATE construct adds OIDs for trusted
+            # and rejected purposes, so we extract that info.
+            elif armor_type == 'TRUSTED CERTIFICATE':
+                cert, aux = TrustedCertificate.load(cert_bytes)
+                reject_all = False
+                trust_oids = set()
+                reject_oids = set()
+                for purpose in aux['trust']:
+                    if purpose.dotted == all_purposes:
+                        trust_oids = set([purpose.dotted])
+                        break
+                    trust_oids.add(purpose.dotted)
+                for purpose in aux['reject']:
+                    if purpose.dotted == all_purposes:
+                        reject_all = True
+                        break
+                    reject_oids.add(purpose.dotted)
+                if reject_all:
+                    continue
+                output.append((cert.dump(), trust_oids, reject_oids))
 
     return output
