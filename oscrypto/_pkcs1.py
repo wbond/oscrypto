@@ -55,7 +55,7 @@ def _is_osx_107():
     if sys.platform != 'darwin':
         return False
     version = platform.mac_ver()[0]
-    return tuple(map(int, version.split('.'))) == (10, 7)
+    return tuple(map(int, version.split('.')))[0:2] == (10, 7)
 
 
 def add_pss_padding(hash_algorithm, salt_length, key_length, message):
