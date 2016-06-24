@@ -114,11 +114,13 @@ def extract_from_system():
                     null(),
                     to_read
                 )
-                handle_error(res)
 
                 # Per the Microsoft documentation, if CRYPT_E_NOT_FOUND is returned
                 # from get_error(), it means the certificate is valid for all purposes
                 error_code, _ = get_error()
+                if not res and error_code != Crypt32Const.CRYPT_E_NOT_FOUND:
+                    handle_error(res)
+
                 if error_code == Crypt32Const.CRYPT_E_NOT_FOUND:
                     trust_all = True
                 else:
@@ -140,12 +142,12 @@ def extract_from_system():
                     else:
                         oids = array_from_pointer(
                             crypt32,
-                            'LPCWSTR',
+                            'LPCSTR',
                             key_usage.rgpszUsageIdentifier,
                             key_usage.cUsageIdentifier
                         )
                         for oid in oids:
-                            trust_oids.add(oid)
+                            trust_oids.add(oid.decode('ascii'))
 
             if not skip:
                 data = bytes_from_buffer(context.pbCertEncoded, int(context.cbCertEncoded))
@@ -156,10 +158,11 @@ def extract_from_system():
                 # trusted.
                 if not trust_all:
                     cert = Certificate.load(data)
-                    for cert_oid in cert.extended_key_usage_value:
-                        oid = cert_oid.dotted
-                        if oid not in trust_oids:
-                            reject_oids.add(oid)
+                    if cert.extended_key_usage_value:
+                        for cert_oid in cert.extended_key_usage_value:
+                            oid = cert_oid.dotted
+                            if oid not in trust_oids:
+                                reject_oids.add(oid)
 
                 certificates[hashlib.sha1(data).digest()] = (data, trust_oids, reject_oids)
 
