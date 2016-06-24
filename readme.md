@@ -29,7 +29,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - [Secure Channel](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380123(v=vs.85).aspx) for TLS
      - [CryptoAPI](https://msdn.microsoft.com/en-us/library/windows/desktop/aa380256(v=vs.85).aspx) for trust lists and XP support
    - Tested on:
-     - Windows XP (no SNI or EC key support)
+     - Windows XP (no SNI)
      - Windows 7
      - Windows 8.1
      - Windows Server 2012
@@ -91,17 +91,17 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - RSA (1024, 2048, 3072, 4096 bit)
    - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
      Windows 8)
-   - EC (secp256r1, secp384r1, secp521r1 curves) (except Windows XP)
+   - EC (secp256r1, secp384r1, secp521r1 curves)
  - [Generating DH parameters](docs/asymmetric.md)
  - [Signing and verification](docs/asymmetric.md)
    - RSA PKCSv1.5
    - RSA PSS
    - DSA
-   - EC (except Windows XP)
+   - EC
  - [Loading and normalizing DER and PEM formatted keys](docs/keys.md)
    - RSA public and private keys
    - DSA public and private keys
-   - EC public and private keys (except Windows XP)
+   - EC public and private keys
    - X.509 Certificates
    - PKCS#12 archives (`.pfx`/`.p12`)
  - [Key derivation](docs/kdf.md)

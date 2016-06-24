@@ -9,6 +9,7 @@ import random
 from asn1crypto import algos, core, keys, x509
 from asn1crypto.util import int_from_bytes, int_to_bytes
 
+from .._dsa import Signature
 from .._errors import pretty_message
 from .._ffi import (
     buffer_from_bytes,
@@ -48,6 +49,11 @@ _xp = _win_version_info < (6,)
 
 if _xp:
     from ._advapi32 import advapi32, Advapi32Const, handle_error, open_context_handle, close_context_handle
+    from .._ecdsa import (
+        ec_generate_pair as _pure_python_ec_generate_pair,
+        ecdsa_sign as _pure_python_ecdsa_sign,
+        ecdsa_verify as _pure_python_ecdsa_verify,
+    )
 else:
     from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
 
@@ -528,54 +534,6 @@ class Certificate(PublicKey):
         return self._self_signed
 
 
-class Signature(core.Sequence):
-    """
-    An ASN.1 class for translating between the OS crypto library's
-    representation of a DSA signature and the ASN.1 structure that is part of
-    various RFCs.
-    """
-
-    _fields = [
-        ('r', core.Integer),
-        ('s', core.Integer),
-    ]
-
-    @classmethod
-    def from_p1363(cls, data):
-        """
-        Reads a signature from a byte string created by Microsoft's
-        BCryptSignHash() function.
-
-        :param data:
-            A byte string from BCryptSignHash()
-
-        :return:
-            A Signature object
-        """
-
-        r = int_from_bytes(data[0:len(data) // 2])
-        s = int_from_bytes(data[len(data) // 2:])
-        return cls({'r': r, 's': s})
-
-    def to_p1363(self):
-        """
-        Dumps a signature to a byte string compatible with Microsoft's
-        BCryptVerifySignature() function.
-
-        :return:
-            A byte string compatible with BCryptVerifySignature()
-        """
-
-        r_bytes = int_to_bytes(self['r'].native)
-        s_bytes = int_to_bytes(self['s'].native)
-
-        int_byte_length = max(len(r_bytes), len(s_bytes))
-        r_bytes = fill_width(r_bytes, int_byte_length)
-        s_bytes = fill_width(s_bytes, int_byte_length)
-
-        return r_bytes + s_bytes
-
-
 def generate_pair(algorithm, bit_size=None, curve=None):
     """
     Generates a public/private key pair
@@ -639,13 +597,6 @@ def generate_pair(algorithm, bit_size=None, curve=None):
                 ))
 
     elif algorithm == 'ec':
-        if _xp:
-            raise AsymmetricKeyError(pretty_message(
-                '''
-                Windows XP and 2003 do not support EC keys
-                '''
-            ))
-
         if curve not in set(['secp256r1', 'secp384r1', 'secp521r1']):
             raise ValueError(pretty_message(
                 '''
@@ -655,6 +606,9 @@ def generate_pair(algorithm, bit_size=None, curve=None):
             ))
 
     if _xp:
+        if algorithm == 'ec':
+            pub_info, priv_info = _pure_python_ec_generate_pair(curve)
+            return (PublicKey(None, pub_info), PrivateKey(None, priv_info))
         return _advapi32_generate_pair(algorithm, bit_size)
     else:
         return _bcrypt_generate_pair(algorithm, bit_size, curve)
@@ -1501,12 +1455,6 @@ def _load_key(key_object, container):
     curve_name = None
 
     if algo == 'ec':
-        if _xp:
-            raise AsymmetricKeyError(pretty_message(
-                '''
-                Windows XP and 2003 do not support EC keys
-                '''
-            ))
         curve_type, curve_name = key_info.curve
         if curve_type != 'named':
             raise AsymmetricKeyError(pretty_message(
@@ -1551,6 +1499,8 @@ def _load_key(key_object, container):
             ))
 
     if _xp:
+        if algo == 'ec':
+            return container(None, key_object)
         return _advapi32_load_key(key_object, key_info, container)
     return _bcrypt_load_key(key_object, key_info, container, curve_name)
 
@@ -2335,6 +2285,8 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             ))
 
     if _xp:
+        if certificate_or_public_key.algorithm == 'ec':
+            return _pure_python_ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm)
         return _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding)
     return _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding)
 
@@ -2733,6 +2685,8 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             ))
 
     if _xp:
+        if private_key.algorithm == 'ec':
+            return _pure_python_ecdsa_sign(private_key, data, hash_algorithm)
         return _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding)
     return _bcrypt_sign(private_key, data, hash_algorithm, rsa_pss_padding)
 
