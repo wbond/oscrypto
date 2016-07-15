@@ -24,7 +24,7 @@ environment:
       PYTHON_ID: "pypy"
       PYTHON_EXE: pypy
 install:
-  - ps:
+  - ps: |-
       $env:PYTMP = "${env:TMP}\py";
       if (!(Test-Path "$env:PYTMP")) {
         New-Item -ItemType directory -Path "$env:PYTMP" | Out-Null;
@@ -41,9 +41,13 @@ install:
         & "${env:PYTHON}\pypy.exe" "${env:PYTMP}\get-pip.py";
         & "${env:PYTHON}\bin\pip.exe" --disable-pip-version-check --quiet install flake8;
         & "${env:PYTHON}\bin\pip.exe" --disable-pip-version-check --quiet install https://github.com/wbond/asn1crypto/archive/master.zip;
+
       } elseif ("${env:PYTHON_ID}" -eq "26" -or "${env:PYTHON_ID}" -eq "26-x64") {
-        & "${env:PYTHON}\python.exe" -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'flake8'])";
-        & "${env:PYTHON}\python.exe" -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/asn1crypto/archive/master.zip'])";
+        # Skip flake8 for 2.6 since pip, flake8 and pycodestyle have all deprecated support for it
+        (New-Object Net.WebClient).DownloadFile('https://github.com/wbond/asn1crypto/archive/master.zip', "${env:TMP}\asn1crypto-master.zip");
+        7z x -y "${env:TMP}\asn1crypto-master.zip" -o"${env:TMP}\" | Out-Null;
+        & "${env:PYTHON}\python.exe" "${env:TMP}\asn1crypto-master\setup.py" install clean;
+
       } else {
         & "${env:PYTHON}\Scripts\pip.exe" --disable-pip-version-check --quiet install flake8;
         & "${env:PYTHON}\Scripts\pip.exe" --disable-pip-version-check --quiet install https://github.com/wbond/asn1crypto/archive/master.zip;
