@@ -63,7 +63,8 @@ install:
                 else
                     curl --silent --show-error -o asn1crypto-master.zip https://github.com/wbond/asn1crypto/archive/master.zip;
                     unzip ans1crypto-master.zip;
-                    sudo /usr/bin/python2.6 asn1crypto-master/setup.py install clean;
+                    cd asn1crypto-master;
+                    sudo /usr/bin/python2.6 setup.py install clean;
                     export PYTHON_BIN=/usr/bin/python2.6;
                 fi
             fi
