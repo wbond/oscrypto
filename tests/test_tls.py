@@ -65,7 +65,7 @@ class TLSTests(unittest.TestCase):
 
     def test_tls_error_ftp(self):
         with self.assertRaisesRegexp(errors.TLSError, 'remote end closed the connection|server responded using FTP'):
-            tls.TLSSocket('ftp.freebsd.org', 21)
+            tls.TLSSocket('ftp.kernel.org', 21)
 
     def test_tls_error_missing_issuer(self):
         expected = 'certificate issuer not found in trusted root certificate store'
