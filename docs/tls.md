@@ -47,13 +47,13 @@ The API consists of:
 > >     """
 > >     :param address:
 > >         A unicode string of the domain name or IP address to conenct to
-> >     
+> >
 > >     :param port:
 > >         An integer of the port number to connect to
-> >     
+> >
 > >     :param timeout:
 > >         An integer timeout to use for the socket
-> >     
+> >
 > >     :param session:
 > >         An oscrypto.tls.TLSSession object to allow for session reuse and
 > >         controlling the protocols and validation performed
@@ -110,14 +110,14 @@ The API consists of:
 > >     """
 > >     :param socket:
 > >         A socket.socket object to wrap with TLS
-> >     
+> >
 > >     :param hostname:
 > >         A unicode string of the hostname or IP the socket is connected to
-> >     
+> >
 > >     :param session:
 > >         An existing TLSSession object to allow for session reuse, specific
 > >         protocol or manual certificate validation
-> >     
+> >
 > >     :raises:
 > >         ValueError - when any of the parameters contain an invalid value
 > >         TypeError - when any of the parameters are of the wrong type
@@ -134,14 +134,14 @@ The API consists of:
 > >     """
 > >     :param max_length:
 > >         The number of bytes to read - output may be less than this
-> >     
+> >
 > >     :raises:
 > >         socket.socket - when a non-TLS socket error occurs
 > >         oscrypto.errors.TLSError - when a TLS-related error occurs
 > >         ValueError - when any of the parameters contain an invalid value
 > >         TypeError - when any of the parameters are of the wrong type
 > >         OSError - when an error is returned by the OS crypto library
-> >     
+> >
 > >     :return:
 > >         A byte string of the data read
 > >     """
@@ -170,7 +170,7 @@ The API consists of:
 > >     :param marker:
 > >         A byte string or regex object from re.compile(). Used to determine
 > >         when to stop reading.
-> >     
+> >
 > >     :return:
 > >         A byte string of the data read, including the marker
 > >     """
@@ -186,7 +186,7 @@ The API consists of:
 > >     """
 > >     :param num_bytes:
 > >         An integer - the exact number of bytes to read
-> >     
+> >
 > >     :return:
 > >         A byte string of the data that was read
 > >     """
@@ -202,7 +202,7 @@ The API consists of:
 > >     :param timeout:
 > >         A float - the period of time to wait for data to be read. None for
 > >         no time limit.
-> >     
+> >
 > >     :return:
 > >         A boolean - if data is ready to be read. Will only be False if
 > >         timeout is not None.
@@ -218,7 +218,7 @@ The API consists of:
 > >     """
 > >     :param data:
 > >         A byte string to write to the socket
-> >     
+> >
 > >     :raises:
 > >         socket.socket - when a non-TLS socket error occurs
 > >         oscrypto.errors.TLSError - when a TLS-related error occurs
@@ -238,7 +238,7 @@ The API consists of:
 > >     :param timeout:
 > >         A float - the period of time to wait for the socket to be ready to
 > >         written to. None for no time limit.
-> >     
+> >
 > >     :return:
 > >         A boolean - if the socket is ready for writing. Will only be False
 > >         if timeout is not None.
@@ -276,18 +276,18 @@ The API consists of:
 > >     :param protocol:
 > >         A unicode string or set of unicode strings representing allowable
 > >         protocols to negotiate with the server:
-> >     
+> >
 > >          - "TLSv1.2"
 > >          - "TLSv1.1"
 > >          - "TLSv1"
 > >          - "SSLv3"
-> >     
+> >
 > >         Default is: {"TLSv1", "TLSv1.1", "TLSv1.2"}
-> >     
+> >
 > >     :param manual_validation:
 > >         If certificate and certificate path validation should be skipped
 > >         and left to the developer to implement
-> >     
+> >
 > >     :param extra_trust_roots:
 > >         A list containing one or more certificates to be treated as trust
 > >         roots, in one of the following formats:
@@ -295,7 +295,7 @@ The API consists of:
 > >          - A unicode string of the certificate filename
 > >          - An asn1crypto.x509.Certificate object
 > >          - An oscrypto.asymmetric.Certificate object
-> >     
+> >
 > >     :raises:
 > >         ValueError - when any of the parameters contain an invalid value
 > >         TypeError - when any of the parameters are of the wrong type
