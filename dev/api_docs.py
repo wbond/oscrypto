@@ -16,11 +16,6 @@ project_dir = os.path.abspath(os.path.join(cur_dir, '..'))
 docs_dir = os.path.join(project_dir, 'docs')
 module_name = 'oscrypto'
 
-
-if hasattr(CommonMark, 'DocParser'):
-    raise EnvironmentError("CommonMark must be version 0.6.0 or newer")
-
-
 # Maps a markdown document to a Python source file to look in for
 # class/method/function docstrings
 MD_SOURCE_MAP = {
@@ -38,6 +33,10 @@ MD_SOURCE_MAP = {
 definition_replacements = {
     ' is returned by OpenSSL': ' is returned by the OS crypto library'
 }
+
+
+if hasattr(CommonMark, 'DocParser'):
+    raise EnvironmentError("CommonMark must be version 0.6.0 or newer")
 
 
 def _get_func_info(docstring, def_lineno, code_lines, prefix):
@@ -65,8 +64,15 @@ def _get_func_info(docstring, def_lineno, code_lines, prefix):
          - [1] A markdown snippet of the function description
     """
 
-    definition = code_lines[def_lineno - 1]
-    definition = definition.strip().rstrip(':')
+    def_index = def_lineno - 1
+    definition = code_lines[def_index]
+    definition = definition.rstrip()
+    while not definition.endswith(':'):
+        def_index += 1
+        definition += '\n' + code_lines[def_index].rstrip()
+
+    definition = textwrap.dedent(definition).rstrip(':')
+    definition = definition.replace('\n', '\n' + prefix)
 
     description = ''
     found_colon = False
@@ -88,7 +94,7 @@ def _get_func_info(docstring, def_lineno, code_lines, prefix):
     description = description.strip()
     description_md = ''
     if description:
-        description_md = "%s%s" % (prefix, description.replace("\n", "\n" + prefix))
+        description_md = "%s%s" % (prefix, description.replace('\n', '\n' + prefix))
         description_md = re.sub('\n>(\\s+)\n', '\n>\n', description_md)
 
     params = params.strip()
