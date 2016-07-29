@@ -5,7 +5,7 @@ from .._ffi import FFIEngineError
 
 try:
     from ._common_crypto_cffi import CommonCrypto
-except (FFIEngineError):
+except (FFIEngineError, ImportError):
     from ._common_crypto_ctypes import CommonCrypto
 
 

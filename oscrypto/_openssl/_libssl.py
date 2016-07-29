@@ -8,7 +8,7 @@ from ._libcrypto import libcrypto_version_info
 
 try:
     from ._libssl_cffi import libssl
-except (FFIEngineError):
+except (FFIEngineError, ImportError):
     from ._libssl_ctypes import libssl
 
 

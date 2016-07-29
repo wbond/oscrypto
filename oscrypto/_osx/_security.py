@@ -6,7 +6,7 @@ from .._ffi import FFIEngineError, null
 try:
     from ._security_cffi import Security, version_info as osx_version_info
     from ._core_foundation_cffi import CoreFoundation, CFHelpers
-except (FFIEngineError):
+except (FFIEngineError, ImportError):
     from ._security_ctypes import Security, version_info as osx_version_info
     from ._core_foundation_ctypes import CoreFoundation, CFHelpers
 

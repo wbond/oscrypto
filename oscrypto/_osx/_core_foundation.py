@@ -5,7 +5,7 @@ from .._ffi import FFIEngineError, is_null, unwrap
 
 try:
     from ._core_foundation_cffi import CoreFoundation, CFHelpers
-except (FFIEngineError):
+except (FFIEngineError, ImportError):
     from ._core_foundation_ctypes import CoreFoundation, CFHelpers
 
 

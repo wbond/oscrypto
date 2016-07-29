@@ -10,7 +10,7 @@ try:
         version as libcrypto_version,
         version_info as libcrypto_version_info
     )
-except (FFIEngineError):
+except (FFIEngineError, ImportError):
     from ._libcrypto_ctypes import (
         libcrypto,
         version as libcrypto_version,
