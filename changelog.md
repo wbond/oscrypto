@@ -1,5 +1,9 @@
 # changelog
 
+## 0.16.2
+
+ - Allow `cffi` files to be removed from source tree when embedding
+
 ## 0.16.1
 
  - Updated [asn1crypto](https://github.com/wbond/asn1crypto) dependency to
