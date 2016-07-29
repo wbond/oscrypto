@@ -1,5 +1,10 @@
 # changelog
 
+## 0.16.1
+
+ - Updated [asn1crypto](https://github.com/wbond/asn1crypto) dependency to
+   `0.18.1`.
+
 ## 0.16.0
 
  - Backwards compatibility break: `trust_list.get_list()` now returns a list of
