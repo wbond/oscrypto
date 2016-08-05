@@ -152,6 +152,11 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(signature, byte_cls)
         asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
 
+        raw_public = asymmetric.dump_public_key(public)
+        asymmetric.load_public_key(raw_public)
+        raw_private = asymmetric.dump_private_key(private, None)
+        asymmetric.load_private_key(raw_private, None)
+
     def test_dsa_generate(self):
         public, private = asymmetric.generate_pair('dsa', bit_size=1024)
 
@@ -163,6 +168,11 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(signature, byte_cls)
         asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
+        raw_public = asymmetric.dump_public_key(public)
+        asymmetric.load_public_key(raw_public)
+        raw_private = asymmetric.dump_private_key(private, None)
+        asymmetric.load_private_key(raw_private, None)
+
     def test_ec_generate(self):
         public, private = asymmetric.generate_pair('ec', curve='secp256r1')
 
@@ -173,6 +183,11 @@ class AsymmetricTests(unittest.TestCase):
         signature = asymmetric.ecdsa_sign(private, original_data, 'sha1')
         self.assertIsInstance(signature, byte_cls)
         asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+
+        raw_public = asymmetric.dump_public_key(public)
+        asymmetric.load_public_key(raw_public)
+        raw_private = asymmetric.dump_private_key(private, None)
+        asymmetric.load_private_key(raw_private, None)
 
     def test_rsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
