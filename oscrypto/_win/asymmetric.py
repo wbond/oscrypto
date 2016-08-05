@@ -356,6 +356,10 @@ class PrivateKey():
     ex_key_handle = None
     asn1 = None
 
+    # A reference to the library used in the destructor to make sure it hasn't
+    # been garbage collected by the time this object is garbage collected
+    _lib = None
+
     def __init__(self, key_handle, asn1):
         """
         :param key_handle:
@@ -368,6 +372,11 @@ class PrivateKey():
 
         self.key_handle = key_handle
         self.asn1 = asn1
+
+        if _xp:
+            self._lib = advapi32
+        else:
+            self._lib = bcrypt
 
     @property
     def algorithm(self):
@@ -408,14 +417,15 @@ class PrivateKey():
     def __del__(self):
         if self.key_handle:
             if _xp:
-                res = advapi32.CryptDestroyKey(self.key_handle)
+                res = self._lib.CryptDestroyKey(self.key_handle)
             else:
-                res = bcrypt.BCryptDestroyKey(self.key_handle)
+                res = self._lib.BCryptDestroyKey(self.key_handle)
             handle_error(res)
             self.key_handle = None
         if self.context_handle and _xp:
             close_context_handle(self.context_handle)
             self.context_handle = None
+        self._lib = None
 
 
 class PublicKey(PrivateKey):

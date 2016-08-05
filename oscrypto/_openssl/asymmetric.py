@@ -57,6 +57,10 @@ class PrivateKey():
     evp_pkey = None
     asn1 = None
 
+    # A reference to the library used in the destructor to make sure it hasn't
+    # been garbage collected by the time this object is garbage collected
+    _lib = None
+
     def __init__(self, evp_pkey, asn1):
         """
         :param evp_pkey:
@@ -68,6 +72,7 @@ class PrivateKey():
 
         self.evp_pkey = evp_pkey
         self.asn1 = asn1
+        self._lib = libcrypto
 
     @property
     def algorithm(self):
@@ -107,7 +112,8 @@ class PrivateKey():
 
     def __del__(self):
         if self.evp_pkey:
-            libcrypto.EVP_PKEY_free(self.evp_pkey)
+            self._lib.EVP_PKEY_free(self.evp_pkey)
+            self._lib = None
             self.evp_pkey = None
 
 
@@ -138,6 +144,10 @@ class Certificate():
     _public_key = None
     _self_signed = None
 
+    # A reference to the library used in the destructor to make sure it hasn't
+    # been garbage collected by the time this object is garbage collected
+    _lib = None
+
     def __init__(self, x509, asn1):
         """
         :param x509:
@@ -149,6 +159,7 @@ class Certificate():
 
         self.x509 = x509
         self.asn1 = asn1
+        self._lib = libcrypto
 
     @property
     def algorithm(self):
@@ -256,7 +267,8 @@ class Certificate():
             self._public_key = None
 
         if self.x509:
-            libcrypto.X509_free(self.x509)
+            self._lib.X509_free(self.x509)
+            self._lib = None
             self.x509 = None
 
 

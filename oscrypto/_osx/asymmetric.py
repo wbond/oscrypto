@@ -45,6 +45,10 @@ class PrivateKey():
     sec_key_ref = None
     asn1 = None
 
+    # A reference to the library used in the destructor to make sure it hasn't
+    # been garbage collected by the time this object is garbage collected
+    _lib = None
+
     def __init__(self, sec_key_ref, asn1):
         """
         :param sec_key_ref:
@@ -57,6 +61,7 @@ class PrivateKey():
 
         self.sec_key_ref = sec_key_ref
         self.asn1 = asn1
+        self._lib = CoreFoundation
 
     @property
     def algorithm(self):
@@ -96,7 +101,8 @@ class PrivateKey():
 
     def __del__(self):
         if self.sec_key_ref:
-            CoreFoundation.CFRelease(self.sec_key_ref)
+            self._lib.CFRelease(self.sec_key_ref)
+            self._lib = None
             self.sec_key_ref = None
 
 
