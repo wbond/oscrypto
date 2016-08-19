@@ -16,17 +16,15 @@ from ._errors import pretty_message
 from ._ffi import LibraryNotFoundError
 from ._types import type_name, str_cls
 
-_shim_generate_funcs = False
 
 if sys.platform == 'darwin':
+    _has_openssl = False
     from ._osx.asymmetric import (
         Certificate,
         dsa_sign,
         dsa_verify,
         ecdsa_sign,
         ecdsa_verify,
-        generate_pair,
-        generate_dh_parameters,
         load_certificate,
         load_pkcs12,
         load_private_key,
@@ -42,8 +40,9 @@ if sys.platform == 'darwin':
         rsa_oaep_encrypt,
         rsa_oaep_decrypt,
     )
+    from ._osx import asymmetric as _security_asymmetric
 
-    # Detect an issue where virtualenv'ed system python will cause
+    # Detect an issue where some virtualenv'ed pythons on OS X will cause
     # generate_pair() to fail with the error:
     #
     # "The user name or passphrase you entered is not correct"
@@ -54,13 +53,11 @@ if sys.platform == 'darwin':
     # export the keys, this workaround was created. OpenSSL may be removed in
     # a future version of OS X, but the current implementation should work
     # until that happens.
-    _system_prefix = '/System/Library/Frameworks/Python.framework/Versions/'
-    if hasattr(sys, 'real_prefix') and sys.real_prefix.startswith(_system_prefix):
-        try:
-            from ._openssl import asymmetric as _openssl_asymmetric
-            _shim_generate_funcs = True
-        except (LibraryNotFoundError):
-            pass
+    try:
+        from ._openssl import asymmetric as _openssl_asymmetric
+        _has_openssl = True
+    except (LibraryNotFoundError):
+        pass
 
 elif sys.platform == 'win32':
     from ._win.asymmetric import (
@@ -468,7 +465,7 @@ def dump_openssl_private_key(private_key, passphrase):
     return asn1crypto.pem.armor(object_type, output, headers=headers)
 
 
-if _shim_generate_funcs:
+if sys.platform == 'darwin':
     def generate_pair(algorithm, bit_size=None, curve=None):  # noqa
         """
         Generates a public/private key pair
@@ -494,12 +491,18 @@ if _shim_generate_funcs:
             may be saved by calling .asn1.dump().
         """
 
-        openssl_pub, openssl_priv = _openssl_asymmetric.generate_pair(algorithm, bit_size, curve)
-        pub = load_public_key(openssl_pub.asn1.dump())
-        priv = load_private_key(openssl_priv.asn1.dump())
-        return (pub, priv)
+        try:
+            return _security_asymmetric.generate_pair(algorithm, bit_size, curve)
+        except (OSError) as e:
+            if _has_openssl and 'The user name or passphrase you entered is not correct' in str_cls(e):
+                openssl_pub, openssl_priv = _openssl_asymmetric.generate_pair(algorithm, bit_size, curve)
+                pub = load_public_key(openssl_pub.asn1.dump())
+                priv = load_private_key(openssl_priv.asn1.dump())
+                return (pub, priv)
+            raise
 
-    generate_pair.shimmed = True
+    if _has_openssl:
+        generate_pair.shimmed = True
 
     def generate_dh_parameters(bit_size):  # noqa
         """
@@ -525,6 +528,12 @@ if _shim_generate_funcs:
             web servers.
         """
 
-        return _openssl_asymmetric.generate_dh_parameters(bit_size)
+        try:
+            return _security_asymmetric.generate_dh_parameters(bit_size)
+        except (OSError) as e:
+            if _has_openssl and 'The user name or passphrase you entered is not correct' in str_cls(e):
+                return _openssl_asymmetric.generate_dh_parameters(bit_size)
+            raise
 
-    generate_dh_parameters.shimmed = True
+    if _has_openssl:
+        generate_dh_parameters.shimmed = True
