@@ -25,20 +25,21 @@ __all__ = [
 _backend_config = backend_config()
 
 
-ffi = FFI()
-
-ffi.cdef("const char *SSLeay_version(int type);")
-
 libcrypto_path = _backend_config.get('libcrypto_path')
 if libcrypto_path is None:
     libcrypto_path = find_library('crypto')
 if not libcrypto_path:
     raise LibraryNotFoundError('The library libcrypto could not be found')
 
-libcrypto = ffi.dlopen(libcrypto_path)
-register_ffi(libcrypto, ffi)
+try:
+    vffi = FFI()
+    vffi.cdef("const char *SSLeay_version(int type);")
+    version_string = vffi.string(vffi.dlopen(libcrypto_path).SSLeay_version(0)).decode('utf-8')
+except (AttributeError):
+    vffi = FFI()
+    vffi.cdef("const char *OpenSSL_version(int type);")
+    version_string = vffi.string(vffi.dlopen(libcrypto_path).OpenSSL_version(0)).decode('utf-8')
 
-version_string = ffi.string(libcrypto.SSLeay_version(0)).decode('utf-8')
 version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
 if not version_match:
     version_match = re.search('(?<=LibreSSL )(\\d\\.\\d(\\.\\d)?)\\b', version_string)
@@ -48,6 +49,11 @@ version = version_match.group(1)
 version_parts = re.sub('(\\d)([a-z]+)', '\\1.\\2', version).split('.')
 version_info = tuple(int(part) if part.isdigit() else part for part in version_parts)
 
+ffi = FFI()
+
+libcrypto = ffi.dlopen(libcrypto_path)
+register_ffi(libcrypto, ffi)
+
 if version_info < (0, 9, 8):
     raise LibraryNotFoundError(pretty_message(
         '''
@@ -55,6 +61,12 @@ if version_info < (0, 9, 8):
         ''',
         version
     ))
+
+if version_info < (1, 1):
+    ffi.cdef("""
+        void ERR_load_crypto_strings(void);
+        void ERR_free_strings(void);
+    """)
 
 # The typedef uintptr_t lines here allow us to check for a NULL pointer,
 # without having to redefine the structs in our code. This is kind of a hack,
@@ -74,9 +86,6 @@ ffi.cdef("""
     typedef ... EVP_PKEY_CTX;
     typedef ... BN_GENCB;
     typedef ... BIGNUM;
-
-    void ERR_load_crypto_strings(void);
-    void ERR_free_strings(void);
 
     unsigned long ERR_get_error(void);
     char *ERR_error_string(unsigned long e, char *buf);
@@ -123,9 +132,6 @@ ffi.cdef("""
     int i2d_X509(X509 *x, char **out);
     EVP_PKEY *X509_get_pubkey(X509 *x);
     void X509_free(X509 *a);
-
-    EVP_MD_CTX *EVP_MD_CTX_create(void);
-    void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 
     int EVP_PKEY_size(EVP_PKEY *pkey);
     RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
@@ -182,6 +188,17 @@ ffi.cdef("""
     int i2o_ECPublicKey(EC_KEY *key, char **out);
     void EC_KEY_free(EC_KEY *key);
 """)
+
+if version_info < (1, 1):
+    ffi.cdef("""
+        EVP_MD_CTX *EVP_MD_CTX_create(void);
+        void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
+    """)
+else:
+    ffi.cdef("""
+        EVP_MD_CTX *EVP_MD_CTX_new(void);
+        void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
+    """)
 
 if version_info < (1,):
     ffi.cdef("""

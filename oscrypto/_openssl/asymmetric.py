@@ -1289,7 +1289,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     ecdsa_sig = None
 
     try:
-        evp_md_ctx = libcrypto.EVP_MD_CTX_create()
+        if libcrypto_version_info < (1, 1):
+            evp_md_ctx = libcrypto.EVP_MD_CTX_create()
+        else:
+            evp_md_ctx = libcrypto.EVP_MD_CTX_new()
 
         evp_md = {
             'md5': libcrypto.EVP_md5,
@@ -1417,7 +1420,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
     finally:
         if evp_md_ctx:
-            libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
+            if libcrypto_version_info < (1, 1):
+                libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
+            else:
+                libcrypto.EVP_MD_CTX_free(evp_md_ctx)
         if rsa:
             libcrypto.RSA_free(rsa)
         if dsa:
@@ -1682,7 +1688,10 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     ecdsa_sig = None
 
     try:
-        evp_md_ctx = libcrypto.EVP_MD_CTX_create()
+        if libcrypto_version_info < (1, 1):
+            evp_md_ctx = libcrypto.EVP_MD_CTX_create()
+        else:
+            evp_md_ctx = libcrypto.EVP_MD_CTX_new()
 
         evp_md = {
             'md5': libcrypto.EVP_md5,
@@ -1828,7 +1837,10 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
 
     finally:
         if evp_md_ctx:
-            libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
+            if libcrypto_version_info < (1, 1):
+                libcrypto.EVP_MD_CTX_destroy(evp_md_ctx)
+            else:
+                libcrypto.EVP_MD_CTX_free(evp_md_ctx)
         if rsa:
             libcrypto.RSA_free(rsa)
         if dsa:

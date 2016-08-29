@@ -31,10 +31,12 @@ libcrypto = CDLL(libcrypto_path, use_errno=True)
 try:
     libcrypto.SSLeay_version.argtypes = [c_int]
     libcrypto.SSLeay_version.restype = c_char_p
+    version_string = libcrypto.SSLeay_version(0).decode('utf-8')
 except (AttributeError):
-    raise FFIEngineError('Error accessing libcrypto.SSLeay_version')
+    libcrypto.OpenSSL_version.argtypes = [c_int]
+    libcrypto.OpenSSL_version.restype = c_char_p
+    version_string = libcrypto.OpenSSL_version(0).decode('utf-8')
 
-version_string = libcrypto.SSLeay_version(0).decode('utf-8')
 version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
 if not version_match:
     version_match = re.search('(?<=LibreSSL )(\\d\\.\\d(\\.\\d)?)\\b', version_string)
@@ -76,8 +78,12 @@ p_int = POINTER(c_int)
 p_uint = POINTER(c_uint)
 
 try:
-    libcrypto.ERR_load_crypto_strings.argtypes = []
-    libcrypto.ERR_load_crypto_strings.restype = None
+    if version_info < (1, 1):
+        libcrypto.ERR_load_crypto_strings.argtypes = []
+        libcrypto.ERR_load_crypto_strings.restype = None
+
+        libcrypto.ERR_free_strings.argtypes = []
+        libcrypto.ERR_free_strings.restype = None
 
     libcrypto.ERR_get_error.argtypes = []
     libcrypto.ERR_get_error.restype = c_ulong
@@ -90,9 +96,6 @@ try:
         c_char_p
     ]
     libcrypto.ERR_error_string.restype = c_char_p
-
-    libcrypto.ERR_free_strings.argtypes = []
-    libcrypto.ERR_free_strings.restype = None
 
     libcrypto.OPENSSL_config.argtypes = [
         c_char_p
@@ -245,13 +248,22 @@ try:
     ]
     libcrypto.EVP_PKEY_free.restype = None
 
-    libcrypto.EVP_MD_CTX_create.argtypes = []
-    libcrypto.EVP_MD_CTX_create.restype = P_EVP_MD_CTX
+    if version_info < (1, 1):
+        libcrypto.EVP_MD_CTX_create.argtypes = []
+        libcrypto.EVP_MD_CTX_create.restype = P_EVP_MD_CTX
 
-    libcrypto.EVP_MD_CTX_destroy.argtypes = [
-        P_EVP_MD_CTX
-    ]
-    libcrypto.EVP_MD_CTX_destroy.restype = None
+        libcrypto.EVP_MD_CTX_destroy.argtypes = [
+            P_EVP_MD_CTX
+        ]
+        libcrypto.EVP_MD_CTX_destroy.restype = None
+    else:
+        libcrypto.EVP_MD_CTX_new.argtypes = []
+        libcrypto.EVP_MD_CTX_new.restype = P_EVP_MD_CTX
+
+        libcrypto.EVP_MD_CTX_free.argtypes = [
+            P_EVP_MD_CTX
+        ]
+        libcrypto.EVP_MD_CTX_free.restype = None
 
     libcrypto.EVP_md5.argtypes = []
     libcrypto.EVP_md5.restype = P_EVP_MD

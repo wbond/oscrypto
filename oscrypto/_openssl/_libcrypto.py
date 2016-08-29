@@ -32,7 +32,8 @@ _encoding = 'utf-8'
 _fallback_encodings = ['utf-8', 'cp1252']
 
 
-libcrypto.ERR_load_crypto_strings()
+if libcrypto_version_info < (1, 1):
+    libcrypto.ERR_load_crypto_strings()
 libcrypto.OPENSSL_config(null())
 
 

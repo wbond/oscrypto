@@ -6,6 +6,7 @@ from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t
 
 from .. import backend_config
 from .._ffi import LibraryNotFoundError, FFIEngineError
+from ._libcrypto import libcrypto_version_info
 
 
 __all__ = [
@@ -38,20 +39,31 @@ _STACK = c_void_p
 P_STACK = POINTER(_STACK)
 
 try:
-    stack_cmp_func = CFUNCTYPE(c_int, c_void_p, c_void_p)
-    setattr(libssl, 'stack_cmp_func', stack_cmp_func)
+    if libcrypto_version_info < (1, 1):
+        libssl.sk_num.argtypes = [P_STACK]
+        libssl.sk_num.restype = c_int
 
-    libssl.sk_num.argtypes = [P_STACK]
-    libssl.sk_num.restype = c_int
+        libssl.sk_value.argtypes = [P_STACK, c_int]
+        libssl.sk_value.restype = P_X509
 
-    libssl.sk_value.argtypes = [P_STACK, c_int]
-    libssl.sk_value.restype = P_X509
+        libssl.SSL_library_init.argtypes = []
+        libssl.SSL_library_init.restype = c_int
 
-    libssl.SSL_library_init.argtypes = []
-    libssl.SSL_library_init.restype = c_int
+        libssl.OPENSSL_add_all_algorithms_noconf.argtypes = []
+        libssl.OPENSSL_add_all_algorithms_noconf.restype = None
 
-    libssl.OPENSSL_add_all_algorithms_noconf.argtypes = []
-    libssl.OPENSSL_add_all_algorithms_noconf.restype = None
+        libssl.SSLv23_method.argtypes = []
+        libssl.SSLv23_method.restype = P_SSL_METHOD
+
+    else:
+        libssl.OPENSSL_sk_num.argtypes = [P_STACK]
+        libssl.OPENSSL_sk_num.restype = c_int
+
+        libssl.OPENSSL_sk_value.argtypes = [P_STACK, c_int]
+        libssl.OPENSSL_sk_value.restype = P_X509
+
+        libssl.TLS_method.argtypes = []
+        libssl.TLS_method.restype = P_SSL_METHOD
 
     libssl.BIO_s_mem.argtypes = []
     libssl.BIO_s_mem.restype = P_BIO_METHOD
@@ -84,9 +96,6 @@ try:
         P_BIO
     ]
     libssl.BIO_ctrl_pending.restype = c_size_t
-
-    libssl.SSLv23_method.argtypes = []
-    libssl.SSLv23_method.restype = P_SSL_METHOD
 
     libssl.SSL_CTX_new.argtypes = [
         P_SSL_METHOD
@@ -211,11 +220,6 @@ try:
         P_SSL
     ]
     libssl.SSL_do_handshake.restype = c_int
-
-    libssl.SSL_state.argtypes = [
-        P_SSL
-    ]
-    libssl.SSL_state.restype = c_int
 
     libssl.SSL_get_error.argtypes = [
         P_SSL,

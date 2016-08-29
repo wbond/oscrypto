@@ -49,6 +49,7 @@ care of patching vulnerabilities. Supported operating systems include:
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
      - [OpenSSL 1.0.x](https://www.openssl.org/docs/man1.0.0/)
+     - [OpenSSL 1.1.0](https://www.openssl.org/docs/man1.1.0/)
      - [LibreSSL](http://www.libressl.org/)
    - Tested on:
      - Arch Linux with OpenSSL 1.0.2

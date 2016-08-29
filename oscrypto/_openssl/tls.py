@@ -10,7 +10,7 @@ import numbers
 from asn1crypto import x509
 
 from ._libssl import libssl, LibsslConst
-from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
+from ._libcrypto import libcrypto, libcrypto_version_info, handle_openssl_error, peek_openssl_error
 from .. import backend_config
 from .._errors import pretty_message
 from .._ffi import null, bytes_from_buffer, buffer_from_bytes, is_null, buffer_pointer
@@ -162,7 +162,11 @@ class TLSSession(object):
 
         ssl_ctx = None
         try:
-            ssl_ctx = libssl.SSL_CTX_new(libssl.SSLv23_method())
+            if libcrypto_version_info < (1, 1):
+                method = libssl.SSLv23_method()
+            else:
+                method = libssl.TLS_method()
+            ssl_ctx = libssl.SSL_CTX_new(method)
             if is_null(ssl_ctx):
                 handle_openssl_error(0)
             self._ssl_ctx = ssl_ctx
@@ -475,19 +479,33 @@ class TLSSocket(object):
                 else:
                     info = peek_openssl_error()
 
-                    dh_key_info = (
-                        20,
-                        LibsslConst.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM,
-                        LibsslConst.SSL_R_DH_KEY_TOO_SMALL
-                    )
+                    if libcrypto_version_info < (1, 1):
+                        dh_key_info = (
+                            20,
+                            LibsslConst.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM,
+                            LibsslConst.SSL_R_DH_KEY_TOO_SMALL
+                        )
+                    else:
+                        dh_key_info = (
+                            20,
+                            LibsslConst.SSL_F_TLS_PROCESS_SKE_DHE,
+                            LibsslConst.SSL_R_DH_KEY_TOO_SMALL
+                        )
                     if info == dh_key_info:
                         raise_dh_params()
 
-                    unknown_protocol_info = (
-                        20,
-                        LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
-                        LibsslConst.SSL_R_UNKNOWN_PROTOCOL
-                    )
+                    if libcrypto_version_info < (1, 1):
+                        unknown_protocol_info = (
+                            20,
+                            LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
+                            LibsslConst.SSL_R_UNKNOWN_PROTOCOL
+                        )
+                    else:
+                        unknown_protocol_info = (
+                            20,
+                            LibsslConst.SSL_F_SSL3_GET_RECORD,
+                            LibsslConst.SSL_R_WRONG_VERSION_NUMBER
+                        )
                     if info == unknown_protocol_info:
                         raise_protocol_error(handshake_server_bytes)
 
@@ -507,11 +525,19 @@ class TLSSocket(object):
                     if info == handshake_failure_info:
                         raise_client_auth()
 
-                    cert_verify_failed_info = (
-                        20,
-                        LibsslConst.SSL_F_SSL3_GET_SERVER_CERTIFICATE,
-                        LibsslConst.SSL_R_CERTIFICATE_VERIFY_FAILED
-                    )
+                    if libcrypto_version_info < (1, 1):
+                        cert_verify_failed_info = (
+                            20,
+                            LibsslConst.SSL_F_SSL3_GET_SERVER_CERTIFICATE,
+                            LibsslConst.SSL_R_CERTIFICATE_VERIFY_FAILED
+                        )
+                    else:
+                        cert_verify_failed_info = (
+                            20,
+                            LibsslConst.SSL_F_TLS_PROCESS_SERVER_CERTIFICATE,
+                            LibsslConst.SSL_R_CERTIFICATE_VERIFY_FAILED
+                        )
+
                     if info == cert_verify_failed_info:
                         verify_result = libssl.SSL_get_verify_result(ssl)
                         chain = extract_chain(handshake_server_bytes)
@@ -520,6 +546,7 @@ class TLSSocket(object):
                         time_invalid = False
                         no_issuer = False
                         cert = None
+                        oscrypto_cert = None
 
                         if chain:
                             cert = chain[0]
@@ -546,6 +573,8 @@ class TLSSocket(object):
                             raise_no_issuer(cert)
                         if self_signed:
                             raise_self_signed(cert)
+                        if oscrypto_cert and oscrypto_cert.asn1.hash_algo in set(['md5', 'md2']):
+                            raise_weak_signature(oscrypto_cert)
                         raise_verification(cert)
 
                     handle_openssl_error(0, TLSError)
@@ -947,12 +976,18 @@ class TLSSocket(object):
         if is_null(stack_pointer):
             handle_openssl_error(0, TLSError)
 
-        number_certs = libssl.sk_num(stack_pointer)
+        if libcrypto_version_info < (1, 1):
+            number_certs = libssl.sk_num(stack_pointer)
+        else:
+            number_certs = libssl.OPENSSL_sk_num(stack_pointer)
 
         self._intermediates = []
 
         for index in range(0, number_certs):
-            x509_ = libssl.sk_value(stack_pointer, index)
+            if libcrypto_version_info < (1, 1):
+                x509_ = libssl.sk_value(stack_pointer, index)
+            else:
+                x509_ = libssl.OPENSSL_sk_value(stack_pointer, index)
             buffer_size = libcrypto.i2d_X509(x509_, null())
             cert_buffer = buffer_from_bytes(buffer_size)
             cert_pointer = buffer_pointer(cert_buffer)

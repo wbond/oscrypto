@@ -5,6 +5,7 @@ from ctypes.util import find_library
 
 from .. import backend_config
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
+from ._libcrypto import libcrypto_version_info
 
 try:
     from cffi import FFI
@@ -44,21 +45,12 @@ ffi.cdef("""
     typedef ... X509_STORE_CTX;
     typedef uintptr_t _STACK;
 
-    typedef int (*stack_cmp_func)(const void *a, const void *b);
-    int sk_num(const _STACK *);
-    X509 *sk_value(const _STACK *, int);
-
-    int SSL_library_init(void);
-    void OPENSSL_add_all_algorithms_noconf(void);
-
     BIO_METHOD *BIO_s_mem(void);
     BIO *BIO_new(BIO_METHOD *type);
     int BIO_free(BIO *a);
     int BIO_read(BIO *b, void *buf, int len);
     int BIO_write(BIO *b, const void *buf, int len);
     size_t BIO_ctrl_pending(BIO *b);
-
-    SSL_METHOD *SSLv23_method(void);
 
     SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
     long SSL_CTX_set_timeout(SSL_CTX *ctx, long t);
@@ -86,7 +78,6 @@ ffi.cdef("""
 
     void SSL_set_connect_state(SSL *ssl);
     int SSL_do_handshake(SSL *ssl);
-    int SSL_state(const SSL *ssl);
     int SSL_get_error(const SSL *ssl, int ret);
     const char *SSL_get_version(const SSL *ssl);
 
@@ -96,3 +87,21 @@ ffi.cdef("""
 
     int SSL_shutdown(SSL *ssl);
 """)
+
+if libcrypto_version_info < (1, 1):
+    ffi.cdef("""
+        int sk_num(const _STACK *);
+        X509 *sk_value(const _STACK *, int);
+
+        int SSL_library_init(void);
+        void OPENSSL_add_all_algorithms_noconf(void);
+
+        SSL_METHOD *SSLv23_method(void);
+    """)
+else:
+    ffi.cdef("""
+        int OPENSSL_sk_num(const _STACK *);
+        X509 *OPENSSL_sk_value(const _STACK *, int);
+
+        SSL_METHOD *TLS_method(void);
+    """)

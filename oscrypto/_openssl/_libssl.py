@@ -18,7 +18,8 @@ __all__ = [
 ]
 
 
-libssl.SSL_library_init()
+if libcrypto_version_info < (1, 1):
+    libssl.SSL_library_init()
 # Enables SHA2 algorithms on 0.9.8n and older
 if libcrypto_version_info < (1, 0):
     libssl.OPENSSL_add_all_algorithms_noconf()
@@ -53,6 +54,13 @@ class LibsslConst():
     SSL_R_UNKNOWN_PROTOCOL = 252
     SSL_R_DH_KEY_TOO_SMALL = 372
 
+    # OpenSSL 1.1.0
+    SSL_F_TLS_PROCESS_SKE_DHE = 419
+    SSL_F_SSL3_GET_RECORD = 143
+    SSL_R_WRONG_VERSION_NUMBER = 267
+    SSL_F_TLS_PROCESS_SERVER_CERTIFICATE = 367
+
+    # OpenSSL < 1.1.0
     SSL_F_SSL23_GET_SERVER_HELLO = 119
     SSL_F_SSL3_READ_BYTES = 148
     SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE = 1040
@@ -66,3 +74,7 @@ class LibsslConst():
 
     X509_V_ERR_CERT_NOT_YET_VALID = 9
     X509_V_ERR_CERT_HAS_EXPIRED = 10
+
+
+if libcrypto_version_info >= (1, 1, 0):
+    LibsslConst.SSL_R_DH_KEY_TOO_SMALL = 394
