@@ -5,17 +5,23 @@ import sys
 import hashlib
 from datetime import datetime
 
+from . import backend
+from .util import rand_bytes
 from ._types import type_name, byte_cls, int_types
 from ._errors import pretty_message
 from ._ffi import new, deref
 
-if sys.platform == 'darwin':
-    from ._osx.util import pbkdf2, pkcs12_kdf, rand_bytes
-elif sys.platform == 'win32':
-    from ._win.util import pbkdf2, pkcs12_kdf, rand_bytes
+
+_backend = backend()
+
+
+if _backend == 'osx':
+    from ._osx.util import pbkdf2, pkcs12_kdf
+elif _backend == 'win':
+    from ._win.util import pbkdf2, pkcs12_kdf
     from ._win._kernel32 import kernel32, handle_error
 else:
-    from ._openssl.util import pbkdf2, pkcs12_kdf, rand_bytes
+    from ._openssl.util import pbkdf2, pkcs12_kdf
 
 
 __all__ = [
@@ -23,7 +29,6 @@ __all__ = [
     'pbkdf2',
     'pbkdf2_iteration_calculator',
     'pkcs12_kdf',
-    'rand_bytes',
 ]
 
 

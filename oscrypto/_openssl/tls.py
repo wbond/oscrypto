@@ -11,6 +11,7 @@ from asn1crypto import x509
 
 from ._libssl import libssl, LibsslConst
 from ._libcrypto import libcrypto, handle_openssl_error, peek_openssl_error
+from .. import backend_config
 from .._errors import pretty_message
 from .._ffi import null, bytes_from_buffer, buffer_from_bytes, is_null, buffer_pointer
 from .._types import type_name, str_cls, byte_cls, int_types
@@ -34,6 +35,7 @@ from .._tls import (
 )
 from .asymmetric import load_certificate, Certificate
 from ..keys import parse_certificate
+from ..trust_list import get_path
 
 if sys.version_info < (3,):
     range = xrange  # noqa
@@ -45,6 +47,7 @@ __all__ = [
 ]
 
 
+_backend_config = backend_config()
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 _PROTOCOL_MAP = {
     'SSLv2': LibsslConst.SSL_OP_NO_SSLv2,
@@ -174,7 +177,23 @@ class TLSSession(object):
                 null()
             )
 
-            result = libssl.SSL_CTX_set_default_verify_paths(ssl_ctx)
+            if sys.platform in set(['win32', 'darwin']):
+                trust_list_path = _backend_config.get('trust_list_path')
+                if trust_list_path is None:
+                    trust_list_path = get_path()
+
+                if sys.platform == 'win32':
+                    path_encoding = 'mbcs'
+                else:
+                    path_encoding = 'utf-8'
+                result = libssl.SSL_CTX_load_verify_locations(
+                    ssl_ctx,
+                    trust_list_path.encode(path_encoding),
+                    null()
+                )
+
+            else:
+                result = libssl.SSL_CTX_set_default_verify_paths(ssl_ctx)
             handle_openssl_error(result)
 
             verify_mode = LibsslConst.SSL_VERIFY_NONE if manual_validation else LibsslConst.SSL_VERIFY_PEER

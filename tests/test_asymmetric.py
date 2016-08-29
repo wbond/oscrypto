@@ -6,17 +6,11 @@ import sys
 import os
 
 from asn1crypto import pem, algos
-from oscrypto import asymmetric, errors
+from oscrypto import asymmetric, errors, backend
 
 from ._unittest_compat import patch
 
 patch()
-
-if sys.platform not in set(['darwin', 'win32']):
-    from oscrypto._openssl._libcrypto import libcrypto_version_info
-    openssl_098 = libcrypto_version_info < (1, 0, 0)
-else:
-    openssl_098 = False
 
 if sys.version_info < (3,):
     byte_cls = str
@@ -24,6 +18,16 @@ if sys.version_info < (3,):
 else:
     byte_cls = bytes
     int_types = (int,)
+
+
+_backend = backend()
+
+
+if _backend == 'openssl':
+    from oscrypto._openssl._libcrypto import libcrypto_version_info
+    openssl_098 = libcrypto_version_info < (1, 0, 0)
+else:
+    openssl_098 = False
 
 
 tests_root = os.path.dirname(__file__)
@@ -39,9 +43,9 @@ xp = sys.platform == 'win32' and _win_version_pair() < (6,)
 
 
 def _should_support_sha2():
-    if sys.platform == 'darwin':
+    if _backend == 'osx':
         return False
-    if sys.platform == 'win32' and _win_version_pair() < (6, 2):
+    if _backend == 'win' and _win_version_pair() < (6, 2):
         return False
     if openssl_098:
         return False
@@ -463,10 +467,10 @@ class AsymmetricTests(unittest.TestCase):
 
             asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
-        if sys.platform == 'darwin' or openssl_098:
+        if _backend == 'osx' or openssl_098:
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
-        elif sys.platform == 'win32':
+        elif _backend == 'win':
             if _win_version_pair() < (6, 2):
                 exception_class = errors.AsymmetricKeyError
             else:

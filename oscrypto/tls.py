@@ -1,16 +1,19 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
+from . import backend
 
 
-if sys.platform == 'darwin':
+_backend = backend()
+
+
+if _backend == 'osx':
     from ._osx.tls import (
         TLSSession,
         TLSSocket,
     )
 
-elif sys.platform == 'win32':
+elif _backend == 'win':
     from ._win.tls import (
         TLSSession,
         TLSSocket,

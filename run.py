@@ -11,23 +11,35 @@ else:
 
 
 def show_usage():
-    print('Usage: run.py (api_docs | lint | tests [regex] [repeat_count] | coverage | ci | release)', file=sys.stderr)
+    print(
+        'Usage: run.py [use_openssl=/path/to/libcrypto,/path/to/libssl] '
+        '(api_docs | lint | tests [regex] [repeat_count] | coverage | ci | release)',
+        file=sys.stderr
+    )
     sys.exit(1)
 
 
 def get_arg(num):
     if len(sys.argv) < num + 1:
-        return None
+        return None, num
     arg = sys.argv[num]
     if isinstance(arg, byte_cls):
         arg = arg.decode('utf-8')
-    return arg
+    return arg, num + 1
 
 
 if len(sys.argv) < 2 or len(sys.argv) > 4:
     show_usage()
 
-task = get_arg(1)
+task, next_arg = get_arg(1)
+
+if task.startswith('use_openssl='):
+    import oscrypto
+    paths = task[12:].split(',')
+    if len(paths) != 2:
+        raise ValueError()
+    oscrypto.use_openssl(*paths)
+    task, next_arg = get_arg(next_arg)
 
 if task not in set(['api_docs', 'lint', 'tests', 'coverage', 'ci', 'release']):
     show_usage()
@@ -44,13 +56,13 @@ elif task == 'lint':
 
 elif task == 'tests':
     from dev.tests import run
-    matcher = get_arg(2)
+    matcher, next_arg = get_arg(next_arg)
     if matcher:
         if matcher.isdigit():
             kwargs['repeat'] = int(matcher)
         else:
             kwargs['matcher'] = matcher
-    repeat = get_arg(3)
+    repeat, next_arg = get_arg(next_arg)
     if repeat:
         kwargs['repeat'] = int(repeat)
 

@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
 import hashlib
 import binascii
 
@@ -9,6 +8,7 @@ from asn1crypto import keys, x509, algos, core
 import asn1crypto.pem
 from asn1crypto.util import OrderedDict
 
+from . import backend
 from .symmetric import aes_cbc_pkcs7_encrypt
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
 from .util import rand_bytes
@@ -17,7 +17,10 @@ from ._ffi import LibraryNotFoundError
 from ._types import type_name, str_cls
 
 
-if sys.platform == 'darwin':
+_backend = backend()
+
+
+if _backend == 'osx':
     _has_openssl = False
     from ._osx.asymmetric import (
         Certificate,
@@ -59,7 +62,7 @@ if sys.platform == 'darwin':
     except (LibraryNotFoundError):
         pass
 
-elif sys.platform == 'win32':
+elif _backend == 'win':
     from ._win.asymmetric import (
         Certificate,
         dsa_sign,
@@ -465,7 +468,7 @@ def dump_openssl_private_key(private_key, passphrase):
     return asn1crypto.pem.armor(object_type, output, headers=headers)
 
 
-if sys.platform == 'darwin':
+if _backend == 'osx':
     def generate_pair(algorithm, bit_size=None, curve=None):  # noqa
         """
         Generates a public/private key pair

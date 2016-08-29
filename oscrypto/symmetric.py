@@ -1,10 +1,13 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
+from . import backend
 
 
-if sys.platform == 'darwin':
+_backend = backend()
+
+
+if _backend == 'osx':
     from ._osx.symmetric import (
         aes_cbc_no_padding_decrypt,
         aes_cbc_no_padding_encrypt,
@@ -20,7 +23,7 @@ if sys.platform == 'darwin':
         tripledes_cbc_pkcs5_encrypt,
     )
 
-elif sys.platform == 'win32':
+elif _backend == 'win':
     from ._win.symmetric import (
         aes_cbc_no_padding_decrypt,
         aes_cbc_no_padding_encrypt,

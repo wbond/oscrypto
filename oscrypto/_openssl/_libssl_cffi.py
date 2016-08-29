@@ -3,6 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from ctypes.util import find_library
 
+from .. import backend_config
 from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
 
 try:
@@ -17,9 +18,14 @@ __all__ = [
 ]
 
 
+_backend_config = backend_config()
+
+
 ffi = FFI()
 
-libssl_path = find_library('ssl')
+libssl_path = _backend_config.get('libssl_path')
+if libssl_path is None:
+    libssl_path = find_library('ssl')
 if not libssl_path:
     raise LibraryNotFoundError('The library libssl could not be found')
 
