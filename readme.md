@@ -45,6 +45,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - OS X 10.9
      - OS X 10.10
      - OS X 10.11
+     - OS X 10.11 with OpenSSL 1.1.0
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
@@ -90,7 +91,7 @@ should, or should not use, please see [Learning](docs/readme.md#learning).
    - RSA OAEP (SHA1 only)
  - [Generating public/private key pairs](docs/asymmetric.md)
    - RSA (1024, 2048, 3072, 4096 bit)
-   - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.0.x or
+   - DSA (1024 bit on all platforms - 2048, 3072 bit with OpenSSL 1.x or
      Windows 8)
    - EC (secp256r1, secp384r1, secp521r1 curves)
  - [Generating DH parameters](docs/asymmetric.md)
@@ -139,8 +140,8 @@ Some things that make oscrypto unique:
 
  - No compiler needed, ever. No need to pre-compile shared libraries. Just
    distribute the Python source files, any way you want.
- - Uses the operating system's crypto library - does not use OpenSSL on Windows
-   or OS X.
+ - Uses the operating system's crypto library - does not require OpenSSL on
+   Windows or OS X.
  - Relies on the operating system for security patching. You don't need to
    rebuild all of your apps every time there is a new TLS vulnerability.
  - Intentionally limited in scope to crypto primitives. Other libraries
@@ -155,7 +156,7 @@ Some things that make oscrypto unique:
 Some downsides include:
 
  - Does not currently implement:
-   - DH key exchange
+   - standalone DH key exchange
    - various encryption modes such as GCM, CCM, CTR, CFB, OFB, ECB
    - key wrapping
    - CMAC
@@ -183,7 +184,7 @@ Some downsides include:
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, pypy or pypy3
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, pypy
 
 ## Installation
 
@@ -226,6 +227,13 @@ repeat count after the regular expression.
 ```bash
 python run.py tests 20
 python run.py tests aes 20
+```
+
+To run tests using a custom build of OpenSSL, or to use OpenSSL on Windows or
+OS X, add `use_openssl` after `run.py`, like:
+
+```bash
+python run.py use_openssl=/path/to/libcrypto.dylib,/path/to/libssl.dylib tests
 ```
 
 ## Development
