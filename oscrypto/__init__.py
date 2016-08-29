@@ -43,7 +43,7 @@ def backend():
         return _module_values['backend']
 
 
-def backend_config():
+def _backend_config():
     """
     :return:
         A dict of config info for the backend. Only currently used by "openssl",

@@ -11,7 +11,7 @@ from asn1crypto import x509
 
 from ._libssl import libssl, LibsslConst
 from ._libcrypto import libcrypto, libcrypto_version_info, handle_openssl_error, peek_openssl_error
-from .. import backend_config
+from .. import _backend_config
 from .._errors import pretty_message
 from .._ffi import null, bytes_from_buffer, buffer_from_bytes, is_null, buffer_pointer
 from .._types import type_name, str_cls, byte_cls, int_types
@@ -47,7 +47,7 @@ __all__ = [
 ]
 
 
-_backend_config = backend_config()
+_trust_list_path = _backend_config().get('trust_list_path')
 _line_regex = re.compile(b'(\r\n|\r|\n)')
 _PROTOCOL_MAP = {
     'SSLv2': LibsslConst.SSL_OP_NO_SSLv2,
@@ -182,7 +182,7 @@ class TLSSession(object):
             )
 
             if sys.platform in set(['win32', 'darwin']):
-                trust_list_path = _backend_config.get('trust_list_path')
+                trust_list_path = _trust_list_path
                 if trust_list_path is None:
                     trust_list_path = get_path()
 

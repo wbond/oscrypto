@@ -5,6 +5,7 @@ operating system. It is broken down into a few different submodules:
 
 | Submodule                                | Functionality                                                                                 |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [`oscrypto`](oscrypto.md)                | Configuration and information about backend                                                   |
 | [`oscrypto.symmetric`](symmetric.md)     | AES, Triple DES, DES, RC2 and RC4 encryption                                                  |
 | [`oscrypto.asymmetric`](asymmetric.md)   | RSA, DSA and EC-key signing and verification, RSA encryption                                  |
 | [`oscrypto.kdf`](kdf.md)                 | PBKDF2, PBKDF1 and PKCS#12 key derivation functions                                           |

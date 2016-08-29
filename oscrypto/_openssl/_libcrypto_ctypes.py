@@ -5,7 +5,7 @@ import re
 from ctypes.util import find_library
 from ctypes import CDLL, c_void_p, c_char_p, c_int, c_ulong, c_uint, c_long, c_size_t, POINTER
 
-from .. import backend_config
+from .. import _backend_config
 from .._errors import pretty_message
 from .._ffi import LibraryNotFoundError, FFIEngineError
 
@@ -17,10 +17,7 @@ __all__ = [
 ]
 
 
-_backend_config = backend_config()
-
-
-libcrypto_path = _backend_config.get('libcrypto_path')
+libcrypto_path = _backend_config().get('libcrypto_path')
 if libcrypto_path is None:
     libcrypto_path = find_library('crypto')
 if not libcrypto_path:

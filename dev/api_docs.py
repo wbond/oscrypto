@@ -19,6 +19,7 @@ module_name = 'oscrypto'
 # Maps a markdown document to a Python source file to look in for
 # class/method/function docstrings
 MD_SOURCE_MAP = {
+    'docs/oscrypto.md': ['oscrypto/__init__.py'],
     'docs/asymmetric.md': ['oscrypto/asymmetric.py', 'oscrypto/_openssl/asymmetric.py'],
     'docs/kdf.md': ['oscrypto/kdf.py', 'oscrypto/_openssl/util.py'],
     'docs/keys.md': ['oscrypto/keys.py'],
@@ -252,7 +253,7 @@ def walk_ast(node, code_lines, sections, md_chunks):
             description_md
         ) + "\n"
 
-        md_chunks[key] = md_chunk
+        md_chunks[key] = md_chunk.replace('>\n\n', '')
 
     elif isinstance(node, _ast.ClassDef):
         if ('class', node.name) not in sections:

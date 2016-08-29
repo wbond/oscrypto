@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from ctypes.util import find_library
 from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t, c_long
 
-from .. import backend_config
+from .. import _backend_config
 from .._ffi import LibraryNotFoundError, FFIEngineError
 from ._libcrypto import libcrypto_version_info
 
@@ -14,10 +14,7 @@ __all__ = [
 ]
 
 
-_backend_config = backend_config()
-
-
-libssl_path = _backend_config.get('libssl_path')
+libssl_path = _backend_config().get('libssl_path')
 if libssl_path is None:
     libssl_path = find_library('ssl')
 if not libssl_path:
