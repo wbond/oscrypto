@@ -1,5 +1,9 @@
 # changelog
 
+## 0.17.1
+
+ - Expose `LibraryNotFoundError` via `errors.LibraryNotFoundError`
+
 ## 0.17.0
 
  - Added support for OpenSSL 1.1.0
