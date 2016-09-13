@@ -9,8 +9,8 @@ from ._ffi import LibraryNotFoundError
 from ._types import str_cls, type_name
 
 
-__version__ = '0.16.2'
-__version_info__ = (0, 16, 2)
+__version__ = '0.17.0'
+__version_info__ = (0, 17, 0)
 
 
 _backend_lock = threading.Lock()

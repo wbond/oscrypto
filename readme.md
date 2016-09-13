@@ -179,7 +179,7 @@ Some downsides include:
 
 ## Current Release
 
-0.16.2 - [changelog](changelog.md)
+0.17.0 - [changelog](changelog.md)
 
 ## Dependencies
 

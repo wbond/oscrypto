@@ -1,5 +1,15 @@
 # changelog
 
+## 0.17.0
+
+ - Added support for OpenSSL 1.1.0
+ - Allow using OpenSSL on OS X and Windows
+ - Prevent FFI library references from being garbage collected before parent
+   `asymmetric.PublicKey`, `asymmetric.PrivateKey` and `asymmetric.Certificate`
+   objects
+ - Improved handling of `errSecAuthFailed` error that occurs when calling
+   `asymmetric.generate_*()` functions on OS X in some virtualenvs
+
 ## 0.16.2
 
  - Allow `cffi` files to be removed from source tree when embedding
