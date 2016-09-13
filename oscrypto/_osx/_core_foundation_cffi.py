@@ -8,10 +8,10 @@ from .._ffi import (
     byte_string_from_buffer,
     deref,
     FFIEngineError,
-    LibraryNotFoundError,
     new,
     register_ffi,
 )
+from ..errors import LibraryNotFoundError
 
 try:
     from cffi import FFI

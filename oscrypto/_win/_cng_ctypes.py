@@ -4,8 +4,9 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from ctypes import windll, wintypes, POINTER, Structure, c_void_p, c_ulonglong, c_char_p, c_byte
 from ctypes.wintypes import ULONG, DWORD, LPCWSTR
 
-from .._ffi import FFIEngineError, LibraryNotFoundError
+from .._ffi import FFIEngineError
 from .._types import str_cls
+from ..errors import LibraryNotFoundError
 
 
 __all__ = [

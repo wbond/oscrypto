@@ -6,7 +6,8 @@ from ctypes.util import find_library
 
 from .. import _backend_config
 from .._errors import pretty_message
-from .._ffi import LibraryNotFoundError, FFIEngineError, register_ffi
+from .._ffi import FFIEngineError, register_ffi
+from ..errors import LibraryNotFoundError
 
 try:
     from cffi import FFI

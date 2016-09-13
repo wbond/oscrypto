@@ -5,7 +5,8 @@ from ctypes.util import find_library
 from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t, c_long
 
 from .. import _backend_config
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import FFIEngineError
+from ..errors import LibraryNotFoundError
 from ._libcrypto import libcrypto_version_info
 
 

@@ -3,7 +3,8 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from ctypes import CDLL, c_uint32, c_char_p, c_size_t, c_int, c_uint
 
-from .._ffi import LibraryNotFoundError, FFIEngineError
+from .._ffi import FFIEngineError
+from ..errors import LibraryNotFoundError
 
 
 __all__ = [

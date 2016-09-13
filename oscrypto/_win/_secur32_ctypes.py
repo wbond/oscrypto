@@ -7,8 +7,9 @@ import ctypes
 from ctypes import windll, wintypes, POINTER, c_void_p, c_uint, Structure
 from ctypes.wintypes import DWORD, ULONG
 
-from .._ffi import FFIEngineError, LibraryNotFoundError
+from .._ffi import FFIEngineError
 from .._types import str_cls
+from ..errors import LibraryNotFoundError
 
 
 __all__ = [
