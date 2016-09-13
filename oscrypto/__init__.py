@@ -93,7 +93,7 @@ def use_openssl(libcrypto_path, libssl_path, trust_list_path=None):
     :raises:
         ValueError - when one of the paths is not a unicode string
         OSError - when the trust_list_path does not exist on the filesystem
-        LibraryNotFoundError - when one of the path does not exist on the filesystem
+        oscrypto.errors.LibraryNotFoundError - when one of the path does not exist on the filesystem
         RuntimeError - when this function is called after another part of oscrypto has been imported
     """
 
