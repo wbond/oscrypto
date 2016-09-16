@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import datetime
 import sys
 import re
 import socket as socket_
@@ -10,7 +11,7 @@ import errno
 import weakref
 
 from asn1crypto import x509
-from asn1crypto.util import int_to_bytes
+from asn1crypto.util import int_to_bytes, timezone
 
 from ._security import Security, osx_version_info, handle_sec_error, SecurityConst
 from ._core_foundation import CoreFoundation, handle_cf_error, CFHelpers
@@ -49,6 +50,7 @@ from .._tls import (
     raise_hostname,
     raise_no_issuer,
     raise_protocol_error,
+    raise_revoked,
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
@@ -792,7 +794,8 @@ class TLSSocket(object):
                 SecurityConst.errSSLCertNotYetValid,
                 SecurityConst.errSSLUnknownRootCert,
                 SecurityConst.errSSLNoRootCert,
-                SecurityConst.errSSLHostNameMismatch
+                SecurityConst.errSSLHostNameMismatch,
+                SecurityConst.errSSLInternal,
             ])
 
             # In testing, only errSSLXCertChainInvalid was ever returned for
@@ -816,6 +819,7 @@ class TLSSocket(object):
                 chain = extract_chain(self._server_hello)
 
                 self_signed = False
+                revoked = False
                 expired = False
                 not_yet_valid = False
                 no_issuer = False
@@ -826,13 +830,26 @@ class TLSSocket(object):
                     cert = chain[0]
                     oscrypto_cert = load_certificate(cert)
                     self_signed = oscrypto_cert.self_signed
+                    revoked = result_code == SecurityConst.CSSMERR_TP_CERT_REVOKED
                     no_issuer = not self_signed and result_code == SecurityConst.CSSMERR_TP_NOT_TRUSTED
                     expired = result_code == SecurityConst.CSSMERR_TP_CERT_EXPIRED
                     not_yet_valid = result_code == SecurityConst.CSSMERR_TP_CERT_NOT_VALID_YET
                     bad_hostname = result_code == SecurityConst.CSSMERR_APPLETP_HOSTNAME_MISMATCH
 
+                    # On macOS 10.12, some expired certificates return errSSLInternal
+                    if osx_version_info >= (10, 12):
+                        validity = cert['tbs_certificate']['validity']
+                        not_before = validity['not_before'].chosen.native
+                        not_after = validity['not_after'].chosen.native
+                        utcnow = datetime.datetime.now(timezone.utc)
+                        expired = not_after < utcnow
+                        not_yet_valid = not_before > utcnow
+
                 if chain and chain[0].hash_algo in set(['md5', 'md2']):
                     raise_weak_signature(chain[0])
+
+                if revoked:
+                    raise_revoked(cert)
 
                 if bad_hostname:
                     raise_hostname(cert, self._hostname)

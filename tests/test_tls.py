@@ -6,7 +6,7 @@ import sys
 import os
 import re
 
-from oscrypto import tls, errors
+from oscrypto import tls, errors, backend
 from asn1crypto import x509
 
 from .unittest_data import data_decorator, data
@@ -21,6 +21,8 @@ else:
     str_cls = str
     byte_cls = bytes
 
+
+_backend = backend()
 
 xp = sys.platform == 'win32' and sys.getwindowsversion()[0] < 6
 
@@ -41,7 +43,6 @@ class TLSTests(unittest.TestCase):
             ('package_control', 'packagecontrol.io', 443),
             ('howsmyssl', 'www.howsmyssl.com', 443),
             ('dh1024', 'dh1024.badtls.io', 10005),
-            ('revoked', 'revoked.grc.com', 443),
         )
 
     @data('tls_hosts', True)
@@ -58,6 +59,18 @@ class TLSTests(unittest.TestCase):
         connection.write(b'GET / HTTP/1.1\r\nHost: ' + hostname.encode('utf-8') + b'\r\n\r\n')
         html = connection.read_until(re.compile(b'</html>', re.I))
         self.assertNotEqual(None, re.search(b'</html>', html, re.I))
+
+    def test_tls_connect_revoked(self):
+        if _backend == 'osx':
+            from oscrypto._osx._security import osx_version_info
+
+            # macOS 10.12 will read the OCSP Staple response and raise a revoked
+            # error, even though we have revocation checking disabled
+            if osx_version_info >= (10, 12):
+                with self.assertRaisesRegexp(errors.TLSError, 'revoked'):
+                    tls.TLSSocket('revoked.grc.com', 443)
+                return
+        tls.TLSSocket('revoked.grc.com', 443)
 
     def test_tls_error_http(self):
         with self.assertRaisesRegexp(errors.TLSError, 'server responded using HTTP'):

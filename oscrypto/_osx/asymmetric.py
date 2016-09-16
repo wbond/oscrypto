@@ -1418,7 +1418,8 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm):
             signature,
             len(signature)
         )
-        if result == SecurityConst.errSecVerifyFailed:
+        # errSSLCrypto is returned in some situations on macOS 10.12
+        if result == SecurityConst.errSecVerifyFailed or result == SecurityConst.errSSLCrypto:
             raise SignatureError('Signature is invalid')
         handle_sec_error(result)
         return
