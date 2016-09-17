@@ -46,6 +46,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - OS X 10.10
      - OS X 10.11
      - OS X 10.11 with OpenSSL 1.1.0
+     - macOS 10.12
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
