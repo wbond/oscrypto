@@ -118,7 +118,8 @@ def extract_from_system():
 
             # If rejected for all purposes, we don't export the certificate
             if all_purposes in reject_oids:
-                del certificates[cert_hash]
+                if cert_hash in certificates:
+                    del certificates[cert_hash]
             else:
                 if all_purposes in trust_oids:
                     trust_oids = set([all_purposes])
