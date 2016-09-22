@@ -1,5 +1,11 @@
 # changelog
 
+## 0.17.2
+
+ - Handle `errSecInvalidTrustSettings` errors on macOS exporting trust roots
+ - Prevent a `KeyError` on macOS when exporting trust roots and trust settings
+   are present for certificates not in the list
+
 ## 0.17.1
 
  - Expose `LibraryNotFoundError` via `errors.LibraryNotFoundError`
