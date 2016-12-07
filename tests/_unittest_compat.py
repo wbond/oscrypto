@@ -6,6 +6,12 @@ import unittest
 import re
 
 
+if sys.version_info < (3,):
+    str_cls = unicode  # noqa
+else:
+    str_cls = str
+
+
 _non_local = {'patched': False}
 
 
@@ -17,6 +23,7 @@ def patch():
         return
 
     unittest.TestCase.assertIsInstance = _assert_is_instance
+    unittest.TestCase.assertRegexpMatches = _assert_regexp_matches
     unittest.TestCase.assertRaises = _assert_raises
     unittest.TestCase.assertRaisesRegexp = _assert_raises_regexp
     unittest.TestCase.assertLess = _assert_less
@@ -41,6 +48,16 @@ def _assert_in(self, member, container, msg=None):
     if member not in container:
         standard_msg = '%s not found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
         self.fail(self._formatMessage(msg, standard_msg))
+
+
+def _assert_regexp_matches(self, text, expected_regexp, msg=None):
+    """Fail the test unless the text matches the regular expression."""
+    if isinstance(expected_regexp, str_cls):
+        expected_regexp = re.compile(expected_regexp)
+    if not expected_regexp.search(text):
+        msg = msg or "Regexp didn't match"
+        msg = '%s: %r not found in %r' % (msg, expected_regexp.pattern, text)
+        self.fail(msg)
 
 
 def _assert_raises(self, excClass, callableObj=None, *args, **kwargs):  # noqa
