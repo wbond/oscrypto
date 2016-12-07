@@ -867,6 +867,7 @@ def _bcrypt_generate_pair(algorithm, bit_size=None, curve=None):
 
     return (load_public_key(public_key), load_private_key(private_key))
 
+
 generate_pair.shimmed = False
 
 
@@ -968,6 +969,7 @@ def generate_dh_parameters(bit_size):
     finally:
         if alg_handle:
             close_alg_handle(alg_handle)
+
 
 generate_dh_parameters.shimmed = False
 

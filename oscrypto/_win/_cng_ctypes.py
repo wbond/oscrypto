@@ -249,6 +249,7 @@ class BCRYPT_KEY_DATA_BLOB_HEADER(Structure):  # noqa
         ('cbKeyData', ULONG),
     ]
 
+
 setattr(bcrypt, 'BCRYPT_ALG_HANDLE', BCRYPT_ALG_HANDLE)
 setattr(bcrypt, 'BCRYPT_KEY_HANDLE', BCRYPT_KEY_HANDLE)
 

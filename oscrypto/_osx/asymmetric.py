@@ -419,6 +419,7 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
     return (load_public_key(public_key_bytes), load_private_key(private_key_bytes))
 
+
 generate_pair.shimmed = False
 
 
@@ -526,6 +527,7 @@ def generate_dh_parameters(bit_size):
             CoreFoundation.CFRelease(cf_string)
         if sec_access_ref:
             CoreFoundation.CFRelease(sec_access_ref)
+
 
 generate_dh_parameters.shimmed = False
 

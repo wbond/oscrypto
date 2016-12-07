@@ -235,6 +235,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
         self._exception = e
         return SecurityConst.errSSLPeerUserCancelled
 
+
 _read_callback_pointer = callback(Security, 'SSLReadFunc', _read_callback)
 _write_callback_pointer = callback(Security, 'SSLWriteFunc', _write_callback)
 
