@@ -81,7 +81,7 @@ def run(matcher=None, repeat=1):
             suite.addTest(test)
         result = unittest.TextTestRunner(stream=stream, verbosity=verbosity).run(suite)
 
-        if len(result.errors) > 0:
+        if len(result.errors) > 0 or len(result.failures) > 0:
             if repeat > 1:
                 print(stream.getvalue())
             return False
