@@ -17,6 +17,11 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
  - [Testing](#testing)
  - [Development](#development)
 
+[![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
+[![Codecov](https://codecov.io/gh/wbond/oscrypto/branch/master/graph/badge.svg)](https://codecov.io/gh/wbond/oscrypto)
+[![PyPI](https://img.shields.io/pypi/v/oscrypto.svg)](https://pypi.python.org/pypi/oscrypto)
+
 ## Supported Operating Systems
 
 The library integrates with the encryption library that is part of the operating
@@ -206,6 +211,7 @@ pip install oscrypto
 
  - [Windows](https://ci.appveyor.com/project/wbond/oscrypto/history) via AppVeyor
  - [OS X & Linux](https://travis-ci.org/wbond/oscrypto/builds) via Travis CI
+ - [Test Coverage](https://codecov.io/gh/wbond/oscrypto/commits) via Codecov
 
 ## Testing
 
