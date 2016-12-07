@@ -7,96 +7,138 @@ matrix:
   include:
     - os: osx
       python: "2.6"
-      env: TRAVIS_PYTHON_VERSION=2.6
+      env:
+        PYTHON_VERSION=2.6
+        PLATFORM=osx
     - os: osx
       python: "2.7"
-      env: TRAVIS_PYTHON_VERSION=2.7
+      env:
+        PYTHON_VERSION=2.7
+        PLATFORM=osx-10.11
     - os: osx
-      osx_image: xcode7.1
+      osx_image: xcode6.4
       python: "2.7"
-      env: TRAVIS_PYTHON_VERSION=2.7
+      env:
+        PYTHON_VERSION=2.7
+        PLATFORM=osx-10.10
     - os: osx
-      osx_image: xcode7.3
+      osx_image: xcode8.1
       python: "2.7"
-      env: TRAVIS_PYTHON_VERSION=2.7
+      env:
+        PYTHON_VERSION=2.7
+        PLATFORM=osx-10.12
     - os: osx
       python: "3.5"
-      env: TRAVIS_PYTHON_VERSION=3.5
+      env:
+        PYTHON_VERSION=3.5
+        PLATFORM=osx
     - os: osx
       python: "pypy"
-      env: TRAVIS_PYTHON_VERSION=pypy
+      env:
+        PYTHON_VERSION=pypy
+        PLATFORM=osx
     - os: linux
       language: python
       python: "2.6"
+      env:
+        PYTHON_VERSION=2.6
+        PLATFORM=linux
     - os: linux
       language: python
       python: "2.7"
+      env:
+        PYTHON_VERSION=2.7
+        PLATFORM=linux
     - os: linux
       language: python
       python: "3.2"
+      env:
+        PYTHON_VERSION=3.2
+        PLATFORM=linux
     - os: linux
       language: python
       python: "3.3"
+      env:
+        PYTHON_VERSION=3.3
+        PLATFORM=linux
     - os: linux
       language: python
       python: "3.4"
+      env:
+        PYTHON_VERSION=3.4
+        PLATFORM=linux
     - os: linux
       language: python
       python: "3.5"
+      env:
+        PYTHON_VERSION=3.5
+        PLATFORM=linux
     - os: linux
       language: python
       python: "pypy"
+      env:
+        PYTHON_VERSION=pypy
+        PLATFORM=linux
 install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        if [ "$TRAVIS_PYTHON_VERSION" == "pypy" ]; then
+        if [ "$PYTHON_VERSION" == "pypy" ]; then
             echo "Updating homebrew";
             brew update;
             echo "Installing pypy";
             brew install pypy;
-            echo "Installing flake8";
-            /usr/local/bin/pip_pypy install flake8;
+            echo "Installing flake8 and coverage";
+            /usr/local/bin/pip_pypy install flake8 coverage;
             echo "Installing asn1crypto";
             /usr/local/bin/pip_pypy install https://github.com/wbond/asn1crypto/archive/master.zip;
             export PYTHON_BIN=/usr/local/bin/pypy;
         else
-            if [ "$TRAVIS_PYTHON_VERSION" == "3.5" ]; then
+            if [ "$PYTHON_VERSION" == "3.5" ]; then
                 echo "Updating homebrew";
                 brew update;
                 echo "Installing python3";
                 brew install python3;
-                echo "Installing flake8";
-                /usr/local/bin/pip3 install flake8;
+                echo "Installing flake8 and coverage";
+                /usr/local/bin/pip3 install flake8 coverage;
                 echo "Installing asn1crypto";
                 /usr/local/bin/pip3 install https://github.com/wbond/asn1crypto/archive/master.zip;
                 export PYTHON_BIN=/usr/local/bin/python3;
             else
-                if [ "$TRAVIS_PYTHON_VERSION" == "2.7" ]; then
+                if [ "$PYTHON_VERSION" == "2.7" ]; then
                     echo "Installing pip";
                     curl --silent --show-error https://bootstrap.pypa.io/get-pip.py | sudo /usr/bin/python2.7;
-                    echo "Installing flake8";
-                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'flake8'])";
+                    echo "Installing flake8 and coverage";
+                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'flake8', 'coverage'])";
                     echo "Installing asn1crypto";
                     sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/asn1crypto/archive/master.zip'])";
                     export PYTHON_BIN=/usr/bin/python2.7;
                 else
+                    echo "Installing pip";
+                    curl --silent --show-error https://bootstrap.pypa.io/get-pip.py | sudo /usr/bin/python2.6 -W ignore;
+                    echo "Installing coverage";
+                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'coverage'])";
                     echo "Installing asn1crypto";
-                    curl --silent --show-error --location -o asn1crypto-master.zip https://github.com/wbond/asn1crypto/archive/master.zip;
-                    unzip asn1crypto-master.zip;
-                    cd asn1crypto-master;
-                    sudo /usr/bin/python2.6 setup.py install clean;
-                    cd ..;
+                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/asn1crypto/archive/master.zip'])";
                     export PYTHON_BIN=/usr/bin/python2.6;
-                fi
-            fi
-        fi
+                fi;
+            fi;
+        fi;
     else
-        echo "Upgrading pip";
-        python -c "import sys,pip; pip.main(['install', '--upgrade', 'pip' + ('==7.1.2' if sys.version_info[0:2] == (3, 2) else '')])";
-        echo "Installing flake8";
-        pip install flake8;
+        if [ "$PYTHON_VERSION" == "3.2" ]; then
+            echo "Upgrading pip";
+            python -c "import sys,pip; pip.main(['install', '--upgrade', 'pip==7.1.2'])";
+            echo "Installing flake8";
+            pip install flake8;
+        else
+            echo "Upgrading pip";
+            python -c "import sys,pip; pip.main(['install', '--upgrade', 'pip'])";
+            echo "Installing flake8 and coverage";
+            pip install flake8 coverage;
+        fi;
         echo "Installing asn1crypto";
         pip install https://github.com/wbond/asn1crypto/archive/master.zip;
         export PYTHON_BIN=python;
     fi
 script:
   - $PYTHON_BIN run.py ci
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -X gcov -f coverage.xml -e PYTHON_VERSION,PLATFORM

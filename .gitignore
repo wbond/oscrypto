@@ -10,3 +10,4 @@ oscrypto.sublime-project
 oscrypto.sublime-workspace
 .coverage
 .tox
+coverage.xml
