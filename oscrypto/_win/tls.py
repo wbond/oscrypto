@@ -869,6 +869,10 @@ class TLSSocket(object):
                 if fail_late:
                     raise_disconnection()
 
+                if result == Secur32Const.SEC_E_INVALID_PARAMETER:
+                    if get_dh_params_length(handshake_server_bytes) < 1024:
+                        raise_dh_params()
+
                 if result not in set([Secur32Const.SEC_E_OK, Secur32Const.SEC_I_CONTINUE_NEEDED]):
                     handle_error(result, TLSError)
 
