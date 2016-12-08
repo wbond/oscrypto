@@ -16,6 +16,7 @@ from asn1crypto import keys
 from asn1crypto.x509 import Certificate
 from asn1crypto.util import int_from_bytes
 
+from . import backend
 from ._dsa import Signature
 from ._errors import pretty_message
 from ._types import type_name, byte_cls
@@ -31,8 +32,14 @@ else:
         return bytes([num])
 
 
-if sys.platform != 'win32' or sys.getwindowsversion()[0] >= 6:
-    raise SystemError('Pure-python ECDSA code is only for Windows XP')
+_backend = backend()
+
+
+if _backend != 'winlegacy':
+    # This pure-Python ECDSA code is only suitable for use on client machines,
+    # and is only needed on Windows 5.x (XP/2003). For testing sake it is
+    # possible to force use of it on newer versions of Windows.
+    raise SystemError('Pure-python ECDSA code is only for Windows XP/2003')
 
 
 __all__ = [

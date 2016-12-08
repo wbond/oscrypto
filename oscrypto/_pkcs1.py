@@ -12,6 +12,7 @@ from asn1crypto.util import int_from_bytes, int_to_bytes
 from asn1crypto.keys import PrivateKeyInfo, PublicKeyInfo
 from asn1crypto.x509 import Certificate
 
+from . import backend
 from ._int import fill_width
 from .util import constant_compare, rand_bytes
 from ._errors import pretty_message
@@ -26,6 +27,9 @@ else:
         return bytes([num])
 
 
+_backend = backend()
+
+
 __all__ = [
     'add_pss_padding',
     'add_pkcs1v15_signature_padding',
@@ -35,15 +39,6 @@ __all__ = [
     'remove_pkcs1v15_signature_padding',
     'verify_pss_padding',
 ]
-
-
-def _is_xp():
-    """
-    :return:
-        A bool if the current machine is running Windows XP
-    """
-
-    return sys.platform == 'win32' and sys.getwindowsversion()[0] == 5
 
 
 def _is_osx_107():
@@ -81,11 +76,11 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
         The encoded (passed) message
     """
 
-    if not _is_xp() and sys.platform != 'darwin':
+    if _backend != 'winlegacy' and sys.platform != 'darwin':
         raise SystemError(pretty_message(
             '''
             Pure-python RSA PSS signature padding addition code is only for
-            Windows XP and OS X
+            Windows XP/2003 and OS X
             '''
         ))
 
@@ -209,11 +204,11 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
         A boolean indicating if the signature is invalid
     """
 
-    if not _is_xp() and sys.platform != 'darwin':
+    if _backend != 'winlegacy' and sys.platform != 'darwin':
         raise SystemError(pretty_message(
             '''
             Pure-python RSA PSS signature padding verification code is only for
-            Windows XP and OS X
+            Windows XP/2003 and OS X
             '''
         ))
 
@@ -400,11 +395,11 @@ def add_pkcs1v15_signature_padding(key_length, data):
         The padded data as a byte string
     """
 
-    if not _is_xp():
+    if _backend != 'winlegacy':
         raise SystemError(pretty_message(
             '''
             Pure-python RSA PKCSv1.5 signature padding addition code is only
-            for Windows XP
+            for Windows XP/2003
             '''
         ))
 
@@ -426,11 +421,11 @@ def remove_pkcs1v15_signature_padding(key_length, data):
         The unpadded data as a byte string
     """
 
-    if not _is_xp():
+    if _backend != 'winlegacy':
         raise SystemError(pretty_message(
             '''
             Pure-python RSA PKCSv1.5 signature padding removal code is only for
-            Windows XP
+            Windows XP/2003
             '''
         ))
 
@@ -640,8 +635,8 @@ def raw_rsa_private_crypt(private_key, data):
         A byte string of the transformed data
     """
 
-    if not _is_xp():
-        raise SystemError('Pure-python RSA crypt is only for Windows XP')
+    if _backend != 'winlegacy':
+        raise SystemError('Pure-python RSA crypt is only for Windows XP/2003')
 
     if not hasattr(private_key, 'asn1') or not isinstance(private_key.asn1, PrivateKeyInfo):
         raise TypeError(pretty_message(
@@ -698,8 +693,8 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
         A byte string of the transformed data
     """
 
-    if not _is_xp():
-        raise SystemError('Pure-python RSA crypt is only for Windows XP')
+    if _backend != 'winlegacy':
+        raise SystemError('Pure-python RSA crypt is only for Windows XP/2003')
 
     has_asn1 = hasattr(certificate_or_public_key, 'asn1')
     valid_types = (PublicKeyInfo, Certificate)
