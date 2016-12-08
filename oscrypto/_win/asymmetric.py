@@ -590,7 +590,7 @@ def generate_pair(algorithm, bit_size=None, curve=None):
 
     elif algorithm == 'dsa':
         # Windows Vista and 7 only support SHA1-based DSA keys
-        if _win_version_info < (6, 2):
+        if _win_version_info < (6, 2) or _backend == 'winlegacy':
             if bit_size != 1024:
                 raise ValueError(pretty_message(
                     '''
@@ -1491,7 +1491,7 @@ def _load_key(key_object, container):
                 parameters and can not be used
                 '''
             ))
-        elif key_info.bit_size > 1024 and _win_version_info < (6, 2):
+        elif key_info.bit_size > 1024 and (_win_version_info < (6, 2) or _backend == 'winlegacy'):
             raise AsymmetricKeyError(pretty_message(
                 '''
                 Windows XP, 2003, Vista, 7 and Server 2008 only support DSA
