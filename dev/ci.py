@@ -11,9 +11,16 @@ else:
     from .tests import run as run_tests
 
 
-def run():
+def run(use_openssl=None, use_winlegacy=None):
     """
     Runs the linter and tests
+
+    :param use_openssl:
+        Configure oscrypto to use openssl backend - 2-element list with
+        libcrypto path and libssl path
+
+    :param use_winlegacy:
+        Configure oscrypto to use winlegacy backend - bool
 
     :return:
         A bool - if the linter and tests ran successfully
@@ -29,7 +36,7 @@ def run():
     if sys.version_info < (3, 0) or sys.version_info >= (3, 3):
         print('\nRunning tests (via coverage.py)')
         sys.stdout.flush()
-        tests_result = run_coverage(write_xml=True)
+        tests_result = run_coverage(write_xml=True, use_openssl=use_openssl, use_winlegacy=use_winlegacy)
     else:
         print('\nRunning tests')
         sys.stdout.flush()

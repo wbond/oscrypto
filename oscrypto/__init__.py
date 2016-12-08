@@ -149,6 +149,8 @@ def use_winlegacy():
 
     if sys.platform != 'win32':
         plat = platform.system() or sys.platform
+        if plat == 'Darwin':
+            plat = 'OS X'
         raise EnvironmentError('The winlegacy backend can only be used on Windows, not %s' % plat)
 
     with _backend_lock:
