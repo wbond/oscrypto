@@ -466,7 +466,7 @@ class AsymmetricTests(unittest.TestCase):
 
             asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
-        if _backend == 'osx' or openssl_098:
+        if _backend == 'osx' or openssl_098 or _backend == 'winlegacy':
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         elif _backend == 'win':
