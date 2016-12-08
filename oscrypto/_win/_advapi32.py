@@ -1,6 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import sys
+
 from ._decode import _try_decode
 from ..errors import SignatureError
 from .._ffi import FFIEngineError, new, unwrap, null
@@ -17,6 +19,10 @@ __all__ = [
     'Advapi32Const',
     'handle_error',
 ]
+
+
+_gwv = sys.getwindowsversion()
+_win_version_info = (_gwv[0], _gwv[1])
 
 
 def open_context_handle(provider, verify_only=True):
@@ -101,8 +107,8 @@ class Advapi32Const():
     CRYPT_NO_SALT = 0x00000010
 
     MS_ENH_DSS_DH_PROV = "Microsoft Enhanced DSS and Diffie-Hellman Cryptographic Provider"
-    # This is the Windows XP name for the provider
-    MS_ENH_RSA_AES_PROV = "Microsoft Enhanced RSA and AES Cryptographic Provider (Prototype)"
+    # This is the name for Windows Server 2003 and newer and Windows Vista and newer
+    MS_ENH_RSA_AES_PROV = "Microsoft Enhanced RSA and AES Cryptographic Provider"
 
     CRYPT_EXPORTABLE = 1
     CRYPT_NEWKEYSET = 0x00000008
@@ -151,3 +157,8 @@ class Advapi32Const():
     RSA2 = 0x32415352
     DSS1 = 0x31535344
     DSS2 = 0x32535344
+
+
+if _win_version_info == (5, 1):
+    # This is the Windows XP name for the provider
+    Advapi32Const.MS_ENH_RSA_AES_PROV = "Microsoft Enhanced RSA and AES Cryptographic Provider (Prototype)"
