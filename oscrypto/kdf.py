@@ -17,7 +17,7 @@ _backend = backend()
 
 if _backend == 'osx':
     from ._osx.util import pbkdf2, pkcs12_kdf
-elif _backend == 'win':
+elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.util import pbkdf2, pkcs12_kdf
     from ._win._kernel32 import kernel32, handle_error
 else:

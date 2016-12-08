@@ -23,7 +23,7 @@ if _backend == 'osx':
         tripledes_cbc_pkcs5_encrypt,
     )
 
-elif _backend == 'win':
+elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.symmetric import (
         aes_cbc_no_padding_decrypt,
         aes_cbc_no_padding_encrypt,

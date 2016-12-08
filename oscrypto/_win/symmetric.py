@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
 from .._errors import pretty_message
 from .._ffi import (
     buffer_from_bytes,
@@ -17,11 +15,12 @@ from .._ffi import (
     write_to_buffer,
 )
 from .util import rand_bytes
+from .. import backend
 from .._types import type_name, byte_cls
 
-_xp = sys.getwindowsversion()[0] < 6
+_backend = backend()
 
-if _xp:
+if _backend == 'winlegacy':
     from ._advapi32 import advapi32, Advapi32Const, handle_error, open_context_handle, close_context_handle
 else:
     from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
@@ -792,7 +791,7 @@ def _encrypt(cipher, key, data, iv, padding):
     if cipher != 'rc4' and not padding:
         raise ValueError('padding must be specified')
 
-    if _xp:
+    if _backend == 'winlegacy':
         return _advapi32_encrypt(cipher, key, data, iv, padding)
     return _bcrypt_encrypt(cipher, key, data, iv, padding)
 
@@ -1017,7 +1016,7 @@ def _decrypt(cipher, key, data, iv, padding):
     if cipher != 'rc4' and padding is None:
         raise ValueError('padding must be specified')
 
-    if _xp:
+    if _backend == 'winlegacy':
         return _advapi32_decrypt(cipher, key, data, iv, padding)
     return _bcrypt_decrypt(cipher, key, data, iv, padding)
 

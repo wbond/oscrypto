@@ -1,8 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import sys
-
+from .. import backend
 from .._errors import pretty_message
 from .._ffi import buffer_from_bytes, bytes_from_buffer
 from .._pkcs12 import pkcs12_kdf
@@ -16,11 +15,10 @@ __all__ = [
 ]
 
 
-_gwv = sys.getwindowsversion()
-_win_version_info = (_gwv[0], _gwv[1])
+_backend = backend()
 
-# Vista and newer
-if _win_version_info >= (6, 0):
+
+if _backend == 'win':
     from ._cng import bcrypt, BcryptConst, handle_error, open_alg_handle, close_alg_handle
 
     def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
@@ -176,7 +174,7 @@ if _win_version_info >= (6, 0):
             if alg_handle:
                 close_alg_handle(alg_handle)
 
-# XP and 2003
+# winlegacy backend
 else:
     from .._pkcs5 import pbkdf2
     from .._rand import rand_bytes

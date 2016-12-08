@@ -13,7 +13,7 @@ if _backend == 'osx':
         TLSSocket,
     )
 
-elif _backend == 'win':
+elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.tls import (
         TLSSession,
         TLSSocket,

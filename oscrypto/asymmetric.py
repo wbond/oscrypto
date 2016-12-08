@@ -62,7 +62,7 @@ if _backend == 'osx':
     except (LibraryNotFoundError):
         pass
 
-elif _backend == 'win':
+elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.asymmetric import (
         Certificate,
         dsa_sign,

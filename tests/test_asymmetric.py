@@ -39,11 +39,10 @@ def _win_version_pair():
     return (ver_info[0], ver_info[1])
 
 
-xp = sys.platform == 'win32' and _win_version_pair() < (6,)
-
-
 def _should_support_sha2():
     if _backend == 'osx':
+        return False
+    if _backend == 'winlegacy':
         return False
     if _backend == 'win' and _win_version_pair() < (6, 2):
         return False
@@ -122,10 +121,10 @@ class AsymmetricTests(unittest.TestCase):
                 self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
                 self.assertEqual('rsa', private_reloaded.algorithm)
 
-        # OpenSSL 0.9.8 and Windows XP/2003 don't have PBKDF2 implemented in C,
-        # thus the dump operation fails since there is no reasonable way to
+        # OpenSSL 0.9.8 and Windows CryptoAPI don't have PBKDF2 implemented in
+        # C, thus the dump operation fails since there is no reasonable way to
         # ensure we are using a good number of iterations of PBKDF2
-        if openssl_098 or xp:
+        if openssl_098 or _backend == 'winlegacy':
             with self.assertRaises(OSError):
                 do_run()
         else:

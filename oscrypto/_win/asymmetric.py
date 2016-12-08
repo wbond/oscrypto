@@ -29,6 +29,7 @@ from .._ffi import (
     unwrap,
     write_to_buffer,
 )
+from .. import backend
 from .._int import fill_width
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
@@ -45,9 +46,9 @@ from ..util import constant_compare
 
 _gwv = sys.getwindowsversion()
 _win_version_info = (_gwv[0], _gwv[1])
-_xp = _win_version_info < (6,)
+_backend = backend()
 
-if _xp:
+if _backend == 'winlegacy':
     from ._advapi32 import advapi32, Advapi32Const, handle_error, open_context_handle, close_context_handle
     from .._ecdsa import (
         ec_generate_pair as _pure_python_ec_generate_pair,
@@ -373,7 +374,7 @@ class PrivateKey():
         self.key_handle = key_handle
         self.asn1 = asn1
 
-        if _xp:
+        if _backend == 'winlegacy':
             self._lib = advapi32
         else:
             self._lib = bcrypt
@@ -416,13 +417,13 @@ class PrivateKey():
 
     def __del__(self):
         if self.key_handle:
-            if _xp:
+            if _backend == 'winlegacy':
                 res = self._lib.CryptDestroyKey(self.key_handle)
             else:
                 res = self._lib.BCryptDestroyKey(self.key_handle)
             handle_error(res)
             self.key_handle = None
-        if self.context_handle and _xp:
+        if self.context_handle and _backend == 'winlegacy':
             close_context_handle(self.context_handle)
             self.context_handle = None
         self._lib = None
@@ -615,7 +616,7 @@ def generate_pair(algorithm, bit_size=None, curve=None):
                 repr(curve)
             ))
 
-    if _xp:
+    if _backend == 'winlegacy':
         if algorithm == 'ec':
             pub_info, priv_info = _pure_python_ec_generate_pair(curve)
             return (PublicKey(None, pub_info), PrivateKey(None, priv_info))
@@ -925,12 +926,12 @@ def generate_dh_parameters(bit_size):
 
     try:
         byte_size = bit_size // 8
-        if not _xp:
+        if _backend == 'win':
             alg_handle = open_alg_handle(BcryptConst.BCRYPT_RNG_ALGORITHM)
             buffer = buffer_from_bytes(byte_size)
 
         while True:
-            if _xp:
+            if _backend == 'winlegacy':
                 rb = os.urandom(byte_size)
             else:
                 res = bcrypt.BCryptGenRandom(alg_handle, buffer, byte_size, 0)
@@ -1510,7 +1511,7 @@ def _load_key(key_object, container):
                 '''
             ))
 
-    if _xp:
+    if _backend == 'winlegacy':
         if algo == 'ec':
             return container(None, key_object)
         return _advapi32_load_key(key_object, key_info, container)
@@ -2296,7 +2297,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 len(data)
             ))
 
-    if _xp:
+    if _backend == 'winlegacy':
         if certificate_or_public_key.algorithm == 'ec':
             return _pure_python_ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm)
         return _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding)
@@ -2696,7 +2697,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 len(data)
             ))
 
-    if _xp:
+    if _backend == 'winlegacy':
         if private_key.algorithm == 'ec':
             return _pure_python_ecdsa_sign(private_key, data, hash_algorithm)
         return _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding)
@@ -2989,7 +2990,7 @@ def _encrypt(certificate_or_public_key, data, rsa_oaep_padding=False):
             type_name(rsa_oaep_padding)
         ))
 
-    if _xp:
+    if _backend == 'winlegacy':
         return _advapi32_encrypt(certificate_or_public_key, data, rsa_oaep_padding)
     return _bcrypt_encrypt(certificate_or_public_key, data, rsa_oaep_padding)
 
@@ -3169,7 +3170,7 @@ def _decrypt(private_key, ciphertext, rsa_oaep_padding=False):
             type_name(rsa_oaep_padding)
         ))
 
-    if _xp:
+    if _backend == 'winlegacy':
         return _advapi32_decrypt(private_key, ciphertext, rsa_oaep_padding)
     return _bcrypt_decrypt(private_key, ciphertext, rsa_oaep_padding)
 
