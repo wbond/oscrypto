@@ -11,32 +11,7 @@ if sys.version_info < (3,):
 else:
     from io import StringIO
 
-from tests.test_kdf import KDFTests
-from tests.test_keys import KeyTests
-from tests.test_asymmetric import AsymmetricTests
-from tests.test_symmetric import SymmetricTests
-from tests.test_trust_list import TrustListTests
-from tests.test_tls import TLSTests
-
-
-test_classes = [KDFTests, KeyTests, AsymmetricTests, SymmetricTests, TrustListTests, TLSTests]
-
-
-def make_suite():
-    """
-    Constructs a unittest.TestSuite() of all tests for the package. For use
-    with setuptools.
-
-    :return:
-        A unittest.TestSuite() object
-    """
-
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    for test_class in test_classes:
-        tests = loader.loadTestsFromTestCase(test_class)
-        suite.addTests(tests)
-    return suite
+from tests import test_classes
 
 
 def run(matcher=None, repeat=1):
@@ -59,7 +34,7 @@ def run(matcher=None, repeat=1):
     # some reason with Python 3.4 on Windows, the tests in a suite are replaced
     # with None after being executed. This breaks the repeat functionality.
     test_list = []
-    for test_class in test_classes:
+    for test_class in test_classes():
         if matcher:
             names = loader.getTestCaseNames(test_class)
             for name in names:
