@@ -8,6 +8,7 @@ from .._ffi import (
     byte_string_from_buffer,
     deref,
     FFIEngineError,
+    is_null,
     new,
     register_ffi,
 )
@@ -245,7 +246,7 @@ class CFHelpers():
             value,
             kCFStringEncodingUTF8
         )
-        string = ffi.string(string_ptr)
+        string = None if is_null(string_ptr) else ffi.string(string_ptr)
         if string is None:
             buffer = buffer_from_bytes(1024)
             result = CoreFoundation.CFStringGetCString(
