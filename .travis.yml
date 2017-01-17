@@ -40,9 +40,9 @@ matrix:
         PLATFORM=osx-10.12
         BACKEND=osx
     - os: osx
-      python: "3.5"
+      python: "3.6"
       env:
-        PYTHON_VERSION=3.5
+        PYTHON_VERSION=3.6
         PLATFORM=osx
         BACKEND=osx
     - os: osx
@@ -95,6 +95,13 @@ matrix:
         BACKEND=openssl
     - os: linux
       language: python
+      python: "3.6"
+      env:
+        PYTHON_VERSION=3.6
+        PLATFORM=linux
+        BACKEND=openssl
+    - os: linux
+      language: python
       python: "pypy"
       env:
         PYTHON_VERSION=pypy
@@ -113,7 +120,7 @@ install:
             /usr/local/bin/pip_pypy install https://github.com/wbond/asn1crypto/archive/master.zip;
             export PYTHON_BIN=/usr/local/bin/pypy;
         else
-            if [ "$PYTHON_VERSION" == "3.5" ]; then
+            if [ "$PYTHON_VERSION" == "3.6" ]; then
                 echo "Updating homebrew";
                 brew update;
                 echo "Installing python3";
