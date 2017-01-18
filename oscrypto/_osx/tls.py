@@ -121,15 +121,22 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
 
         bytes_requested = deref(data_length_pointer)
 
+        timeout = socket.gettimeout()
         error = None
         data = b''
         try:
             while len(data) < bytes_requested:
+                # Python 2 on Travis CI seems to have issues with blocking on
+                # recv() for longer than the socket timeout value, so we select
+                if timeout is not None and timeout > 0.0:
+                    read_ready, _, _ = select.select([socket], [], [], timeout)
+                    if len(read_ready) == 0:
+                        raise socket_.error(errno.EAGAIN, 'timed out')
                 chunk = socket.recv(bytes_requested - len(data))
                 data += chunk
                 if chunk == b'':
                     if len(data) == 0:
-                        if socket.gettimeout() is None:
+                        if timeout is None:
                             return SecurityConst.errSSLClosedNoNotify
                         return SecurityConst.errSSLClosedAbort
                     break
@@ -142,6 +149,23 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
             return SecurityConst.errSSLClosedAbort
 
         if self and not self._done_handshake:
+            # SecureTransport doesn't bother to check if the TLS record header
+            # is valid before asking to read more data, which can result in
+            # connection hangs. Here we do basic checks to get around the issue.
+            if len(data) >= 3 and len(self._server_hello) == 0:
+                # Check to ensure it is an alert or handshake first
+                valid_record_type = data[0:1] in set([b'\x15', b'\x16'])
+                # Check if the protocol version is SSL 3.0 or TLS 1.0-1.3
+                valid_protocol_version = data[1:3] in set([
+                    b'\x03\x00',
+                    b'\x03\x01',
+                    b'\x03\x02',
+                    b'\x03\x03',
+                    b'\x03\x04'
+                ])
+                if not valid_record_type or not valid_protocol_version:
+                    self._server_hello += data
+                    return SecurityConst.errSSLProtocol
             self._server_hello += data
 
         write_to_buffer(data_buffer, data)
@@ -154,7 +178,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
     except (KeyboardInterrupt) as e:
         if self:
             self._exception = e
-        return SecurityConst.errSSLPeerUserCancelled
+        return SecurityConst.errSSLClosedAbort
 
 
 def _read_remaining(socket):
