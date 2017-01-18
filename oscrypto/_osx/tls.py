@@ -164,7 +164,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
                     b'\x03\x04'
                 ])
                 if not valid_record_type or not valid_protocol_version:
-                    self._server_hello += data
+                    self._server_hello += data + _read_remaining(socket)
                     return SecurityConst.errSSLProtocol
             self._server_hello += data
 
