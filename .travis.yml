@@ -46,10 +46,11 @@ matrix:
         PLATFORM=osx
         BACKEND=osx
     - os: osx
+      osx_image: xcode8.1
       python: "pypy"
       env:
         PYTHON_VERSION=pypy
-        PLATFORM=osx
+        PLATFORM=osx-10.12
         BACKEND=osx
     - os: linux
       language: python
