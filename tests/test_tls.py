@@ -56,7 +56,7 @@ def raise_with(e, tb):
 def connection_timeout(f):
     def wrapped(*args):
         try:
-            t = threading.Timer(15, lambda: thread.interrupt_main())
+            t = threading.Timer(30, lambda: thread.interrupt_main())
             t.start()
             f(*args)
             t.cancel()
