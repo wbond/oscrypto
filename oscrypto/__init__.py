@@ -10,8 +10,8 @@ from ._types import str_cls, type_name
 from .errors import LibraryNotFoundError
 
 
-__version__ = '0.17.2'
-__version_info__ = (0, 17, 2)
+__version__ = '0.17.3'
+__version_info__ = (0, 17, 3)
 
 
 _backend_lock = threading.Lock()

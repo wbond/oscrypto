@@ -1,5 +1,13 @@
 # changelog
 
+## 0.17.3
+
+ - Work around an issue on OS X where SecureTransport would try to read non-TLS
+   data as TLS records, causing hangs with `tls.TLSSocket()`
+ - Handle an alternate way the Windows SChannel API can fail when the DH params
+   for a TLS handshake are too small
+ - Fix a bug with cffi on OS X and converting a CFString to a UTF-8 byte string
+
 ## 0.17.2
 
  - Handle `errSecInvalidTrustSettings` errors on macOS exporting trust roots
