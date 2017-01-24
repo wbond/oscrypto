@@ -3,7 +3,7 @@ import shutil
 
 from setuptools import setup, find_packages, Command
 
-import oscrypto
+from oscrypto import version
 
 
 class CleanCommand(Command):
@@ -33,7 +33,7 @@ class CleanCommand(Command):
 
 setup(
     name='oscrypto',
-    version=oscrypto.__version__,
+    version=version.__version__,
 
     description=(
         'TLS (SSL) sockets, key generation, encryption, decryption, signing, '

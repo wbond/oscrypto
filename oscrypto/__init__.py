@@ -8,10 +8,16 @@ import threading
 
 from ._types import str_cls, type_name
 from .errors import LibraryNotFoundError
+from .version import __version__, __version_info__
 
 
-__version__ = '0.17.3'
-__version_info__ = (0, 17, 3)
+__all__ = [
+    '__version__',
+    '__version_info__',
+    'backend',
+    'use_openssl',
+    'use_winlegacy',
+]
 
 
 _backend_lock = threading.Lock()
