@@ -9,7 +9,6 @@ import random
 from asn1crypto import algos, core, keys, x509
 from asn1crypto.util import int_from_bytes, int_to_bytes
 
-from .._dsa import Signature
 from .._errors import pretty_message
 from .._ffi import (
     buffer_from_bytes,
@@ -2386,7 +2385,7 @@ def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm,
             # Windows doesn't use the ASN.1 Sequence for DSA signatures,
             # so we have to convert it here for the verification to work
             try:
-                signature = Signature.load(signature).to_p1363()
+                signature = algos.DSASignature.load(signature).to_p1363()
                 # Switch the two integers so that the reversal later will
                 # result in the correct order
                 half_len = len(signature) // 2
@@ -2478,7 +2477,7 @@ def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, r
         # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
         try:
-            signature = Signature.load(signature).to_p1363()
+            signature = algos.DSASignature.load(signature).to_p1363()
         except (ValueError, OverflowError, TypeError):
             raise SignatureError('Signature is invalid')
 
@@ -2816,7 +2815,7 @@ def _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             output = output[half_len:] + output[:half_len]
             # Windows doesn't use the ASN.1 Sequence for DSA signatures,
             # so we have to convert it here for the verification to work
-            output = Signature.from_p1363(output).dump()
+            output = algos.DSASignature.from_p1363(output).dump()
 
         return output
 
@@ -2938,7 +2937,7 @@ def _bcrypt_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if private_key.algorithm != 'rsa':
         # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
-        signature = Signature.from_p1363(signature).dump()
+        signature = algos.DSASignature.from_p1363(signature).dump()
 
     return signature
 

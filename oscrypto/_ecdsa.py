@@ -13,11 +13,11 @@ from asn1crypto._elliptic_curve import (
     PrimePoint,
 )
 from asn1crypto import keys
+from asn1crypto.algos import DSASignature
 from asn1crypto.x509 import Certificate
 from asn1crypto.util import int_from_bytes
 
 from . import backend
-from ._dsa import Signature
 from ._errors import pretty_message
 from ._types import type_name, byte_cls
 from .util import rand_bytes
@@ -247,7 +247,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
 
         break
 
-    return Signature({'r': r, 's': s}).dump()
+    return DSASignature({'r': r, 's': s}).dump()
 
 
 def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
@@ -335,7 +335,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     public_key_point = PrimePoint(curve_base_point.curve, x, y, n)
 
     try:
-        signature = Signature.load(signature)
+        signature = DSASignature.load(signature)
         r = signature['r'].native
         s = signature['s'].native
     except (ValueError):
