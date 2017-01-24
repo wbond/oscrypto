@@ -37,24 +37,12 @@ task, next_arg = get_arg(1)
 
 # We don't actually configure here since we want any coverage
 # testing to record that we tested overriding the backend
-use_config = {}
 if task.startswith('use_openssl='):
-    paths = task[12:].split(',')
-    if len(paths) != 2:
-        raise ValueError('Value for use_openssl flag must be two path separated by a comma')
-    use_config['use_openssl'] = paths
+    os.environ['OSCRYPTO_USE_OPENSSL'] = task[12:]
     task, next_arg = get_arg(next_arg)
 elif task == 'use_winlegacy=true':
-    use_config['use_winlegacy'] = True
+    os.environ['OSCRYPTO_USE_WINLEGACY'] = 'true'
     task, next_arg = get_arg(next_arg)
-
-if os.environ.get('OSCRYPTO_USE_OPENSSL'):
-    paths = os.environ.get('OSCRYPTO_USE_OPENSSL').split(',')
-    if len(paths) != 2:
-        raise ValueError('Value for OSCRYPTO_USE_OPENSSL env var must be two path separated by a comma')
-    use_config['use_openssl'] = paths
-elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
-    use_config['use_winlegacy'] = True
 
 
 if task not in set(['api_docs', 'lint', 'tests', 'coverage', 'ci', 'release']):
@@ -72,13 +60,6 @@ elif task == 'lint':
     from dev.lint import run
 
 elif task == 'tests':
-    if use_config:
-        import oscrypto
-        if 'use_openssl' in use_config:
-            oscrypto.use_openssl(*use_config['use_openssl'])
-        elif 'use_winlegacy' in use_config:
-            oscrypto.use_winlegacy()
-
     from dev.tests import run
     matcher, next_arg = get_arg(next_arg)
     if matcher:
@@ -91,11 +72,9 @@ elif task == 'tests':
         kwargs['repeat'] = int(repeat)
 
 elif task == 'coverage':
-    kwargs.update(use_config)
     from dev.coverage import run
 
 elif task == 'ci':
-    kwargs.update(use_config)
     from dev.ci import run
 
 elif task == 'release':

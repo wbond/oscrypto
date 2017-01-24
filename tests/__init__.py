@@ -35,7 +35,17 @@ def test_classes():
     module_name = 'oscrypto'
     src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
     module_info = imp.find_module(module_name, [src_dir])
-    imp.load_module(module_name, *module_info)
+    oscrypto_module = imp.load_module(module_name, *module_info)
+
+    # Configuring via env vars so CI for other packages doesn't need to do
+    # anything complicated to get the alternate backends
+    if os.environ.get('OSCRYPTO_USE_OPENSSL'):
+        paths = os.environ.get('OSCRYPTO_USE_OPENSSL').split(',')
+        if len(paths) != 2:
+            raise ValueError('Value for OSCRYPTO_USE_OPENSSL env var must be two path separated by a comma')
+        oscrypto_module.use_openssl(*paths)
+    elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
+        oscrypto_module.use_winlegacy()
 
     from .test_kdf import KDFTests
     from .test_keys import KeyTests
