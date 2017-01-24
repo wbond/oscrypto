@@ -119,12 +119,6 @@ install:
             /usr/local/bin/pip_pypy install flake8 coverage;
             echo "Installing asn1crypto";
             /usr/local/bin/pip_pypy install https://github.com/wbond/asn1crypto/archive/master.zip;
-            echo "Installing other modularcrypto packages";
-            /usr/local/bin/pip_pypy install https://github.com/wbond/certbuilder/archive/master.zip;
-            /usr/local/bin/pip_pypy install https://github.com/wbond/certvalidator/archive/master.zip;
-            /usr/local/bin/pip_pypy install https://github.com/wbond/csrbuilder/archive/master.zip;
-            /usr/local/bin/pip_pypy install https://github.com/wbond/crlbuilder/archive/master.zip;
-            /usr/local/bin/pip_pypy install https://github.com/wbond/ocspbuilder/archive/master.zip;
             export PYTHON_BIN=/usr/local/bin/pypy;
         else
             if [ "$PYTHON_VERSION" == "3.6" ]; then
@@ -136,12 +130,6 @@ install:
                 /usr/local/bin/pip3 install flake8 coverage;
                 echo "Installing asn1crypto";
                 /usr/local/bin/pip3 install https://github.com/wbond/asn1crypto/archive/master.zip;
-                echo "Installing other modularcrypto packages";
-                /usr/local/bin/pip3 install https://github.com/wbond/certbuilder/archive/master.zip;
-                /usr/local/bin/pip3 install https://github.com/wbond/certvalidator/archive/master.zip;
-                /usr/local/bin/pip3 install https://github.com/wbond/csrbuilder/archive/master.zip;
-                /usr/local/bin/pip3 install https://github.com/wbond/crlbuilder/archive/master.zip;
-                /usr/local/bin/pip3 install https://github.com/wbond/ocspbuilder/archive/master.zip;
                 export PYTHON_BIN=/usr/local/bin/python3;
             else
                 if [ "$PYTHON_VERSION" == "2.7" ]; then
@@ -151,12 +139,6 @@ install:
                     sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'flake8', 'coverage'])";
                     echo "Installing asn1crypto";
                     sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/asn1crypto/archive/master.zip'])";
-                    echo "Installing other modularcrypto packages";
-                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/certbuilder/archive/master.zip'])";
-                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/certvalidator/archive/master.zip'])";
-                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/csrbuilder/archive/master.zip'])";
-                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/crlbuilder/archive/master.zip'])";
-                    sudo /usr/bin/python2.7 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/ocspbuilder/archive/master.zip'])";
                     export PYTHON_BIN=/usr/bin/python2.7;
                 else
                     echo "Installing pip";
@@ -165,12 +147,6 @@ install:
                     sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'coverage'])";
                     echo "Installing asn1crypto";
                     sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/asn1crypto/archive/master.zip'])";
-                    echo "Installing other modularcrypto packages";
-                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/certbuilder/archive/master.zip'])";
-                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/certvalidator/archive/master.zip'])";
-                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/csrbuilder/archive/master.zip'])";
-                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/crlbuilder/archive/master.zip'])";
-                    sudo /usr/bin/python2.6 -W ignore -c "import pip; pip.main(['--disable-pip-version-check', '--quiet', 'install', 'https://github.com/wbond/ocspbuilder/archive/master.zip'])";
                     export PYTHON_BIN=/usr/bin/python2.6;
                 fi;
             fi;
@@ -189,14 +165,16 @@ install:
         fi;
         echo "Installing asn1crypto";
         pip install https://github.com/wbond/asn1crypto/archive/master.zip;
-        echo "Installing other modularcrypto packages";
-        pip install https://github.com/wbond/certbuilder/archive/master.zip;
-        pip install https://github.com/wbond/certvalidator/archive/master.zip;
-        pip install https://github.com/wbond/csrbuilder/archive/master.zip;
-        pip install https://github.com/wbond/crlbuilder/archive/master.zip;
-        pip install https://github.com/wbond/ocspbuilder/archive/master.zip;
         export PYTHON_BIN=python;
-    fi
+    fi;
+
+    echo "Checking out modularcrypto packages for coverage";
+    cd $TRAVIS_BUILD_DIR/..;
+    git clone https://github.com/wbond/certbuilder.git;
+    git clone https://github.com/wbond/certvalidator.git;
+    git clone https://github.com/wbond/crlbuilder.git;
+    git clone https://github.com/wbond/csrbuilder.git;
+    git clone https://github.com/wbond/ocspbuilder.git;
 script:
   - $PYTHON_BIN run.py ci
 after_success:
