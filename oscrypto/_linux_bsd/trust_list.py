@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import os
 
 from asn1crypto.pem import unarmor
-from asn1crypto.x509 import TrustedCertificate
+from asn1crypto.x509 import TrustedCertificate, Certificate
 
 from .._errors import pretty_message
 
@@ -86,6 +86,8 @@ def extract_from_system(cert_callback=None):
         for armor_type, _, cert_bytes in unarmor(f.read(), multiple=True):
             # Without more info, a certificate is trusted for all purposes
             if armor_type == 'CERTIFICATE':
+                if cert_callback:
+                    cert_callback(Certificate.load(cert_bytes), None)
                 output.append((cert_bytes, set(), set()))
 
             # The OpenSSL TRUSTED CERTIFICATE construct adds OIDs for trusted
