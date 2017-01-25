@@ -13,8 +13,10 @@ from ._unittest_compat import patch
 patch()
 
 if sys.version_info < (3,):
+    str_cls = unicode  # noqa
     byte_cls = str
 else:
+    str_cls = str
     byte_cls = bytes
 
 
@@ -27,6 +29,8 @@ digicert_ca_path = os.path.join(fixtures_dir, 'digicert_ca.crt')
 class TrustListTests(unittest.TestCase):
 
     def test_get_list(self):
+        trust_list.clear_cache()
+
         certs = trust_list.get_list()
         self.assertIsInstance(certs, list)
         self.assertLess(10, len(certs))
@@ -36,7 +40,32 @@ class TrustListTests(unittest.TestCase):
             self.assertIsInstance(reject_oids, set)
             cert.native
 
+    def test_get_list_callback(self):
+        trust_list.clear_cache()
+
+        lambda_data = {'calls': 0, 'reasons': 0}
+
+        def cb(cert, reason):
+            if reason is not None:
+                self.assertIsInstance(reason, str_cls)
+                lambda_data['reasons'] += 1
+            self.assertIsInstance(cert, x509.Certificate)
+            lambda_data['calls'] += 1
+
+        certs = trust_list.get_list(cert_callback=cb)
+        self.assertIsInstance(certs, list)
+        self.assertLess(10, len(certs))
+        self.assertLessEqual(len(certs), lambda_data['calls'])
+        self.assertEqual(lambda_data['calls'] - len(certs), lambda_data['reasons'])
+        for cert, trust_oids, reject_oids in certs:
+            self.assertIsInstance(cert, x509.Certificate)
+            self.assertIsInstance(trust_oids, set)
+            self.assertIsInstance(reject_oids, set)
+            cert.native
+
     def test_get_list_mutate(self):
+        trust_list.clear_cache()
+
         certs = trust_list.get_list()
         certs2 = trust_list.get_list()
 
@@ -48,6 +77,8 @@ class TrustListTests(unittest.TestCase):
         self.assertNotEqual(certs2, certs)
 
     def test_get_path(self):
+        trust_list.clear_cache()
+
         certs = trust_list.get_path()
         with open(certs, 'rb') as f:
             cert_data = f.read()

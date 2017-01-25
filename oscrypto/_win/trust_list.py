@@ -33,9 +33,15 @@ def system_path():
     return None
 
 
-def extract_from_system():
+def extract_from_system(cert_callback=None):
     """
     Extracts trusted CA certificates from the Windows certificate store
+
+    :param cert_callback:
+        A callback that is called once for each certificate in the trust store.
+        It should accept two parameters: an asn1crypto.x509.Certificate object,
+        and a reason. The reason will be None if the certificate is being
+        exported, otherwise it will be a unicode string of the reason it won't.
 
     :raises:
         OSError - when an error is returned by the OS crypto library
@@ -63,8 +69,11 @@ def extract_from_system():
 
             skip = False
             trust_all = False
+            reason = None
+            valid_encoding = True
 
             if context.dwCertEncodingType != Crypt32Const.X509_ASN_ENCODING:
+                valid_encoding = False
                 skip = True
 
             if not skip:
@@ -74,6 +83,7 @@ def extract_from_system():
                 try:
                     not_before = datetime.datetime.fromtimestamp(not_before_seconds)
                     if not_before > now:
+                        reason = 'not yet valid'
                         skip = True
                 except (ValueError, OSError) as e:
                     # If there is an error converting the not before timestamp,
@@ -85,6 +95,7 @@ def extract_from_system():
                 try:
                     not_after = datetime.datetime.fromtimestamp(not_after_seconds)
                     if not_after < now:
+                        reason = 'no longer valid'
                         skip = True
                 except (ValueError, OSError) as e:
                     # The only reason we would get an exception here is if the
@@ -138,6 +149,7 @@ def extract_from_system():
 
                     # Having no enhanced usage properties means a cert is distrusted
                     if key_usage.cUsageIdentifier == 0:
+                        reason = 'explicitly distrusted'
                         skip = True
                     else:
                         oids = array_from_pointer(
@@ -149,8 +161,9 @@ def extract_from_system():
                         for oid in oids:
                             trust_oids.add(oid.decode('ascii'))
 
-            if not skip:
+            if valid_encoding and (not skip or cert_callback):
                 data = bytes_from_buffer(context.pbCertEncoded, int(context.cbCertEncoded))
+                cert = None
 
                 # If the certificate is not under blanket trust, we have to
                 # determine what purposes it is rejected for by diffing the
@@ -164,7 +177,13 @@ def extract_from_system():
                             if oid not in trust_oids:
                                 reject_oids.add(oid)
 
-                certificates[hashlib.sha1(data).digest()] = (data, trust_oids, reject_oids)
+                if cert_callback:
+                    if cert is None:
+                        cert = Certificate.load(data)
+                    cert_callback(cert, reason)
+
+                if not skip:
+                    certificates[hashlib.sha1(data).digest()] = (data, trust_oids, reject_oids)
 
             context_pointer = crypt32.CertEnumCertificatesInStore(store_handle, context_pointer)
 

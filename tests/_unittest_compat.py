@@ -27,6 +27,7 @@ def patch():
     unittest.TestCase.assertRaises = _assert_raises
     unittest.TestCase.assertRaisesRegexp = _assert_raises_regexp
     unittest.TestCase.assertLess = _assert_less
+    unittest.TestCase.assertLessEqual = _assert_less_equal
     unittest.TestCase.assertIn = _assert_in
     _non_local['patched'] = True
 
@@ -34,6 +35,13 @@ def patch():
 def _assert_less(self, a, b, msg=None):
     if not a < b:
         standard_msg = '%s not less than %s' % (unittest.util.safe_repr(a), unittest.util.safe_repr(b))
+        self.fail(self._formatMessage(msg, standard_msg))
+
+
+def _assert_less_equal(self, a, b, msg=None):
+    if not a <= b:
+        standard_msg = '%s not less than or equal to %s' % (unittest.util.safe_repr(a),
+            unittest.util.safe_repr(b))
         self.fail(self._formatMessage(msg, standard_msg))
 
 
