@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import hashlib
 import os
 import unittest
 import sys
@@ -43,13 +44,19 @@ class TrustListTests(unittest.TestCase):
     def test_get_list_callback(self):
         trust_list.clear_cache()
 
-        lambda_data = {'calls': 0, 'reasons': 0}
+        lambda_data = {'calls': 0, 'reasons': 0, 'certs': {}}
 
         def cb(cert, reason):
             if reason is not None:
                 self.assertIsInstance(reason, str_cls)
                 lambda_data['reasons'] += 1
             self.assertIsInstance(cert, x509.Certificate)
+            sha1 = hashlib.sha1(cert.dump()).digest()
+            message = None
+            if sha1 in lambda_data['certs']:
+                message = 'Certificate (%s) already passed to callback' % cert.subject.human_friendly
+            self.assertNotIn(sha1, lambda_data['certs'], message)
+            lambda_data['certs'][sha1] = True
             lambda_data['calls'] += 1
 
         certs = trust_list.get_list(cert_callback=cb)

@@ -29,6 +29,7 @@ def patch():
     unittest.TestCase.assertLess = _assert_less
     unittest.TestCase.assertLessEqual = _assert_less_equal
     unittest.TestCase.assertIn = _assert_in
+    unittest.TestCase.assertNotIn = _assert_not_in
     _non_local['patched'] = True
 
 
@@ -55,6 +56,12 @@ def _assert_is_instance(self, obj, cls, msg=None):
 def _assert_in(self, member, container, msg=None):
     if member not in container:
         standard_msg = '%s not found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
+        self.fail(self._formatMessage(msg, standard_msg))
+
+
+def _assert_not_in(self, member, container, msg=None):
+    if member in container:
+        standard_msg = '%s found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
         self.fail(self._formatMessage(msg, standard_msg))
 
 
