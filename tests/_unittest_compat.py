@@ -33,17 +33,27 @@ def patch():
     _non_local['patched'] = True
 
 
+def _safe_repr(obj):
+    try:
+        return repr(obj)
+    except Exception:
+        return object.__repr__(obj)
+
+
+def _format_message(msg, standard_msg):
+    return msg or standard_msg
+
+
 def _assert_less(self, a, b, msg=None):
     if not a < b:
-        standard_msg = '%s not less than %s' % (unittest.util.safe_repr(a), unittest.util.safe_repr(b))
-        self.fail(self._formatMessage(msg, standard_msg))
+        standard_msg = '%s not less than %s' % (_safe_repr(a), _safe_repr(b))
+        self.fail(_format_message(msg, standard_msg))
 
 
 def _assert_less_equal(self, a, b, msg=None):
     if not a <= b:
-        standard_msg = '%s not less than or equal to %s' % (unittest.util.safe_repr(a),
-            unittest.util.safe_repr(b))
-        self.fail(self._formatMessage(msg, standard_msg))
+        standard_msg = '%s not less than or equal to %s' % (_safe_repr(a), _safe_repr(b))
+        self.fail(_format_message(msg, standard_msg))
 
 
 def _assert_is_instance(self, obj, cls, msg=None):
@@ -55,14 +65,14 @@ def _assert_is_instance(self, obj, cls, msg=None):
 
 def _assert_in(self, member, container, msg=None):
     if member not in container:
-        standard_msg = '%s not found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
-        self.fail(self._formatMessage(msg, standard_msg))
+        standard_msg = '%s not found in %s' % (_safe_repr(member), _safe_repr(container))
+        self.fail(_format_message(msg, standard_msg))
 
 
 def _assert_not_in(self, member, container, msg=None):
     if member in container:
-        standard_msg = '%s found in %s' % (unittest.util.safe_repr(member), unittest.util.safe_repr(container))
-        self.fail(self._formatMessage(msg, standard_msg))
+        standard_msg = '%s found in %s' % (_safe_repr(member), _safe_repr(container))
+        self.fail(_format_message(msg, standard_msg))
 
 
 def _assert_regexp_matches(self, text, expected_regexp, msg=None):
