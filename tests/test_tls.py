@@ -6,6 +6,7 @@ import sys
 import os
 import re
 import threading
+import platform
 
 if sys.version_info < (3,):
     import thread
@@ -39,6 +40,10 @@ fixtures_dir = os.path.join(tests_root, 'fixtures')
 digicert_ca_path = os.path.join(fixtures_dir, 'digicert_ca.crt')
 badtls_ca_path = os.path.join(fixtures_dir, 'badtls.io_ca.crt')
 
+# PyPy <= 5.6.0 on OS X 10.11 has a bug with _get_clocktime
+osx_pypy_bug = platform.python_implementation() == 'PyPy' \
+    and sys.platform == 'darwin' \
+    and tuple(map(int, platform.mac_ver()[0].split('.'))) < (10, 12)
 
 if sys.version_info < (3,):
     exec('''
@@ -56,10 +61,12 @@ def raise_with(e, tb):
 def connection_timeout(f):
     def wrapped(*args):
         try:
-            t = threading.Timer(30, lambda: thread.interrupt_main())
-            t.start()
+            if not osx_pypy_bug:
+                t = threading.Timer(30, lambda: thread.interrupt_main())
+                t.start()
             f(*args)
-            t.cancel()
+            if not osx_pypy_bug:
+                t.cancel()
         except (KeyboardInterrupt):
             raise_with(AssertionError("Timed out"), sys.exc_info()[2])
     return wrapped
