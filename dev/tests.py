@@ -43,7 +43,7 @@ def run(matcher=None, repeat=1):
         else:
             test_list.append(loader.loadTestsFromTestCase(test_class))
 
-    stream = sys.stderr
+    stream = sys.stdout
     verbosity = 1
     if matcher and repeat == 1:
         verbosity = 2

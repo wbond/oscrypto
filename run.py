@@ -14,7 +14,7 @@ else:
 def show_usage():
     print(
         'Usage: run.py [use_openssl=/path/to/libcrypto,/path/to/libssl] [use_winlegacy=true] '
-        '(api_docs | lint | tests [regex] [repeat_count] | coverage | ci | release)',
+        '(api_docs | lint | tests [regex] [repeat_count] | coverage | deps | ci | release)',
         file=sys.stderr
     )
     sys.exit(1)
@@ -45,7 +45,7 @@ elif task == 'use_winlegacy=true':
     task, next_arg = get_arg(next_arg)
 
 
-if task not in set(['api_docs', 'lint', 'tests', 'coverage', 'ci', 'release']):
+if task not in set(['api_docs', 'lint', 'tests', 'coverage', 'deps', 'ci', 'release']):
     show_usage()
 
 if task != 'tests' and len(sys.argv) - next_arg > 0:
@@ -73,6 +73,9 @@ elif task == 'tests':
 
 elif task == 'coverage':
     from dev.coverage import run
+
+elif task == 'deps':
+    from dev.deps import run
 
 elif task == 'ci':
     from dev.ci import run
