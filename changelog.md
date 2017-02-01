@@ -1,5 +1,15 @@
 # changelog
 
+## 0.18.0
+
+ - `trust_list.get_path()` and `trust_list.get_list()` now accept a parameter
+   `cert_callback`, which is a callback that will be called once for each
+   certificate in the trust store. If the certificate will not be exported, a
+   reason will be provided.
+ - Added `oscrypto.version` for version introspection without side-effects
+ - Now uses `asn1crypto.algos.DSASignature` instead of self-contained ASN.1
+   definition
+
 ## 0.17.3
 
  - Work around an issue on OS X where SecureTransport would try to read non-TLS
