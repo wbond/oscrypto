@@ -10,7 +10,7 @@ functions comprise the public API:
 ### `get_list()` function
 
 > ```python
-> def get_list(cache_length=24, map_vendor_oids=True):
+> def get_list(cache_length=24, map_vendor_oids=True, cert_callback=None):
 >     """
 >     :param cache_length:
 >         The number of hours to cache the CA certs in memory before they are
@@ -31,6 +31,12 @@ functions comprise the public API:
 >          - 1.2.840.113635.100.1.16 (apple_code_signing) -> 1.3.6.1.5.5.7.3.3 (code_signing)
 >          - 1.2.840.113635.100.1.20 (apple_time_stamping) -> 1.3.6.1.5.5.7.3.8 (time_stamping)
 >          - 1.3.6.1.4.1.311.10.3.2 (microsoft_time_stamp_signing) -> 1.3.6.1.5.5.7.3.8 (time_stamping)
+>
+>     :param cert_callback:
+>         A callback that is called once for each certificate in the trust store.
+>         It should accept two parameters: an asn1crypto.x509.Certificate object,
+>         and a reason. The reason will be None if the certificate is being
+>         exported, otherwise it will be a unicode string of the reason it won't.
 >
 >     :raises:
 >         oscrypto.errors.CACertsError - when an error occurs exporting/locating certs
@@ -62,7 +68,7 @@ functions comprise the public API:
 ### `get_path()` function
 
 > ```python
-> def get_path(temp_dir=None, cache_length=24, map_vendor_oids=True):
+> def get_path(temp_dir=None, cache_length=24, map_vendor_oids=True, cert_callback=None):
 >     """
 >     :param temp_dir:
 >         The temporary directory to cache the CA certs in on OS X and Windows.
@@ -87,6 +93,13 @@ functions comprise the public API:
 >          - 1.2.840.113635.100.1.16 (apple_code_signing) -> 1.3.6.1.5.5.7.3.3 (code_signing)
 >          - 1.2.840.113635.100.1.20 (apple_time_stamping) -> 1.3.6.1.5.5.7.3.8 (time_stamping)
 >          - 1.3.6.1.4.1.311.10.3.2 (microsoft_time_stamp_signing) -> 1.3.6.1.5.5.7.3.8 (time_stamping)
+>
+>     :param cert_callback:
+>         A callback that is called once for each certificate in the trust store.
+>         It should accept two parameters: an asn1crypto.x509.Certificate object,
+>         and a reason. The reason will be None if the certificate is being
+>         exported, otherwise it will be a unicode string of the reason it won't.
+>         This is only called on Windows and OS X when passed to this function.
 >
 >     :raises:
 >         oscrypto.errors.CACertsError - when an error occurs exporting/locating certs
