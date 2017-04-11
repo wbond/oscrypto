@@ -16,6 +16,7 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
  - [Continuous Integration](#continuous-integration)
  - [Testing](#testing)
  - [Development](#development)
+ - [CI Tasks](#ci-tasks)
 
 [![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
