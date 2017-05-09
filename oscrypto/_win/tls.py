@@ -558,7 +558,7 @@ class TLSSocket(object):
             cert_enhkey_usage_pointer = struct(crypt32, 'CERT_ENHKEY_USAGE')
             cert_enhkey_usage = unwrap(cert_enhkey_usage_pointer)
             cert_enhkey_usage.cUsageIdentifier = 3
-            cert_enhkey_usage.rgpszUsageIdentifier = cast(crypt32, 'char *', usage_identifiers)
+            cert_enhkey_usage.rgpszUsageIdentifier = cast(crypt32, 'char **', usage_identifiers)
 
             cert_usage_match_pointer = struct(crypt32, 'CERT_USAGE_MATCH')
             cert_usage_match = unwrap(cert_usage_match_pointer)
