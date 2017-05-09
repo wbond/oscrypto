@@ -56,6 +56,8 @@ try:
         return ffi
 
     def buffer_from_bytes(initializer):
+        if sys.platform == 'win32':
+            return ffi.new('unsigned char[]', initializer)
         return ffi.new('char[]', initializer)
 
     def buffer_from_unicode(initializer):
@@ -215,6 +217,7 @@ except (ImportError):
             'LPCWSTR': True,
         })
         _type_map.update({
+            'BYTE': ctypes.c_byte,
             'LPSTR': c_char_p,
             'LPWSTR': c_wchar_p,
             'LPCSTR': c_char_p,

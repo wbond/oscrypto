@@ -754,7 +754,7 @@ class TLSSocket(object):
                 out_buffers[0].pvBuffer = null()
 
             in_data_buffer = buffer_from_bytes(32768)
-            in_buffers[0].pvBuffer = cast(secur32, 'char *', in_data_buffer)
+            in_buffers[0].pvBuffer = cast(secur32, 'BYTE *', in_data_buffer)
 
             bytes_read = b''
             while result != Secur32Const.SEC_E_OK:
@@ -1014,7 +1014,7 @@ class TLSSocket(object):
             self._decrypt_data_buffer = buffer_from_bytes(self._buffer_size)
             self._decrypt_desc, self._decrypt_buffers = self._create_buffers(4)
             self._decrypt_buffers[0].BufferType = Secur32Const.SECBUFFER_DATA
-            self._decrypt_buffers[0].pvBuffer = cast(secur32, 'char *', self._decrypt_data_buffer)
+            self._decrypt_buffers[0].pvBuffer = cast(secur32, 'BYTE *', self._decrypt_data_buffer)
 
         to_recv = max(max_length, self._buffer_size)
 
@@ -1028,7 +1028,7 @@ class TLSSocket(object):
 
         def _reset_buffers():
             buf0.BufferType = Secur32Const.SECBUFFER_DATA
-            buf0.pvBuffer = cast(secur32, 'char *', self._decrypt_data_buffer)
+            buf0.pvBuffer = cast(secur32, 'BYTE *', self._decrypt_data_buffer)
             buf0.cbBuffer = 0
 
             buf1.BufferType = Secur32Const.SECBUFFER_EMPTY
@@ -1261,7 +1261,7 @@ class TLSSocket(object):
 
             self._encrypt_buffers[0].BufferType = Secur32Const.SECBUFFER_STREAM_HEADER
             self._encrypt_buffers[0].cbBuffer = self._header_size
-            self._encrypt_buffers[0].pvBuffer = cast(secur32, 'char *', self._encrypt_data_buffer)
+            self._encrypt_buffers[0].pvBuffer = cast(secur32, 'BYTE *', self._encrypt_data_buffer)
 
             self._encrypt_buffers[1].BufferType = Secur32Const.SECBUFFER_DATA
             self._encrypt_buffers[1].pvBuffer = ref(self._encrypt_data_buffer, self._header_size)
@@ -1331,7 +1331,7 @@ class TLSSocket(object):
                 # This is a SCHANNEL_SHUTDOWN token (DWORD of 1)
                 buffers[0].cbBuffer = 4
                 buffers[0].BufferType = Secur32Const.SECBUFFER_TOKEN
-                buffers[0].pvBuffer = cast(secur32, 'char *', buffer_from_bytes(b'\x01\x00\x00\x00'))
+                buffers[0].pvBuffer = cast(secur32, 'BYTE *', buffer_from_bytes(b'\x01\x00\x00\x00'))
 
                 sec_buffer_desc_pointer = struct(secur32, 'SecBufferDesc')
                 sec_buffer_desc = unwrap(sec_buffer_desc_pointer)
