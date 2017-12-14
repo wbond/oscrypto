@@ -100,6 +100,7 @@ def get_path(temp_dir=None, cache_length=24, cert_callback=None):
     if temp and _cached_path_needs_update(ca_path, cache_length):
         empty_set = set()
 
+        any_purpose = '2.5.29.37.0'
         apple_ssl = '1.2.840.113635.100.1.3'
         win_server_auth = '1.3.6.1.5.5.7.3.1'
 
@@ -108,20 +109,24 @@ def get_path(temp_dir=None, cache_length=24, cert_callback=None):
                 with open(ca_path, 'wb') as f:
                     for cert, trust_oids, reject_oids in extract_from_system(cert_callback, True):
                         if sys.platform == 'darwin':
-                            if trust_oids != empty_set and apple_ssl not in trust_oids:
+                            if trust_oids != empty_set and any_purpose not in trust_oids \
+                                    and apple_ssl not in trust_oids:
                                 if cert_callback:
                                     cert_callback(Certificate.load(cert), 'implicitly distrusted for TLS')
                                 continue
-                            if reject_oids != empty_set and apple_ssl in reject_oids:
+                            if reject_oids != empty_set and (apple_ssl in reject_oids
+                                                             or any_purpose in reject_oids):
                                 if cert_callback:
                                     cert_callback(Certificate.load(cert), 'explicitly distrusted for TLS')
                                 continue
                         elif sys.platform == 'win32':
-                            if trust_oids != empty_set and win_server_auth not in trust_oids:
+                            if trust_oids != empty_set and any_purpose not in trust_oids \
+                                    and win_server_auth not in trust_oids:
                                 if cert_callback:
                                     cert_callback(Certificate.load(cert), 'implicitly distrusted for TLS')
                                 continue
-                            if reject_oids != empty_set and win_server_auth in reject_oids:
+                            if reject_oids != empty_set and (win_server_auth in reject_oids
+                                                             or any_purpose in reject_oids):
                                 if cert_callback:
                                     cert_callback(Certificate.load(cert), 'explicitly distrusted for TLS')
                                 continue
