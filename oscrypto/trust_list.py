@@ -130,6 +130,8 @@ def get_path(temp_dir=None, cache_length=24, cert_callback=None):
                                 if cert_callback:
                                     cert_callback(Certificate.load(cert), 'explicitly distrusted for TLS')
                                 continue
+                        if cert_callback:
+                            cert_callback(Certificate.load(cert), None)
                         f.write(armor('CERTIFICATE', cert))
 
     if not ca_path:
