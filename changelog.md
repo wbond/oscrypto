@@ -1,5 +1,20 @@
 # changelog
 
+## 0.19.0
+
+ - Backwards compatibility break: `trust_list.get_path()` not longer accepts
+   the parameter `map_vendor_oids`, and only includes CA certificates that
+   the OS marks as trusted for TLS server authentication. This change was
+   made due to (at least some versions of) OpenSSL not verifying a server
+   certificate if the CA bundle includes a `TRUSTED CERTIFICATE` entry,
+   which is how the trust information was exported. Since trust information
+   can no longer be exported to disk, the list of certificates must be
+   filtered, and since the intent of this function was always to provide a
+   list of CA certs for use by OpenSSL when creating TLS connection, this
+   change in functionality is in line with the original intent.
+ - `asymmetric.rsa_pkcs1v15_verify()` and `asymmetric.rsa_rss_verify()` will
+   now raise a `SignatureError` when there is a key size mismatch.
+
 ## 0.18.0
 
  - `trust_list.get_path()` and `trust_list.get_list()` now accept a parameter
