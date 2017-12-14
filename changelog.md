@@ -1,5 +1,13 @@
 # changelog
 
+## 0.19.1
+
+ - Fixed a bug where `trust_list.get_path()` would not call the `cert_callback`
+   when a certificate was exported
+ - Fixed an issue on OS X/macOS where a certificate with an explicit any
+   purpose trust OID would not be exported since it didn't contain the OID
+   for SSL
+
 ## 0.19.0
 
  - Backwards compatibility break: `trust_list.get_path()` not longer accepts
