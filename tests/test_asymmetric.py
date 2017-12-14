@@ -200,6 +200,15 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_verify_key_size_mismatch(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-4096.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
+
     def test_rsa_verify_fail(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -266,6 +275,15 @@ class AsymmetricTests(unittest.TestCase):
             signature = f.read()
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
         asymmetric.dsa_verify(public, signature, original_data, 'sha1')
+
+    def test_dsa_verify_key_size_mismatch(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'dsa_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-512.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
     def test_dsa_verify_fail(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:

@@ -2491,7 +2491,7 @@ def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, r
         flags
     )
     failure = res == BcryptConst.STATUS_INVALID_SIGNATURE
-    failure = failure or (rsa_pss_padding and res == BcryptConst.STATUS_INVALID_PARAMETER)
+    failure = failure or res == BcryptConst.STATUS_INVALID_PARAMETER
     if failure:
         raise SignatureError('Signature is invalid')
 
