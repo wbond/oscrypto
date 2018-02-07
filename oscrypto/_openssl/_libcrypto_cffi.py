@@ -17,7 +17,10 @@ except (ImportError):
 
 
 __all__ = [
+    'is_libressl',
     'libcrypto',
+    'libressl_version',
+    'libressl_version_info',
     'version',
     'version_info',
 ]
@@ -38,6 +41,8 @@ except (AttributeError):
     vffi.cdef("const char *OpenSSL_version(int type);")
     version_string = vffi.string(vffi.dlopen(libcrypto_path).OpenSSL_version(0)).decode('utf-8')
 
+is_libressl = 'LibreSSL' in version_string
+
 version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
 if not version_match:
     version_match = re.search('(?<=LibreSSL )(\\d\\.\\d(\\.\\d)?)\\b', version_string)
@@ -46,6 +51,15 @@ if not version_match:
 version = version_match.group(1)
 version_parts = re.sub('(\\d)([a-z]+)', '\\1.\\2', version).split('.')
 version_info = tuple(int(part) if part.isdigit() else part for part in version_parts)
+
+# LibreSSL is compatible with libcrypto from OpenSSL 1.0.1
+libressl_version = ''
+libressl_version_info = tuple()
+if is_libressl:
+    libressl_version = version
+    libressl_version_info = version_info
+    version = '1.0.1'
+    version_info = (1, 0, 1)
 
 ffi = FFI()
 
