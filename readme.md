@@ -46,6 +46,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - [Security.framework](https://developer.apple.com/library/prerelease/mac/documentation/Security/Reference/SecurityFrameworkReference/index.html)
      - [Secure Transport](https://developer.apple.com/library/prerelease/mac/documentation/Security/Reference/secureTransportRef/index.html#//apple_ref/doc/uid/TP30000155) for TLS
      - [CommonCrypto](http://www.opensource.apple.com/source/CommonCrypto/CommonCrypto-55010/CommonCrypto/) for PBKDF2
+     - OpenSSL (or LibreSSL on macOS 10.13) for the PKCS #12 KDF
    - Tested on:
      - OS X 10.7
      - OS X 10.8
