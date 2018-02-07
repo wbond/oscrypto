@@ -54,6 +54,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - OS X 10.11
      - OS X 10.11 with OpenSSL 1.1.0
      - macOS 10.12
+     - macOS 10.13 with LibreSSL 2.2.7
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
@@ -66,6 +67,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - Ubuntu 10.04 with OpenSSL 0.9.8
      - Ubuntu 12.04 with OpenSSL 1.0.1
      - Ubuntu 15.04 with OpenSSL 1.0.1
+     - Ubuntu 16.04 with OpenSSL 1.0.2 on Raspberry Pi 3 (armhf)
 
 *OS X 10.6 will not be supported due to a lack of available
 cryptographic primitives and due to lack of vendor support.*
