@@ -1443,6 +1443,14 @@ class TLSSocket(object):
         return self._hostname
 
     @property
+    def port(self):
+        """
+        An integer of the port number the socket is connected to
+        """
+
+        return self.socket.getpeername()[1]
+
+    @property
     def socket(self):
         """
         The underlying socket.socket connection

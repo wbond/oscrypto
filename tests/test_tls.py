@@ -96,6 +96,7 @@ class TLSTests(unittest.TestCase):
         self.assertIsInstance(connection.cipher_suite, str_cls)
         self.assertIsInstance(connection.certificate, x509.Certificate)
         self.assertLess(10, len(connection.cipher_suite))
+        self.assertEqual(port, connection.port)
         connection.write(b'GET / HTTP/1.1\r\nHost: ' + hostname.encode('utf-8') + b'\r\n\r\n')
         html = connection.read_until(re.compile(b'</html>', re.I))
         self.assertNotEqual(None, re.search(b'</html>', html, re.I))

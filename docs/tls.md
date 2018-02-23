@@ -15,6 +15,7 @@ The API consists of:
 
  - [`TLSSocket()`](#tlssocket-class)
    - [`.hostname`](#hostname-attribute)
+   - [`.port`](#port-attribute)
    - [`.certificate`](#certificate-attribute)
    - [`.intermediates`](#intermediates-attribute)
    - [`.protocol`](#protocol-attribute)
@@ -63,6 +64,10 @@ The API consists of:
 > ##### `.hostname` attribute
 >
 > > A unicode string of the TLS server domain name or IP address
+>
+> ##### `.port` attribute
+>
+> > An integer of the port number the socket is connected to
 >
 > ##### `.certificate` attribute
 >
