@@ -148,7 +148,7 @@ def dump_dh_parameters(dh_parameters, encoding='pem'):
     Serializes an asn1crypto.algos.DHParameters object into a byte string
 
     :param dh_parameters:
-        An ans1crypto.algos.DHParameters object
+        An asn1crypto.algos.DHParameters object
 
     :param encoding:
         A unicode string of "pem" or "der"
