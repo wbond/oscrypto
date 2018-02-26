@@ -67,10 +67,11 @@ def connection_timeout(timeout=30):
                     t = threading.Timer(timeout, lambda: thread.interrupt_main())
                     t.start()
                 f(*args)
-                if not osx_pypy_bug:
-                    t.cancel()
             except (KeyboardInterrupt):
                 raise_with(AssertionError("Timed out"), sys.exc_info()[2])
+            finally:
+                if not osx_pypy_bug:
+                    t.cancel()
         return wrapped
     return timeout_decorator
 
@@ -352,3 +353,9 @@ class TLSTests(unittest.TestCase):
         # there aren't buffer overlfow issues in TLSSocket()
         c = HttpsClient()
         c.download('https://packagecontrol.io/channel_v3.json', 15)
+
+    @connection_timeout()
+    def test_tls_protocol_version(self):
+        session = tls.TLSSession(set(['TLSv1', 'TLSv1.1']))
+        with assert_exception(self, errors.TLSError, 'TLS handshake failed - protocol version error'):
+            s = tls.TLSSocket('github.com', 443, session=session)
