@@ -15,7 +15,7 @@ from .. import _backend_config
 from .._errors import pretty_message
 from .._ffi import null, bytes_from_buffer, buffer_from_bytes, is_null, buffer_pointer
 from .._types import type_name, str_cls, byte_cls, int_types
-from ..errors import TLSError
+from ..errors import TLSError, TLSDisconnectError, TLSGracefulDisconnectError
 from .._tls import (
     detect_client_auth_request,
     extract_chain,
@@ -29,6 +29,7 @@ from .._tls import (
     raise_hostname,
     raise_no_issuer,
     raise_protocol_error,
+    raise_protocol_version,
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
@@ -476,6 +477,10 @@ class TLSSocket(object):
                 elif error == LibsslConst.SSL_ERROR_WANT_WRITE:
                     handshake_client_bytes += self._raw_write(self._wbio)
 
+                elif error == LibsslConst.SSL_ERROR_ZERO_RETURN:
+                    self._shutdown(False)
+                    self._raise_closed()
+
                 else:
                     info = peek_openssl_error()
 
@@ -508,6 +513,14 @@ class TLSSocket(object):
                         )
                     if info == unknown_protocol_info:
                         raise_protocol_error(handshake_server_bytes)
+
+                    tls_version_info_error = (
+                        20,
+                        LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
+                        LibsslConst.SSL_R_TLSV1_ALERT_PROTOCOL_VERSION
+                    )
+                    if info == tls_version_info_error:
+                        raise_protocol_version()
 
                     handshake_error_info = (
                         20,
@@ -705,6 +718,9 @@ class TLSSocket(object):
             self._decrypted_bytes = self._decrypted_bytes[max_length:]
             return output
 
+        if self._ssl is None:
+            self._raise_closed()
+
         # Don't block if we have buffered data available, since it is ok to
         # return less than the max_length
         if buffered_length > 0 and not self.select_read(0):
@@ -739,8 +755,8 @@ class TLSSocket(object):
                     continue
 
                 elif error == LibsslConst.SSL_ERROR_ZERO_RETURN:
-                    self.shutdown()
-                    return b''
+                    self._shutdown(False)
+                    break
 
                 else:
                     handle_openssl_error(0, TLSError)
@@ -800,6 +816,8 @@ class TLSSocket(object):
                 chunk = self._decrypted_bytes
                 self._decrypted_bytes = b''
             else:
+                if self._ssl is None:
+                    self._raise_closed()
                 to_read = libssl.SSL_pending(self._ssl) or 8192
                 chunk = self.read(to_read)
 
@@ -866,11 +884,10 @@ class TLSSocket(object):
             OSError - when an error is returned by the OS crypto library
         """
 
-        if self._ssl is None:
-            self._raise_closed()
-
         data_len = len(data)
         while data_len:
+            if self._ssl is None:
+                self._raise_closed()
             result = libssl.SSL_write(self._ssl, data, data_len)
             self._raw_write(self._wbio)
             if result <= 0:
@@ -885,7 +902,7 @@ class TLSSocket(object):
                     continue
 
                 elif error == LibsslConst.SSL_ERROR_ZERO_RETURN:
-                    self.shutdown()
+                    self._shutdown(False)
                     return
 
                 else:
@@ -910,9 +927,12 @@ class TLSSocket(object):
         _, write_ready, _ = select.select([], [self._socket], [], timeout)
         return len(write_ready) > 0
 
-    def shutdown(self):
+    def _shutdown(self, manual):
         """
         Shuts down the TLS session and then shuts down the underlying socket
+
+        :param manual:
+            A boolean if the connection was manually shutdown
         """
 
         if self._ssl is None:
@@ -937,7 +957,8 @@ class TLSSocket(object):
                 else:
                     handle_openssl_error(0, TLSError)
 
-        self._local_closed = True
+        if manual:
+            self._local_closed = True
 
         libssl.SSL_free(self._ssl)
         self._ssl = None
@@ -949,6 +970,13 @@ class TLSSocket(object):
             self._socket.shutdown(socket_.SHUT_RDWR)
         except (socket_.error):
             pass
+
+    def shutdown(self):
+        """
+        Shuts down the TLS session and then shuts down the underlying socket
+        """
+
+        self._shutdown(True)
 
     def close(self):
         """
@@ -1009,10 +1037,9 @@ class TLSSocket(object):
         """
 
         if self._local_closed:
-            message = 'The connection was already closed'
+            raise TLSDisconnectError('The connection was already closed')
         else:
-            message = 'The remote end closed the connection'
-        raise TLSError(message)
+            raise TLSGracefulDisconnectError('The remote end closed the connection')
 
     @property
     def certificate(self):
