@@ -181,7 +181,11 @@ def _install_requirements(_pip, tmpdir, path):
                 raise Exception('Unable to find suitable download for %s' % pkg)
 
         local_path = _download(url, tmpdir)
-        _pip(['install', '-q', '--upgrade', '--user', local_path])
+        args = ['install', '-q', '--upgrade']
+        if sys.platform == 'darwin' and sys.version_info[0:2] in [(2, 6), (2, 7)]:
+            args.append('--user')
+        args.append(local_path)
+        _pip(args)
         os.remove(local_path)
 
 
