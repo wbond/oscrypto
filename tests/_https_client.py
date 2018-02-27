@@ -3,6 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 import re
+import os
 
 if sys.version_info < (3,):
     from urlparse import urlparse
@@ -84,6 +85,16 @@ class HttpsClient():
 
                 v, code, message, resp_headers = response
 
+                if code == 301:
+                    location = resp_headers.get('location')
+                    if not isinstance(location, str_cls):
+                        raise HttpsClientError('Missing or duplicate Location HTTP header')
+                    if not re.match(r'https?://', location):
+                        if not location.startswith('/'):
+                            location = os.path.dirname(url_info.path) + locaation
+                        location = url_info.scheme + '://' + url_info.netloc + location
+                    return self.download(location, timeout)
+
                 if code != 200:
                     raise HttpsClientError('HTTP error %s downloading %s.' % (code, url))
 
@@ -112,6 +123,9 @@ class HttpsClient():
                             while self.socket.select_read(timeout=timeout):
                                 data += self.socket.read(8192)
                             self.close()
+
+                    if resp_headers.get('connection', '').lower() == 'close':
+                        self.close()
 
                     return data
 
