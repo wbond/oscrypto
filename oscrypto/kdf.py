@@ -5,7 +5,7 @@ import sys
 import hashlib
 from datetime import datetime
 
-from . import backend
+from . import backend, _backend_config
 from .util import rand_bytes
 from ._types import type_name, byte_cls, int_types
 from ._errors import pretty_message
@@ -20,6 +20,13 @@ if _backend == 'osx':
 elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.util import pbkdf2, pkcs12_kdf
     from ._win._kernel32 import kernel32, handle_error
+elif _backend == 'custom':
+    import importlib # requires Python >= 2.7 or external package
+    module = importlib.import_module(_backend_config()['custom_package'] + '.util')
+    globals().update({
+        'pbkdf2': module.pbkdf2,
+        'pkcs12_kdf': module.pkcs12_kdf,
+    })
 else:
     from ._openssl.util import pbkdf2, pkcs12_kdf
 

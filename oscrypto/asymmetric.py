@@ -7,7 +7,7 @@ import binascii
 from asn1crypto import keys, x509, algos, core, pem
 from asn1crypto.util import OrderedDict
 
-from . import backend
+from . import backend, _backend_config
 from ._errors import pretty_message
 from ._types import type_name, str_cls
 from .errors import LibraryNotFoundError
@@ -85,6 +85,33 @@ elif _backend == 'win' or _backend == 'winlegacy':
         rsa_oaep_encrypt,
         rsa_oaep_decrypt,
     )
+
+elif backend == 'custom':
+    import importlib # requires Python >= 2.7 or external package
+    module = importlib.import_module(_backend_config()['custom_package'] + '.asymmetric')
+    globals().update({
+        'Certificate': module.Certificate,
+        'dsa_sign': module.dsa_sign,
+        'dsa_verify': module.dsa_verify,
+        'ecdsa_sign': module.ecdsa_sign,
+        'ecdsa_verify': module.ecdsa_verify,
+        'generate_pair': module.generate_pair,
+        'generate_dh_parameters': module.generate_dh_parameters,
+        'load_certificate': module.load_certificate,
+        'load_pkcs12': module.load_pkcs12,
+        'load_private_key': module.load_private_key,
+        'load_public_key': module.load_public_key,
+        'PrivateKey': module.PrivateKey,
+        'PublicKey': module.PublicKey,
+        'rsa_pkcs1v15_sign': module.rsa_pkcs1v15_sign,
+        'rsa_pkcs1v15_verify': module.rsa_pkcs1v15_verify,
+        'rsa_pss_sign': module.rsa_pss_sign,
+        'rsa_pss_verify': module.rsa_pss_verify,
+        'rsa_pkcs1v15_encrypt': module.rsa_pkcs1v15_encrypt,
+        'rsa_pkcs1v15_decrypt': module.rsa_pkcs1v15_decrypt,
+        'rsa_oaep_encrypt': module.rsa_oaep_encrypt,
+        'rsa_oaep_decrypt': module.rsa_oaep_decrypt,
+    })
 
 else:
     from ._openssl.asymmetric import (

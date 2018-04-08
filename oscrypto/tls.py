@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from . import backend
+from . import backend, _backend_config
 
 
 _backend = backend()
@@ -18,6 +18,14 @@ elif _backend == 'win' or _backend == 'winlegacy':
         TLSSession,
         TLSSocket,
     )
+
+elif _backend == 'custom':
+    import importlib # requires Python >= 2.7 or external package
+    module = importlib.import_module(_backend_config()['custom_package'] + '.tls')
+    globals().update({
+        'TLSSession': module.TLSSession,
+        'TLSSocket': module.TLSSocket,
+    })
 
 else:
     from ._openssl.tls import (

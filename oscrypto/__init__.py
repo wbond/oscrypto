@@ -17,6 +17,7 @@ __all__ = [
     'backend',
     'use_openssl',
     'use_winlegacy',
+    'use_custom_backend',
 ]
 
 
@@ -31,7 +32,7 @@ def backend():
     """
     :return:
         A unicode string of the backend being used: "openssl", "osx", "win",
-        "winlegacy"
+        "winlegacy", "custom"
     """
 
     if _module_values['backend'] is not None:
@@ -59,12 +60,13 @@ def _backend_config():
     """
     :return:
         A dict of config info for the backend. Only currently used by "openssl",
-        it may contains zero or more of the following keys:
+        and "custom". It may contain zero or more of the following keys:
          - "libcrypto_path"
          - "libssl_path"
+         - "custom_package"
     """
 
-    if backend() != 'openssl':
+    if backend() not in ['openssl', 'custom']:
         return {}
 
     if _module_values['backend_config'] is not None:
@@ -165,3 +167,20 @@ def use_winlegacy():
                 'Another part of oscrypto has already been imported, unable to force use of Windows legacy CryptoAPI'
             )
         _module_values['backend'] = 'winlegacy'
+
+
+def use_custom_backend(package):
+    """
+    Forces the use of a custom backend package. Requires a minimum of
+    Python 2.7 or the addition of "importlib" package.
+    """
+
+    with _backend_lock:
+        if _module_values['backend'] is not None:
+            raise RuntimeError(
+                'Another part of oscrypto has already been imported, unable to force use of custom backend'
+            )
+        _module_values['backend'] = 'custom'
+        _module_values['backend_config'] = {
+            'custom_package': package,
+        }
