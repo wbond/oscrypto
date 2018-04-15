@@ -7,6 +7,8 @@ import os
 import re
 import threading
 import platform
+import time
+import socket
 
 if sys.version_info < (3,):
     import thread
@@ -14,12 +16,14 @@ else:
     import _thread as thread
 
 from oscrypto import tls, errors, backend
+from oscrypto._tls import parse_tls_records, parse_handshake_messages
 from asn1crypto import x509
 
 from .unittest_data import data_decorator, data
 from .exception_context import assert_exception
 from ._unittest_compat import patch
 from ._https_client import HttpsClient
+from ._socket_proxy import make_socket_proxy
 
 patch()
 
@@ -358,4 +362,127 @@ class TLSTests(unittest.TestCase):
     def test_tls_protocol_version(self):
         session = tls.TLSSession(set(['TLSv1', 'TLSv1.1']))
         with assert_exception(self, errors.TLSError, 'TLS handshake failed - protocol version error'):
-            s = tls.TLSSocket('github.com', 443, session=session)
+            tls.TLSSocket('github.com', 443, session=session)
+
+    @connection_timeout()
+    def test_tls_pause_timeout(self):
+        c = HttpsClient(False, True)
+        c.download('https://packagecontrol.io/browse/popular.json?page=1', 5)
+        time.sleep(10)
+        c.download('https://packagecontrol.io/browse/popular.json?page=2', 5)
+
+    @connection_timeout()
+    def test_tls_closed_connection_read(self):
+        ip = socket.gethostbyname('badtls.io')
+
+        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+            try:
+                sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
+                tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+                send_sock.close()
+                tsock.read(8192)
+            finally:
+                recv_sock.close()
+                server.close()
+
+    @connection_timeout()
+    def test_tls_closed_connection_write(self):
+        ip = socket.gethostbyname('badtls.io')
+
+        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+            try:
+                sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
+                tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+                send_sock.close()
+                tsock.write(b'GET / HTTP/1.1\r\n')
+                tsock.write(b'\r\n')
+                tsock.write(b'\r\n')
+            finally:
+                recv_sock.close()
+                server.close()
+
+    @connection_timeout()
+    def test_tls_closed_connection_read_handshake(self):
+        ip = socket.gethostbyname('badtls.io')
+
+        # Break the connection after the ServerHello is received
+        def recv_callback(src, dest):
+            data = src.recv(8192)
+            for record_type, tls_version, message in parse_tls_records(data):
+                if record_type == b'\x16':
+                    for message_type, payload in parse_handshake_messages(message):
+                        if message_type == b'\x02':
+                            dest.close()
+                            return
+            dest.send(data)
+
+        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+            try:
+                sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, None, recv_callback)
+                tls.TLSSocket.wrap(sock, 'badtls.io')
+            finally:
+                recv_sock.close()
+                send_sock.close()
+                server.close()
+
+    @connection_timeout()
+    def test_tls_closed_connection_write_handshake(self):
+        ip = socket.gethostbyname('badtls.io')
+
+        # Break the connection after the ClientHello is sent
+        def send_callback(src, dest):
+            data = src.recv(8192)
+            for record_type, tls_version, message in parse_tls_records(data):
+                if record_type == b'\x16':
+                    for message_type, payload in parse_handshake_messages(message):
+                        if message_type == b'\x01':
+                            src.close()
+                            return
+            dest.send(data)
+
+        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+            try:
+                sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, send_callback)
+                tls.TLSSocket.wrap(sock, 'badtls.io')
+            finally:
+                recv_sock.close()
+                send_sock.close()
+                server.close()
+
+    @connection_timeout()
+    def test_tls_closed_connection_read_shutdown(self):
+        ip = socket.gethostbyname('badtls.io')
+        try:
+            sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
+            tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+            send_sock.close()
+            try:
+                tsock.read(8192)
+                shutdown = False
+            except (errors.TLSDisconnectError):
+                tsock.shutdown()
+                shutdown = True
+            self.assertEqual(True, shutdown)
+        finally:
+            recv_sock.close()
+            server.close()
+
+    @connection_timeout()
+    def test_tls_closed_connection_write_shutdown(self):
+        ip = socket.gethostbyname('badtls.io')
+        try:
+            sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
+            tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+            send_sock.close()
+            try:
+                tsock.write(b'GET / HTTP/1.1\r\n')
+                tsock.write(b'\r\n')
+                tsock.write(b'\r\n')
+                shutdown = False
+            except (errors.TLSDisconnectError):
+                tsock.shutdown()
+                shutdown = True
+            self.assertEqual(True, shutdown)
+        finally:
+            recv_sock.close()
+            server.close()

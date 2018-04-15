@@ -5,15 +5,15 @@ import sys
 import re
 import os
 
+from oscrypto import tls, errors as oscrypto_errors, version
+from asn1crypto.util import OrderedDict
+
 if sys.version_info < (3,):
     from urlparse import urlparse
     str_cls = unicode  # noqa
 else:
     from urllib.parse import urlparse
     str_cls = str
-
-from oscrypto import tls, errors as oscrypto_errors, version
-from asn1crypto.util import OrderedDict
 
 
 class HttpsClientException(Exception):
@@ -26,10 +26,12 @@ class HttpsClientError(HttpsClientException):
 
 class HttpsClient():
 
-    def __init__(self):
+    def __init__(self, keep_alive=True, ignore_close=False):
         self.socket = None
         self.timeout = None
         self.url_info = None
+        self.keep_alive = keep_alive
+        self.ignore_close = ignore_close
 
     def close(self):
         """
@@ -67,7 +69,7 @@ class HttpsClient():
                 req_headers['Host'] = self.url_info[0]
                 if self.url_info[1] != 443:
                     req_headers['Host'] += ':%d' % self.url_info[1]
-                req_headers['Connection'] = 'Keep-Alive'
+                req_headers['Connection'] = 'Keep-Alive' if self.keep_alive else 'Close'
                 req_headers["User-Agent"] = 'oscrypto %s TLS HTTP Client' % version.__version__
 
                 request = 'GET '
@@ -84,6 +86,7 @@ class HttpsClient():
                     continue
 
                 v, code, message, resp_headers = response
+                data = self.read_body(code, resp_headers, timeout)
 
                 if code == 301:
                     location = resp_headers.get('location')
@@ -91,7 +94,7 @@ class HttpsClient():
                         raise HttpsClientError('Missing or duplicate Location HTTP header')
                     if not re.match(r'https?://', location):
                         if not location.startswith('/'):
-                            location = os.path.dirname(url_info.path) + locaation
+                            location = os.path.dirname(url_info.path) + location
                         location = url_info.scheme + '://' + url_info.netloc + location
                     return self.download(location, timeout)
 
@@ -99,34 +102,6 @@ class HttpsClient():
                     raise HttpsClientError('HTTP error %s downloading %s.' % (code, url))
 
                 else:
-                    data = b''
-                    transfer_encoding = resp_headers.get('transfer-encoding')
-                    if transfer_encoding and transfer_encoding.lower() == 'chunked':
-                        while True:
-                            line = self.socket.read_until(b'\r\n').decode('iso-8859-1').rstrip()
-                            if re.match(r'^[a-fA-F0-9]+$', line):
-                                chunk_length = int(line, 16)
-                                if chunk_length == 0:
-                                    break
-                                data += self.socket.read_exactly(chunk_length)
-                                if self.socket.read_exactly(2) != b'\r\n':
-                                    raise HttpsClientException('Unable to parse chunk newline')
-                            else:
-                                self.close()
-                                raise HttpsClientException('Unable to parse chunk length')
-                    else:
-                        content_length = self.parse_content_length(resp_headers)
-                        if content_length is not None:
-                            data = self.socket.read_exactly(content_length)
-                        else:
-                            # This should only happen if the server is going to close the connection
-                            while self.socket.select_read(timeout=timeout):
-                                data += self.socket.read(8192)
-                            self.close()
-
-                    if resp_headers.get('connection', '').lower() == 'close':
-                        self.close()
-
                     return data
 
             except (oscrypto_errors.TLSGracefulDisconnectError) as e:
@@ -173,7 +148,6 @@ class HttpsClient():
             return True
 
         host, port = self.url_info
-        #session = tls.TLSSession(set(['TLSv1.1', 'TLSv1']))
         session = tls.TLSSession()
         self.socket = tls.TLSSocket(host, port, timeout=self.timeout, session=session)
         return False
@@ -217,7 +191,7 @@ class HttpsClient():
         first = False
         for line in string.split('\r\n'):
             line = line.strip()
-            if first == False:
+            if first is False:
                 if line == '':
                     continue
                 match = re.match(r'^HTTP/(1\.[01]) +(\d+) +(.*)$', line)
@@ -256,3 +230,42 @@ class HttpsClient():
         if isinstance(content_length, str_cls) and len(content_length) > 0:
             content_length = int(content_length)
         return content_length
+
+    def read_body(self, code, resp_headers, timeout):
+        """
+
+        """
+
+        data = b''
+        transfer_encoding = resp_headers.get('transfer-encoding')
+        if transfer_encoding and transfer_encoding.lower() == 'chunked':
+            while True:
+                line = self.socket.read_until(b'\r\n').decode('iso-8859-1').rstrip()
+                if re.match(r'^[a-fA-F0-9]+$', line):
+                    chunk_length = int(line, 16)
+                    if chunk_length == 0:
+                        break
+                    data += self.socket.read_exactly(chunk_length)
+                    if self.socket.read_exactly(2) != b'\r\n':
+                        raise HttpsClientException('Unable to parse chunk newline')
+                else:
+                    self.close()
+                    raise HttpsClientException('Unable to parse chunk length')
+        else:
+            content_length = self.parse_content_length(resp_headers)
+            if content_length is not None:
+                if content_length > 0:
+                    data = self.socket.read_exactly(content_length)
+            elif code == 304 or code == 204 or (code >= 100 and code < 200):
+                # Per https://tools.ietf.org/html/rfc7230#section-3.3.3 these have no body
+                pass
+            else:
+                # This should only happen if the server is going to close the connection
+                while self.socket.select_read(timeout=timeout):
+                    data += self.socket.read(8192)
+                self.close()
+
+        if not self.ignore_close and resp_headers.get('connection', '').lower() == 'close':
+            self.close()
+
+        return data
