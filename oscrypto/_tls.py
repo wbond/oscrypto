@@ -8,7 +8,7 @@ from asn1crypto.util import int_from_bytes, timezone
 from asn1crypto.x509 import Certificate
 
 from ._cipher_suites import CIPHER_SUITE_MAP
-from .errors import TLSVerificationError, TLSError
+from .errors import TLSVerificationError, TLSDisconnectError, TLSError
 
 
 __all__ = [
@@ -494,13 +494,13 @@ def raise_expired_not_yet_valid(certificate):
 
 def raise_disconnection():
     """
-    Raises a TLSError due to a disconnection
+    Raises a TLSDisconnectError due to a disconnection
 
     :raises:
-        TLSError
+        TLSDisconnectError
     """
 
-    raise TLSError('The remote end closed the connection')
+    raise TLSDisconnectError('The remote end closed the connection')
 
 
 def raise_protocol_error(server_handshake_bytes):
