@@ -1,6 +1,8 @@
 version: 2
 jobs:
   build:
+    # Ensures ci import for displaying oscrypto backend works
+    working_directory: ~/oscrypto
     macos:
       # This is the last version using macOS 10.12, which has Python 2.6
       xcode: 9.2.0
