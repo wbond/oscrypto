@@ -12,6 +12,13 @@ import platform
 import site
 import re
 import json
+import tarfile
+import zipfile
+import platform
+import ctypes
+
+if sys.version_info >= (2, 7):
+    import sysconfig
 
 if sys.version_info < (3,):
     str_cls = unicode  # noqa
@@ -30,40 +37,38 @@ OTHER_PACKAGES = [
 
 def run():
     """
-    Ensures a recent version of pip is installed, then uses that to install
-    required development dependencies. Uses git to checkout other modularcrypto
-    repos for more accurate coverage data.
+    Installs required development dependencies. Uses git to checkout other
+    modularcrypto repos for more accurate coverage data.
     """
 
     package_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     build_root = os.path.abspath(os.path.join(package_root, '..'))
+
+    deps_dir = os.path.join(build_root, 'modularcrypto-deps')
+    if os.path.exists(deps_dir):
+        shutil.rmtree(deps_dir, ignore_errors=True)
+    os.mkdir(deps_dir)
+
     try:
-        tmpdir = None
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+        print("Staging ci dependencies")
+        _stage_requirements(deps_dir, os.path.join(package_root, 'requires', 'ci'))
 
-            major_minor = '%s.%s' % sys.version_info[0:2]
-            tmpdir = tempfile.mkdtemp()
-            _pip = _bootstrap_pip(tmpdir)
+        if OTHER_PACKAGES:
+            print("Checking out modularcrypto packages for coverage")
+            for pkg_url in OTHER_PACKAGES:
+                pkg_name = os.path.basename(pkg_url).replace('.git', '')
+                pkg_dir = os.path.join(build_root, pkg_name)
+                if os.path.exists(pkg_dir):
+                    print("%s is already present" % pkg_name)
+                    continue
+                print("Cloning %s" % pkg_url)
+                _execute(['git', 'clone', pkg_url], build_root)
+            print()
 
-            print("Using pip to install dependencies")
-            _install_requirements(_pip, tmpdir, os.path.join(package_root, 'requires', 'ci'))
-
-            if OTHER_PACKAGES:
-                print("Checking out modularcrypto packages for coverage")
-                for pkg_url in OTHER_PACKAGES:
-                    pkg_name = os.path.basename(pkg_url).replace('.git', '')
-                    pkg_dir = os.path.join(build_root, pkg_name)
-                    if os.path.exists(pkg_dir):
-                        print("%s is already present" % pkg_name)
-                        continue
-                    print("Cloning %s" % pkg_url)
-                    _execute(['git', 'clone', pkg_url], build_root)
-                print()
-
-    finally:
-        if tmpdir:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+    except (Exception):
+        if os.path.exists(deps_dir):
+            shutil.rmtree(deps_dir, ignore_errors=True)
+        raise
 
     return True
 
@@ -110,38 +115,374 @@ def _tuple_from_ver(version_string):
     return tuple(map(int, version_string.split('.')))
 
 
-def _install_requirements(_pip, tmpdir, path):
+def _pep425_implementation():
+    """
+    :return:
+        A 2 character unicode string of the implementation - 'cp' for cpython
+        or 'pp' for PyPy
+    """
+
+    return 'pp' if hasattr(sys, 'pypy_version_info') else 'cp'
+
+
+def _pep425_version():
+    """
+    :return:
+        A tuple of integers representing the Python version number
+    """
+
+    if hasattr(sys, 'pypy_version_info'):
+        return (sys.version_info[0], sys.pypy_version_info.major,
+                sys.pypy_version_info.minor)
+    else:
+        return (sys.version_info[0], sys.version_info[1])
+
+
+def _pep425_supports_manylinux():
+    """
+    :return:
+        A boolean indicating if the machine can use manylinux1 packages
+    """
+
+    try:
+        import _manylinux
+        return bool(_manylinux.manylinux1_compatible)
+    except (ImportError, AttributeError):
+        pass
+
+    # Check for glibc 2.5
+    try:
+        proc = ctypes.CDLL(None)
+        gnu_get_libc_version = proc.gnu_get_libc_version
+        gnu_get_libc_version.restype = ctypes.c_char_p
+
+        ver = gnu_get_libc_version()
+        if not isinstance(ver, str_cls):
+            ver = ver.decode('ascii')
+        match = re.match(r'(\d+)\.(\d+)', ver)
+        return match and match.group(1) == '2' and int(match.group(2)) >= 5
+
+    except (AttributeError):
+        return False
+
+
+def _pep425_get_abi():
+    """
+    :return:
+        A unicode string of the system abi. Will be something like: "cp27m",
+        "cp33m", etc.
+    """
+
+    try:
+        soabi = sysconfig.get_config_var('SOABI')
+        if soabi:
+            if soabi.startswith('cpython-'):
+                return 'cp%s' % soabi.split('-')[1]
+            return soabi.replace('.', '_').replace('-', '_')
+    except (IOError, NameError):
+        pass
+
+    impl = _pep425_implementation()
+    suffix = ''
+    if impl == 'cp':
+        suffix += 'm'
+    if sys.maxunicode == 0x10ffff and sys.version_info < (3, 3):
+        suffix += 'u'
+    return '%s%s%s' % (impl, ''.join(map(str_cls, _pep425_version())), suffix)
+
+
+def _pep425tags():
+    """
+    :return:
+        A list of 3-element tuples with unicode strings or None:
+         [0] implementation tag - cp33, pp27, cp26, py2, py2.py3
+         [1] abi tag - cp26m, None
+         [2] arch tag - linux_x86_64, macosx_10_10_x85_64, etc
+    """
+
+    tags = []
+
+    versions = []
+    version_info = _pep425_version()
+    major = version_info[:-1]
+    for minor in range(version_info[-1], -1, -1):
+        versions.append(''.join(map(str, major + (minor,))))
+
+    impl = _pep425_implementation()
+
+    abis = []
+    abi = _pep425_get_abi()
+    if abi:
+        abis.append(abi)
+    abi3s = set()
+    for suffix in imp.get_suffixes():
+        if suffix[0].startswith('.abi'):
+            abi3s.add(suffix[0].split('.', 2)[1])
+    abis.extend(sorted(list(abi3s)))
+    abis.append('none')
+
+    if sys.platform == 'darwin':
+        plat_ver = platform.mac_ver()
+        ver_parts = plat_ver[0].split('.')
+        minor = int(ver_parts[1])
+        arch = plat_ver[2]
+        if sys.maxsize == 2147483647:
+            arch = 'i386'
+        arches = []
+        while minor > 5:
+            arches.append('macosx_10_%s_%s' % (minor, arch))
+            arches.append('macosx_10_%s_intel' % (minor,))
+            arches.append('macosx_10_%s_universal' % (minor,))
+            minor -= 1
+    else:
+        if sys.platform == 'win32':
+            if 'amd64' in sys.version.lower():
+                arches = ['win_amd64']
+            arches = [sys.platform]
+        elif hasattr(os, 'uname'):
+            (plat, _, _, _, machine) = os.uname()
+            plat = plat.lower().replace('/', '')
+            machine.replace(' ', '_').replace('/', '_')
+            if plat == 'linux' and sys.maxsize == 2147483647:
+                machine = 'i686'
+            arch = '%s_%s' % (plat, machine)
+            if _pep425_supports_manylinux():
+                arches = [arch.replace('linux', 'manylinux1'), arch]
+            else:
+                arches = [arch]
+
+    for abi in abis:
+        for arch in arches:
+            tags.append(('%s%s' % (impl, versions[0]), abi, arch))
+
+    for version in versions[1:]:
+        for abi in abi3s:
+            for arch in arches:
+                tags.append(('%s%s' % (impl, version), abi, arch))
+
+    for arch in arches:
+        tags.append(('py%s' % (versions[0][0]), 'none', arch))
+
+    tags.append(('%s%s' % (impl, versions[0]), 'none', 'any'))
+    tags.append(('%s%s' % (impl, versions[0][0]), 'none', 'any'))
+
+    for i, version in enumerate(versions):
+        tags.append(('py%s' % (version,), 'none', 'any'))
+        if i == 0:
+            tags.append(('py%s' % (version[0]), 'none', 'any'))
+
+    tags.append(('py2.py3', 'none', 'any'))
+
+    return tags
+
+
+def _open_archive(path):
+    """
+    :param path:
+        A unicode string of the filesystem path to the archive
+
+    :return:
+        An archive object
+    """
+
+    if path.endswith('.zip'):
+        return zipfile.ZipFile(path, 'r')
+    return tarfile.open(path, 'r')
+
+
+def _list_archive_members(archive):
+    """
+    :param archive:
+        An archive from _open_archive()
+
+    :return:
+        A list of info objects to be used with _info_name() and _extract_info()
+    """
+
+    if isinstance(archive, zipfile.ZipFile):
+        return archive.infolist()
+    return archive.getmembers()
+
+
+def _archive_single_dir(archive):
+    """
+    Check if all members of the archive are in a single top-level directory
+
+    :param archive:
+        An archive from _open_archive()
+
+    :return:
+        None if not a single top level directory in archive, otherwise a
+        unicode string of the top level directory name
+    """
+
+    common_root = None
+    for info in _list_archive_members(archive):
+        fn = _info_name(info)
+        if fn in set(['.', '/']):
+            continue
+        sep = None
+        if '/' in fn:
+            sep = '/'
+        elif '\\' in fn:
+            sep = '\\'
+        if sep is None:
+            root_dir = fn
+        else:
+            root_dir, _ = fn.split(sep, 1)
+        if common_root is None:
+            common_root = root_dir
+        else:
+            if common_root != root_dir:
+                return None
+    return common_root
+
+
+def _info_name(info):
+    """
+    Returns a normalized file path for an archive info object
+
+    :param info:
+        An info object from _list_archive_members()
+
+    :return:
+        A unicode string with all directory separators normalized to "/"
+    """
+
+    if isinstance(info, zipfile.ZipInfo):
+        return info.filename.replace('\\', '/')
+    return info.name.replace('\\', '/')
+
+
+def _extract_info(archive, info):
+    """
+    Extracts the contents of an archive info object
+
+    ;param archive:
+        An archive from _open_archive()
+
+    :param info:
+        An info object from _list_archive_members()
+
+    :return:
+        None, or a byte string of the file contents
+    """
+
+    if isinstance(archive, zipfile.ZipFile):
+        fn = info.filename
+        is_dir = fn.endswith('/') or fn.endswith('\\')
+        out = archive.read(info)
+        if is_dir and out == b'':
+            return None
+        return out
+
+    info_file = archive.extractfile(info)
+    if info_file:
+        return info_file.read()
+    return None
+
+
+def _extract_package(deps_dir, pkg_path):
+    """
+    Extract a .whl, .zip, .tar.gz or .tar.bz2 into a package path to
+    use when running CI tasks
+
+    :param deps_dir:
+        A unicode string of the directory the package should be extracted to
+
+    :param pkg_path:
+        A unicode string of the path to the archive
+    """
+
+    if pkg_path.endswith('.whl'):
+        try:
+            zf = None
+            zf = zipfile.ZipFile(pkg_path, 'r')
+            # Wheels contain exactly what we need and nothing else
+            zf.extractall(deps_dir)
+        finally:
+            if zf:
+                zf.close()
+        return
+
+    # Source archives may contain a bunch of other things.
+    # The following code works for the packages coverage and
+    # configparser, which are the two we currently require that
+    # do not provide wheels
+
+    try:
+        ar = None
+        ar = _open_archive(pkg_path)
+
+        pkg_name = None
+        base_path = _archive_single_dir(ar) or ''
+        if len(base_path):
+            if '-' in base_path:
+                pkg_name, _ = base_path.split('-', 1)
+            base_path += '/'
+
+        base_pkg_path = None
+        if pkg_name is not None:
+            base_pkg_path = base_path + pkg_name + '/'
+        src_path = base_path + 'src/'
+
+        members = []
+        for info in _list_archive_members(ar):
+            fn = _info_name(info)
+            if base_pkg_path is not None and fn.startswith(base_pkg_path):
+                dst_path = fn[len(base_pkg_path) - len(pkg_name) - 1:]
+                members.append((info, dst_path))
+                continue
+            if fn.startswith(src_path):
+                members.append((info, fn[len(src_path):]))
+                continue
+
+        for info, path in members:
+            info_data = _extract_info(ar, info)
+            # Dirs won't return a file
+            if info_data is not None:
+                dst_path = os.path.join(deps_dir, path)
+                dst_dir = os.path.dirname(dst_path)
+                if not os.path.exists(dst_dir):
+                    os.makedirs(dst_dir)
+                with open(dst_path, 'wb') as f:
+                    f.write(info_data)
+    finally:
+        if ar:
+            ar.close()
+
+
+def _stage_requirements(deps_dir, path):
     """
     Installs requirements without using Python to download, since
     different services are limiting to TLS 1.2, and older version of
     Python do not support that
 
-    :param _pip:
-        A function that will execute pip
-
-    :param tmpdir:
+    :param deps_dir:
         A unicode path to a temporary diretory to use for downloads
 
     :param path:
         A unicoe filesystem path to a requirements file
     """
 
-    from pip.pep425tags import get_supported
-    valid_tags = tuple(get_supported()) + (('py2.py3', 'none', 'any'),)
+    valid_tags = _pep425tags()
 
     packages = _parse_requires(path)
     for p in packages:
         pkg = p['pkg']
         if p['type'] == 'url':
-            if pkg.endswith('.zip') or pkg.endswith('.tar.gz') or pkg.endswith('.whl'):
+            if pkg.endswith('.zip') or pkg.endswith('.tar.gz') or pkg.endswith('.tar.bz2') or pkg.endswith('.whl'):
                 url = pkg
             else:
                 raise Exception('Unable to install package from URL that is not an archive')
         else:
-            pypi_json_url = 'https://pypi.python.org/pypi/%s/json' % pkg
-            json_dest = _download(pypi_json_url, tmpdir)
+            pypi_json_url = 'https://pypi.org/pypi/%s/json' % pkg
+            json_dest = _download(pypi_json_url, deps_dir)
             with open(json_dest, 'rb') as f:
                 pkg_info = json.loads(f.read().decode('utf-8'))
+            if os.path.exists(json_dest):
+                os.remove(json_dest)
+
             latest = pkg_info['info']['version']
             if p['type'] == '>=':
                 if _tuple_from_ver(p['ver']) > _tuple_from_ver(latest):
@@ -154,23 +495,28 @@ def _install_requirements(_pip, tmpdir, path):
             else:
                 version = latest
 
+            wheels = {}
             whl = None
             tar_bz2 = None
             tar_gz = None
             for download in pkg_info['releases'][version]:
                 if download['url'].endswith('.whl'):
                     parts = os.path.basename(download['url']).split('-')
-                    tag_python = parts[-3]
+                    tag_impl = parts[-3]
                     tag_abi = parts[-2]
-                    tag_platform = parts[-1].split('.')[0]
-                    if (tag_python, tag_abi, tag_platform) not in valid_tags:
-                        continue
-                    whl = download['url']
-                    break
+                    tag_arch = parts[-1].split('.')[0]
+                    wheels[(tag_impl, tag_abi, tag_arch)] = download['url']
                 if download['url'].endswith('.tar.bz2'):
                     tar_bz2 = download['url']
                 if download['url'].endswith('.tar.gz'):
                     tar_gz = download['url']
+
+            # Find the most-specific wheel possible
+            for tag in valid_tags:
+                if tag in wheels:
+                    whl = wheels[tag]
+                    break
+
             if whl:
                 url = whl
             elif tar_bz2:
@@ -180,12 +526,10 @@ def _install_requirements(_pip, tmpdir, path):
             else:
                 raise Exception('Unable to find suitable download for %s' % pkg)
 
-        local_path = _download(url, tmpdir)
-        args = ['install', '-q', '--upgrade']
-        if sys.platform == 'darwin' and sys.version_info[0:2] in [(2, 6), (2, 7)]:
-            args.append('--user')
-        args.append(local_path)
-        _pip(args)
+        local_path = _download(url, deps_dir)
+
+        _extract_package(deps_dir, local_path)
+
         os.remove(local_path)
 
 
@@ -288,94 +632,3 @@ def _execute(params, cwd):
         e.stderr = stderr
         raise e
     return (stdout, stderr)
-
-
-def _get_pip_main(download_dir):
-    """
-    Executes get-pip.py in the current Python interpreter
-
-    :param download_dir:
-        The directory that contains get-pip.py
-    """
-
-    module_info = imp.find_module('get-pip', [download_dir])
-    get_pip_module = imp.load_module('_cideps.get-pip', *module_info)
-
-    orig_sys_exit = sys.exit
-    orig_sys_argv = sys.argv
-    sys.exit = lambda c: None
-    sys.argv = ['get-pip.py', '--user', '-q']
-
-    get_pip_module.main()
-
-    sys.exit = orig_sys_exit
-    sys.argv = orig_sys_argv
-
-    # Unload pip modules that came from the zip file
-    module_names = sorted(sys.modules.keys())
-    end_token = os.sep + 'pip.zip'
-    mid_token = end_token + os.sep + 'pip'
-    for module_name in module_names:
-        try:
-            module_path = sys.modules[module_name].__file__
-            if mid_token in module_path or module_path.endswith(end_token):
-                del sys.modules[module_name]
-        except AttributeError:
-            pass
-
-    if sys.path[0].endswith('pip.zip'):
-        sys.path = sys.path[1:]
-
-    if site.USER_SITE not in sys.path:
-        sys.path.append(site.USER_SITE)
-
-
-def _bootstrap_pip(tmpdir):
-    """
-    Bootstraps the current version of pip for use in the current Python
-    interpreter
-
-    :param tmpdir:
-        A temporary directory to download get-pip.py and cacert.pem
-
-    :return:
-        A function that invokes pip. Accepts one arguments, a list of parameters
-        to pass to pip.
-    """
-
-    try:
-        import pip
-
-        print('Upgrading pip')
-        pip.main(['install', '-q', '--upgrade', 'pip'])
-        certs_path = None
-
-    except ImportError:
-        print("Downloading cacert.pem from curl")
-        certs_path = _download('https://curl.haxx.se/ca/cacert.pem', tmpdir)
-
-        print("Downloading get-pip.py")
-        if sys.version_info[0:2] == (3, 2):
-            path = _download('https://bootstrap.pypa.io/3.2/get-pip.py', tmpdir)
-        else:
-            path = _download('https://bootstrap.pypa.io/get-pip.py', tmpdir)
-
-        print("Running get-pip.py")
-        _get_pip_main(tmpdir)
-
-        import pip
-
-    def _pip(args):
-        base_args = ['--disable-pip-version-check']
-        if certs_path:
-            base_args += ['--cert', certs_path]
-        if sys.platform == 'darwin' and sys.version_info[0:2] in [(2, 6), (2, 7)]:
-            new_args = []
-            for arg in args:
-                new_args.append(arg)
-                if arg == 'install':
-                    new_args.append('--user')
-            args = new_args
-        pip.main(base_args + args)
-
-    return _pip
