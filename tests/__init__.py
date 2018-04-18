@@ -6,6 +6,41 @@ import os
 import unittest
 
 
+_local_module = None
+
+
+def local_oscrypto():
+    """
+    Make sure oscrypto is initialized and the backend is selected via env vars
+
+    :return:
+        The oscrypto module
+    """
+
+    global _local_module
+
+    if _local_module:
+        return _local_module
+
+    # Make sure the module is loaded from this source folder
+    module_name = 'oscrypto'
+    src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+    module_info = imp.find_module(module_name, [src_dir])
+    _local_module = imp.load_module(module_name, *module_info)
+
+    # Configuring via env vars so CI for other packages doesn't need to do
+    # anything complicated to get the alternate backends
+    if os.environ.get('OSCRYPTO_USE_OPENSSL'):
+        paths = os.environ.get('OSCRYPTO_USE_OPENSSL').split(',')
+        if len(paths) != 2:
+            raise ValueError('Value for OSCRYPTO_USE_OPENSSL env var must be two path separated by a comma')
+        _local_module.use_openssl(*paths)
+    elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
+        _local_module.use_winlegacy()
+
+    return _local_module
+
+
 def make_suite():
     """
     Constructs a unittest.TestSuite() of all tests for the package. For use
@@ -31,21 +66,7 @@ def test_classes():
         A list of unittest.TestCase classes
     """
 
-    # Make sure the module is loaded from this source folder
-    module_name = 'oscrypto'
-    src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-    module_info = imp.find_module(module_name, [src_dir])
-    oscrypto_module = imp.load_module(module_name, *module_info)
-
-    # Configuring via env vars so CI for other packages doesn't need to do
-    # anything complicated to get the alternate backends
-    if os.environ.get('OSCRYPTO_USE_OPENSSL'):
-        paths = os.environ.get('OSCRYPTO_USE_OPENSSL').split(',')
-        if len(paths) != 2:
-            raise ValueError('Value for OSCRYPTO_USE_OPENSSL env var must be two path separated by a comma')
-        oscrypto_module.use_openssl(*paths)
-    elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
-        oscrypto_module.use_winlegacy()
+    local_oscrypto()
 
     from .test_kdf import KDFTests
     from .test_keys import KeyTests
