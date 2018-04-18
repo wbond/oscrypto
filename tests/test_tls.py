@@ -375,7 +375,8 @@ class TLSTests(unittest.TestCase):
     def test_tls_closed_connection_read(self):
         ip = socket.gethostbyname('badtls.io')
 
-        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+        with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
+                              'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
                 tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
@@ -389,7 +390,8 @@ class TLSTests(unittest.TestCase):
     def test_tls_closed_connection_write(self):
         ip = socket.gethostbyname('badtls.io')
 
-        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+        with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
+                              'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
                 tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
@@ -416,7 +418,8 @@ class TLSTests(unittest.TestCase):
                             return
             dest.send(data)
 
-        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+        with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
+                              'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, None, recv_callback)
                 tls.TLSSocket.wrap(sock, 'badtls.io')
@@ -440,7 +443,8 @@ class TLSTests(unittest.TestCase):
                             return
             dest.send(data)
 
-        with assert_exception(self, errors.TLSDisconnectError, 'The remote end closed the connection'):
+        with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
+                              'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, send_callback)
                 tls.TLSSocket.wrap(sock, 'badtls.io')
