@@ -478,6 +478,7 @@ class TLSTests(unittest.TestCase):
                 tsock.write(b'GET / HTTP/1.1\r\n')
                 tsock.write(b'\r\n')
                 tsock.write(b'\r\n')
+                tsock.read(8192)
                 shutdown = False
             except (errors.TLSDisconnectError):
                 tsock.shutdown()

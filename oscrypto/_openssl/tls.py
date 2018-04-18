@@ -713,6 +713,8 @@ class TLSSocket(object):
                 # Handle ECONNRESET and EPIPE
                 if e.errno == 104 or e.errno == 32:
                     raise_disconnect = True
+                else:
+                    raise
 
             if raise_disconnect:
                 raise_disconnection()

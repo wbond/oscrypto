@@ -61,6 +61,7 @@ def make_socket_proxy(ip, port, send_callback=None, recv_callback=None):
     )
     t.start()
     sock = socket.create_connection(('localhost', 8080))
+    sock.settimeout(1)
     t.join()
     with _socket_lock:
         data = _sockets[t.ident]
