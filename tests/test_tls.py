@@ -459,7 +459,7 @@ class TLSTests(unittest.TestCase):
             try:
                 tsock.read(8192)
                 shutdown = False
-            except (errors.TLSDisconnectError):
+            except (errors.TLSError):
                 tsock.shutdown()
                 shutdown = True
             self.assertEqual(True, shutdown)
@@ -480,7 +480,7 @@ class TLSTests(unittest.TestCase):
                 tsock.write(b'\r\n')
                 tsock.read(8192)
                 shutdown = False
-            except (errors.TLSDisconnectError):
+            except (errors.TLSError):
                 tsock.shutdown()
                 shutdown = True
             self.assertEqual(True, shutdown)
