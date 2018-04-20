@@ -230,9 +230,9 @@ class AsymmetricTests(unittest.TestCase):
             elif i == len(original_signature) - 1:
                 signature = original_signature[0:-1] + b'\xab'
             else:
-                signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
+                signature = original_signature[0:i] + b'\xab' + original_signature[i + 1:]
             with self.assertRaises(errors.SignatureError):
-                asymmetric.rsa_pkcs1v15_verify(public, signature, original_data+ b'1', 'sha1')
+                asymmetric.rsa_pkcs1v15_verify(public, signature, original_data + b'1', 'sha1')
 
     def test_rsa_pss_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
@@ -308,7 +308,7 @@ class AsymmetricTests(unittest.TestCase):
             else:
                 signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
             with self.assertRaises(errors.SignatureError):
-                asymmetric.dsa_verify(public, signature, original_data+ b'1', 'sha1')
+                asymmetric.dsa_verify(public, signature, original_data + b'1', 'sha1')
 
     def test_ecdsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
@@ -332,7 +332,7 @@ class AsymmetricTests(unittest.TestCase):
             else:
                 signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
             with self.assertRaises(errors.SignatureError):
-                asymmetric.ecdsa_verify(public, signature, original_data+ b'1', 'sha1')
+                asymmetric.ecdsa_verify(public, signature, original_data + b'1', 'sha1')
 
     def test_rsa_pkcs1v15_encrypt(self):
         original_data = b'This is data to encrypt'

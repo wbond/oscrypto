@@ -10,11 +10,6 @@ import platform
 import time
 import socket
 
-if sys.version_info < (3,):
-    import thread
-else:
-    import _thread as thread
-
 from oscrypto import tls, errors, backend
 from oscrypto._tls import parse_tls_records, parse_handshake_messages
 from asn1crypto import x509
@@ -24,6 +19,11 @@ from .exception_context import assert_exception
 from ._unittest_compat import patch
 from ._https_client import HttpsClient
 from ._socket_proxy import make_socket_proxy
+
+if sys.version_info < (3,):
+    import thread
+else:
+    import _thread as thread
 
 patch()
 
@@ -50,6 +50,7 @@ osx_pypy_bug = platform.python_implementation() == 'PyPy' \
     and sys.platform == 'darwin' \
     and tuple(map(int, platform.mac_ver()[0].split('.'))) < (10, 12)
 
+raise_with = None
 if sys.version_info < (3,):
     exec('''
 def raise_with(e, tb):

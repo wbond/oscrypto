@@ -5,13 +5,13 @@ import unittest
 import re
 import sys
 
+from tests import test_classes
+
 if sys.version_info < (3,):
     range = xrange  # noqa
     from cStringIO import StringIO
 else:
     from io import StringIO
-
-from tests import test_classes
 
 
 def run(matcher=None, repeat=1):
