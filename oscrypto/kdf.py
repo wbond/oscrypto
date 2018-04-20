@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import imp
 import sys
 import hashlib
 from datetime import datetime
@@ -17,16 +18,21 @@ _backend = backend()
 
 if _backend == 'osx':
     from ._osx.util import pbkdf2, pkcs12_kdf
+
 elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.util import pbkdf2, pkcs12_kdf
     from ._win._kernel32 import kernel32, handle_error
+
 elif _backend == 'custom':
-    import importlib # requires Python >= 2.7 or external package
-    module = importlib.import_module(_backend_config()['custom_package'] + '.util')
+    _custom_module_name = _backend_config()['custom_package'] + '.kdf'
+    _custom_module_info = imp.find_module(_custom_module_name)
+    _custom_module = imp.load_module(_custom_module_name, *_custom_module_info)
+
     globals().update({
-        'pbkdf2': module.pbkdf2,
-        'pkcs12_kdf': module.pkcs12_kdf,
+        'pbkdf2': _custom_module.pbkdf2,
+        'pkcs12_kdf': _custom_module.pkcs12_kdf,
     })
+
 else:
     from ._openssl.util import pbkdf2, pkcs12_kdf
 

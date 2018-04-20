@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import imp
 import hashlib
 import binascii
 
@@ -87,30 +88,32 @@ elif _backend == 'win' or _backend == 'winlegacy':
     )
 
 elif backend == 'custom':
-    import importlib # requires Python >= 2.7 or external package
-    module = importlib.import_module(_backend_config()['custom_package'] + '.asymmetric')
+    _custom_module_name = _backend_config()['custom_package'] + '.asymmetric'
+    _custom_module_info = imp.find_module(_custom_module_name)
+    _custom_module = imp.load_module(_custom_module_name, *_custom_module_info)
+
     globals().update({
-        'Certificate': module.Certificate,
-        'dsa_sign': module.dsa_sign,
-        'dsa_verify': module.dsa_verify,
-        'ecdsa_sign': module.ecdsa_sign,
-        'ecdsa_verify': module.ecdsa_verify,
-        'generate_pair': module.generate_pair,
-        'generate_dh_parameters': module.generate_dh_parameters,
-        'load_certificate': module.load_certificate,
-        'load_pkcs12': module.load_pkcs12,
-        'load_private_key': module.load_private_key,
-        'load_public_key': module.load_public_key,
-        'PrivateKey': module.PrivateKey,
-        'PublicKey': module.PublicKey,
-        'rsa_pkcs1v15_sign': module.rsa_pkcs1v15_sign,
-        'rsa_pkcs1v15_verify': module.rsa_pkcs1v15_verify,
-        'rsa_pss_sign': module.rsa_pss_sign,
-        'rsa_pss_verify': module.rsa_pss_verify,
-        'rsa_pkcs1v15_encrypt': module.rsa_pkcs1v15_encrypt,
-        'rsa_pkcs1v15_decrypt': module.rsa_pkcs1v15_decrypt,
-        'rsa_oaep_encrypt': module.rsa_oaep_encrypt,
-        'rsa_oaep_decrypt': module.rsa_oaep_decrypt,
+        'Certificate': _custom_module.Certificate,
+        'dsa_sign': _custom_module.dsa_sign,
+        'dsa_verify': _custom_module.dsa_verify,
+        'ecdsa_sign': _custom_module.ecdsa_sign,
+        'ecdsa_verify': _custom_module.ecdsa_verify,
+        'generate_pair': _custom_module.generate_pair,
+        'generate_dh_parameters': _custom_module.generate_dh_parameters,
+        'load_certificate': _custom_module.load_certificate,
+        'load_pkcs12': _custom_module.load_pkcs12,
+        'load_private_key': _custom_module.load_private_key,
+        'load_public_key': _custom_module.load_public_key,
+        'PrivateKey': _custom_module.PrivateKey,
+        'PublicKey': _custom_module.PublicKey,
+        'rsa_pkcs1v15_sign': _custom_module.rsa_pkcs1v15_sign,
+        'rsa_pkcs1v15_verify': _custom_module.rsa_pkcs1v15_verify,
+        'rsa_pss_sign': _custom_module.rsa_pss_sign,
+        'rsa_pss_verify': _custom_module.rsa_pss_verify,
+        'rsa_pkcs1v15_encrypt': _custom_module.rsa_pkcs1v15_encrypt,
+        'rsa_pkcs1v15_decrypt': _custom_module.rsa_pkcs1v15_decrypt,
+        'rsa_oaep_encrypt': _custom_module.rsa_oaep_encrypt,
+        'rsa_oaep_decrypt': _custom_module.rsa_oaep_decrypt,
     })
 
 else:

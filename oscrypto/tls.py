@@ -1,6 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import imp
+
 from . import backend, _backend_config
 
 
@@ -20,11 +22,13 @@ elif _backend == 'win' or _backend == 'winlegacy':
     )
 
 elif _backend == 'custom':
-    import importlib # requires Python >= 2.7 or external package
-    module = importlib.import_module(_backend_config()['custom_package'] + '.tls')
+    _custom_module_name = _backend_config()['custom_package'] + '.tls'
+    _custom_module_info = imp.find_module(_custom_module_name)
+    _custom_module = imp.load_module(_custom_module_name, *_custom_module_info)
+
     globals().update({
-        'TLSSession': module.TLSSession,
-        'TLSSocket': module.TLSSocket,
+        'TLSSession': _custom_module.TLSSession,
+        'TLSSocket': _custom_module.TLSSocket,
     })
 
 else:
