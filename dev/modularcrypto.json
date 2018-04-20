@@ -1,7 +1,0 @@
-[
-    "certbuilder",
-    "certvalidator",
-    "crlbuilder",
-    "csrbuilder",
-    "ocspbuilder"
-]
