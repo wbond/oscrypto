@@ -21,7 +21,7 @@ def proxy(src, dst, callback=None):
             else:
                 dst.send(src.recv(8192))
             read_ready, _, _ = select.select([src], [], [], timeout)
-    except (socket.error, select.error, OSError, ValueError) as e:
+    except (socket.error, select.error, OSError, ValueError):
         pass
     try:
         src.shutdown(socket.SHUT_RDWR)

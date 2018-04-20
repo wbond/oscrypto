@@ -104,7 +104,7 @@ class HttpsClient():
                 else:
                     return data
 
-            except (oscrypto_errors.TLSGracefulDisconnectError) as e:
+            except (oscrypto_errors.TLSGracefulDisconnectError):
                 self.close()
                 continue
 
