@@ -131,7 +131,7 @@ class TLSTests(unittest.TestCase):
     @connection_timeout()
     def test_tls_error_ftp(self):
         with assert_exception(self, errors.TLSError, 'remote end closed the connection|server responded using FTP'):
-            tls.TLSSocket('test.talia.net', 21)
+            tls.TLSSocket('speedtest.tele2.net', 21)
 
     @connection_timeout()
     def test_tls_error_missing_issuer(self):
