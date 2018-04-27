@@ -459,13 +459,15 @@ class TLSTests(unittest.TestCase):
         ip = socket.gethostbyname('badtls.io')
         try:
             sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
+            tsock = None
             try:
                 tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
                 send_sock.close()
                 tsock.read(8192)
                 shutdown = False
             except (errors.TLSError):
-                tsock.shutdown()
+                if tsock:
+                    tsock.shutdown()
                 shutdown = True
             self.assertEqual(True, shutdown)
         finally:
@@ -477,6 +479,7 @@ class TLSTests(unittest.TestCase):
         ip = socket.gethostbyname('badtls.io')
         try:
             sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
+            tsock = None
             try:
                 tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
                 send_sock.close()
@@ -486,7 +489,8 @@ class TLSTests(unittest.TestCase):
                 tsock.read(8192)
                 shutdown = False
             except (errors.TLSError):
-                tsock.shutdown()
+                if tsock:
+                    tsock.shutdown()
                 shutdown = True
             self.assertEqual(True, shutdown)
         finally:
