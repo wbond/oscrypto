@@ -87,7 +87,7 @@ elif _backend == 'win' or _backend == 'winlegacy':
         rsa_oaep_decrypt,
     )
 
-elif backend == 'custom':
+elif _backend == 'custom':
     _custom_module_name = _backend_config()['custom_package'] + '.asymmetric'
     _custom_module_info = imp.find_module(_custom_module_name)
     _custom_module = imp.load_module(_custom_module_name, *_custom_module_info)
