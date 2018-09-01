@@ -41,6 +41,11 @@ from ..trust_list import get_path
 if sys.version_info < (3,):
     range = xrange  # noqa
 
+if sys.version_info < (3, 7):
+    Pattern = re._pattern_type
+else:
+    Pattern = re.Pattern
+
 
 __all__ = [
     'TLSSession',
@@ -845,7 +850,7 @@ class TLSSocket(object):
             A byte string of the data read, including the marker
         """
 
-        if not isinstance(marker, byte_cls) and not isinstance(marker, re._pattern_type):
+        if not isinstance(marker, byte_cls) and not isinstance(marker, Pattern):
             raise TypeError(pretty_message(
                 '''
                 marker must be a byte string or compiled regex object, not %s
@@ -855,7 +860,7 @@ class TLSSocket(object):
 
         output = b''
 
-        is_regex = isinstance(marker, re._pattern_type)
+        is_regex = isinstance(marker, Pattern)
 
         while True:
             if len(self._decrypted_bytes) > 0:
