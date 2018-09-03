@@ -19,6 +19,7 @@ from .exception_context import assert_exception
 from ._unittest_compat import patch
 from ._https_client import HttpsClient
 from ._socket_proxy import make_socket_proxy
+from ._socket_server import make_socket_server
 
 if sys.version_info < (3,):
     import thread
@@ -130,8 +131,14 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_error_ftp(self):
-        with assert_exception(self, errors.TLSError, 'remote end closed the connection|server responded using FTP'):
-            tls.TLSSocket('speedtest.tele2.net', 21)
+        try:
+            def_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(5)
+            make_socket_server(8021, lambda s, d: s.send(b'220 Welcome to FooFTP\n'))
+            with assert_exception(self, errors.TLSError, 'remote end closed the connection|server responded using FTP'):
+                tls.TLSSocket('localhost', 8021)
+        finally:
+            socket.setdefaulttimeout(def_timeout)
 
     @connection_timeout()
     def test_tls_error_missing_issuer(self):
