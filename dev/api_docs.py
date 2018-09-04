@@ -10,27 +10,7 @@ import textwrap
 import CommonMark
 from collections import OrderedDict
 
-from . import package_name, package_root
-
-
-# Maps a markdown document to a Python source file to look in for
-# class/method/function docstrings
-MD_SOURCE_MAP = {
-    'docs/oscrypto.md': ['oscrypto/__init__.py'],
-    'docs/asymmetric.md': ['oscrypto/asymmetric.py', 'oscrypto/_openssl/asymmetric.py'],
-    'docs/kdf.md': ['oscrypto/kdf.py', 'oscrypto/_openssl/util.py'],
-    'docs/keys.md': ['oscrypto/keys.py'],
-    'docs/symmetric.md': ['oscrypto/_openssl/symmetric.py'],
-    'docs/tls.md': ['oscrypto/tls.py', 'oscrypto/_openssl/tls.py'],
-    'docs/trust_list.md': ['oscrypto/trust_list.py'],
-    'docs/util.md': ['oscrypto/util.py', 'oscrypto/_rand.py'],
-}
-
-# A search/replace dictionary to modify docstring contents before generating
-# markdown from them
-definition_replacements = {
-    ' is returned by OpenSSL': ' is returned by the OS crypto library'
-}
+from . import package_name, package_root, md_source_map, definition_replacements
 
 
 if hasattr(CommonMark, 'DocParser'):
@@ -371,7 +351,7 @@ def run():
     docstrings of the associated source files.
 
     By default maps docs/{name}.md to {modulename}/{name}.py. Allows for
-    custom mapping via the MD_SOURCE_MAP variable.
+    custom mapping via the md_source_map variable.
     """
 
     print('Updating API docs...')
@@ -387,8 +367,8 @@ def run():
 
     for md_file in md_files:
         md_file_relative = md_file[len(package_root) + 1:]
-        if md_file_relative in MD_SOURCE_MAP:
-            py_files = MD_SOURCE_MAP[md_file_relative]
+        if md_file_relative in md_source_map:
+            py_files = md_source_map[md_file_relative]
             py_paths = [os.path.join(package_root, py_file) for py_file in py_files]
         else:
             py_files = [os.path.basename(md_file).replace('.md', '.py')]
