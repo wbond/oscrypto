@@ -540,6 +540,7 @@ class TLSSocket(object):
         ocsp_search_ref = None
         ocsp_policy_ref = None
         policy_array_ref = None
+        trust_ref = None
 
         try:
             if osx_version_info < (10, 8):
@@ -837,6 +838,10 @@ class TLSSocket(object):
             # certificate from the handshake and use the deprecated function
             # SecTrustGetCssmResultCode().
             if handshake_result in handshake_error_codes:
+                if trust_ref:
+                    CoreFoundation.CFRelease(trust_ref)
+                    trust_ref = None
+
                 trust_ref_pointer = new(Security, 'SecTrustRef *')
                 result = Security.SSLCopyPeerTrust(
                     session_context,
@@ -1002,6 +1007,10 @@ class TLSSocket(object):
                 result = CoreFoundation.CFRelease(policy_array_ref)
                 handle_cf_error(result)
                 policy_array_ref = None
+
+            if trust_ref:
+                CoreFoundation.CFRelease(trust_ref)
+                trust_ref = None
 
     def read(self, max_length):
         """
