@@ -26,6 +26,9 @@ if libcrypto_version_info < (1, 0):
 
 
 class LibsslConst():
+    ERR_LIB_ASN1 = 13
+    ERR_LIB_SSL = 20
+
     SSL_CTRL_OPTIONS = 32
     SSL_CTRL_SET_SESS_CACHE_MODE = 44
 
@@ -75,6 +78,9 @@ class LibsslConst():
 
     X509_V_ERR_CERT_NOT_YET_VALID = 9
     X509_V_ERR_CERT_HAS_EXPIRED = 10
+
+    ASN1_F_ASN1_ITEM_VERIFY = 197
+    ASN1_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM = 161
 
 
 if libcrypto_version_info >= (1, 1, 0):

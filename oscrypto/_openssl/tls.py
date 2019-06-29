@@ -512,13 +512,13 @@ class TLSSocket(object):
 
                     if libcrypto_version_info < (1, 1):
                         dh_key_info = (
-                            20,
+                            LibsslConst.ERR_LIB_SSL,
                             LibsslConst.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM,
                             LibsslConst.SSL_R_DH_KEY_TOO_SMALL
                         )
                     else:
                         dh_key_info = (
-                            20,
+                            LibsslConst.ERR_LIB_SSL,
                             LibsslConst.SSL_F_TLS_PROCESS_SKE_DHE,
                             LibsslConst.SSL_R_DH_KEY_TOO_SMALL
                         )
@@ -527,13 +527,13 @@ class TLSSocket(object):
 
                     if libcrypto_version_info < (1, 1):
                         unknown_protocol_info = (
-                            20,
+                            LibsslConst.ERR_LIB_SSL,
                             LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
                             LibsslConst.SSL_R_UNKNOWN_PROTOCOL
                         )
                     else:
                         unknown_protocol_info = (
-                            20,
+                            LibsslConst.ERR_LIB_SSL,
                             LibsslConst.SSL_F_SSL3_GET_RECORD,
                             LibsslConst.SSL_R_WRONG_VERSION_NUMBER
                         )
@@ -541,7 +541,7 @@ class TLSSocket(object):
                         raise_protocol_error(handshake_server_bytes)
 
                     tls_version_info_error = (
-                        20,
+                        LibsslConst.ERR_LIB_SSL,
                         LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
                         LibsslConst.SSL_R_TLSV1_ALERT_PROTOCOL_VERSION
                     )
@@ -549,7 +549,7 @@ class TLSSocket(object):
                         raise_protocol_version()
 
                     handshake_error_info = (
-                        20,
+                        LibsslConst.ERR_LIB_SSL,
                         LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
                         LibsslConst.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
                     )
@@ -557,7 +557,7 @@ class TLSSocket(object):
                         raise_handshake()
 
                     handshake_failure_info = (
-                        20,
+                        LibsslConst.ERR_LIB_SSL,
                         LibsslConst.SSL_F_SSL3_READ_BYTES,
                         LibsslConst.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
                     )
@@ -566,16 +566,33 @@ class TLSSocket(object):
 
                     if libcrypto_version_info < (1, 1):
                         cert_verify_failed_info = (
-                            20,
+                            LibsslConst.ERR_LIB_SSL,
                             LibsslConst.SSL_F_SSL3_GET_SERVER_CERTIFICATE,
                             LibsslConst.SSL_R_CERTIFICATE_VERIFY_FAILED
                         )
                     else:
                         cert_verify_failed_info = (
-                            20,
+                            LibsslConst.ERR_LIB_SSL,
                             LibsslConst.SSL_F_TLS_PROCESS_SERVER_CERTIFICATE,
                             LibsslConst.SSL_R_CERTIFICATE_VERIFY_FAILED
                         )
+
+                    # It would appear that some versions of OpenSSL (such as on Fedora 30)
+                    # don't even have the MD5 digest algorithm included any longer? To
+                    # give a more useful error message we handle this specifically.
+                    unknown_hash_algo_info = (
+                        LibsslConst.ERR_LIB_ASN1,
+                        LibsslConst.ASN1_F_ASN1_ITEM_VERIFY,
+                        LibsslConst.ASN1_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM
+                    )
+
+                    if info == unknown_hash_algo_info:
+                        chain = extract_chain(handshake_server_bytes)
+                        if chain:
+                            cert = chain[0]
+                            oscrypto_cert = load_certificate(cert)
+                            if oscrypto_cert.asn1.hash_algo in set(['md5', 'md2']):
+                                raise_weak_signature(oscrypto_cert)
 
                     if info == cert_verify_failed_info:
                         verify_result = libssl.SSL_get_verify_result(self._ssl)
