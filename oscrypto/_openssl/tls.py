@@ -33,6 +33,8 @@ from .._tls import (
     raise_self_signed,
     raise_verification,
     raise_weak_signature,
+    parse_tls_records,
+    parse_handshake_messages,
 )
 from .asymmetric import load_certificate, Certificate
 from ..keys import parse_certificate
@@ -562,7 +564,17 @@ class TLSSocket(object):
                         LibsslConst.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
                     )
                     if info == handshake_failure_info:
-                        raise_client_auth()
+                        saw_client_auth = False
+                        for record_type, _, record_data in parse_tls_records(handshake_server_bytes):
+                            if record_type != b'\x16':
+                                continue
+                            for message_type, message_data in parse_handshake_messages(record_data):
+                                if message_type == b'\x0d':
+                                    saw_client_auth = True
+                                    break
+                        if saw_client_auth:
+                            raise_client_auth()
+                        raise_handshake()
 
                     if libcrypto_version_info < (1, 1):
                         cert_verify_failed_info = (
