@@ -66,7 +66,7 @@ CSSM_ALGORITHMS = c_uint32
 CSSM_KEYUSE = c_uint32
 SecItemImportExportKeyParameters = c_void_p
 SecAccessRef = POINTER(c_void_p)
-SecKeychainRef = c_void_p
+SecKeychainRef = POINTER(c_void_p)
 SSLContextRef = POINTER(c_void_p)
 SecTrustRef = POINTER(c_void_p)
 SSLConnectionRef = c_uint32
@@ -548,6 +548,7 @@ try:
     setattr(Security, 'OSStatus', OSStatus)
 
     setattr(Security, 'SecAccessRef', SecAccessRef)
+    setattr(Security, 'SecKeychainRef', SecKeychainRef)
     setattr(Security, 'SecKeyRef', SecKeyRef)
 
     setattr(Security, 'SecPolicySearchRef', SecPolicySearchRef)
