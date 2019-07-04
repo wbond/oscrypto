@@ -500,7 +500,11 @@ def _do_request(method, url, headers, data=None, query_params=None, timeout=20):
             # To properly obtain bytes, we use BitConverter to get hex dash
             # encoding (e.g. AE-09-3F) and they decode in python
             code += " + [System.BitConverter]::ToString($out);"
-            stdout, stderr = _execute([powershell_exe, '-Command', code], os.getcwd())
+            stdout, stderr = _execute(
+                [powershell_exe, '-Command', code],
+                os.getcwd(),
+                'Unable to connect to'
+            )
             if stdout[-2:] == b'\r\n' and b'\r\n\r\n' in stdout:
                 # An extra trailing crlf is added at the end by powershell
                 stdout = stdout[0:-2]
