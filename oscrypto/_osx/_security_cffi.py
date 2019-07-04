@@ -84,6 +84,9 @@ ffi.cdef("""
         void *crlStore;
     } CSSM_APPLE_TP_CRL_OPTIONS;
 
+    OSStatus SecKeychainCreate(char *path, uint32_t pass_len, void *pass,
+                    Boolean prompt, SecAccessRef initialAccess, SecKeychainRef *keychain);
+    OSStatus SecKeychainDelete(SecKeychainRef keychain);
     int SecRandomCopyBytes(SecRandomRef rnd, size_t count, char *bytes);
     SecKeyRef SecKeyCreateFromData(CFDictionaryRef parameters, CFDataRef keyData, CFErrorRef *error);
     SecTransformRef SecEncryptTransformCreate(SecKeyRef keyRef, CFErrorRef *error);
@@ -110,7 +113,6 @@ ffi.cdef("""
                     char *sig, size_t * sigLen);
     OSStatus SecKeyRawVerify(SecKeyRef key, SecPadding padding, const char *signedData, size_t signedDataLen,
                     const char *sig, size_t sigLen);
-    OSStatus SecKeyGeneratePair(CFDictionaryRef parameters, SecKeyRef *publicKey, SecKeyRef *privateKey);
     OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags,
                     const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
     OSStatus SecAccessCreate(CFStringRef descriptor, CFArrayRef trustedlist, SecAccessRef *accessRef);

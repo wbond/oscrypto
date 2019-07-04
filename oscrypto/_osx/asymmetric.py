@@ -1,5 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
+from base64 import b32encode
+import os
+import shutil
+import tempfile
 
 from asn1crypto import algos, keys, x509
 
@@ -7,6 +11,7 @@ from .._errors import pretty_message
 from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null, is_null
 from ._security import Security, SecurityConst, handle_sec_error, osx_version_info
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
+from .util import rand_bytes
 from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
 from .._pkcs1 import add_pss_padding, verify_pss_padding, remove_pkcs1v15_encryption_padding
@@ -327,12 +332,14 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     cf_data_private = None
     cf_string = None
     sec_access_ref = None
+    sec_keychain_ref = None
+    temp_dir = None
 
     try:
-        key_type = {
-            'dsa': Security.kSecAttrKeyTypeDSA,
-            'ec': Security.kSecAttrKeyTypeECDSA,
-            'rsa': Security.kSecAttrKeyTypeRSA,
+        alg_id = {
+            'dsa': SecurityConst.CSSM_ALGID_DSA,
+            'ec': SecurityConst.CSSM_ALGID_ECDSA,
+            'rsa': SecurityConst.CSSM_ALGID_RSA,
         }[algorithm]
 
         if algorithm == 'ec':
@@ -347,38 +354,51 @@ def generate_pair(algorithm, bit_size=None, curve=None):
         private_key_pointer = new(Security, 'SecKeyRef *')
         public_key_pointer = new(Security, 'SecKeyRef *')
 
-        cf_string = CFHelpers.cf_string_from_unicode("Temporary key from oscrypto python library - safe to delete")
+        cf_string = CFHelpers.cf_string_from_unicode("Temporary oscrypto key")
 
-        # For some reason Apple decided that DSA keys were not a valid type of
-        # key to be generated via SecKeyGeneratePair(), thus we have to use the
-        # lower level, deprecated SecKeyCreatePair()
-        if algorithm == 'dsa':
-            sec_access_ref_pointer = new(Security, 'SecAccessRef *')
-            result = Security.SecAccessCreate(cf_string, null(), sec_access_ref_pointer)
-            sec_access_ref = unwrap(sec_access_ref_pointer)
+        # We used to use SecKeyGeneratePair() for everything but DSA keys, but due to changes
+        # in macOS security, we can't reliably access the default keychain, and instead
+        # get an "OSError: User interaction is not allowed." result. Because of this we now
+        # use SecKeyCreatePair() for everything, but we even use a throw-away keychain.
+        passphrase_len = 16
+        rand_data = rand_bytes(10 + passphrase_len)
+        passphrase = rand_data[10:]
 
-            result = Security.SecKeyCreatePair(
-                null(),
-                SecurityConst.CSSM_ALGID_DSA,
-                key_size,
-                0,
-                SecurityConst.CSSM_KEYUSE_VERIFY,
-                SecurityConst.CSSM_KEYATTR_EXTRACTABLE | SecurityConst.CSSM_KEYATTR_PERMANENT,
-                SecurityConst.CSSM_KEYUSE_SIGN,
-                SecurityConst.CSSM_KEYATTR_EXTRACTABLE | SecurityConst.CSSM_KEYATTR_PERMANENT,
-                sec_access_ref,
-                public_key_pointer,
-                private_key_pointer
-            )
-            handle_sec_error(result)
-        else:
-            cf_dict = CFHelpers.cf_dictionary_from_pairs([
-                (Security.kSecAttrKeyType, key_type),
-                (Security.kSecAttrKeySizeInBits, CFHelpers.cf_number_from_integer(key_size)),
-                (Security.kSecAttrLabel, cf_string)
-            ])
-            result = Security.SecKeyGeneratePair(cf_dict, public_key_pointer, private_key_pointer)
-            handle_sec_error(result)
+        temp_filename = b32encode(rand_data[:10]).decode('utf-8')
+        temp_dir = tempfile.mkdtemp()
+        temp_path = os.path.join(temp_dir, temp_filename).encode('utf-8')
+
+        sec_keychain_ref_pointer = new(Security, 'SecKeychainRef *')
+        result = Security.SecKeychainCreate(
+            temp_path,
+            passphrase_len,
+            passphrase,
+            False,
+            null(),
+            sec_keychain_ref_pointer
+        )
+        handle_sec_error(result)
+        sec_keychain_ref = unwrap(sec_keychain_ref_pointer)
+
+        sec_access_ref_pointer = new(Security, 'SecAccessRef *')
+        result = Security.SecAccessCreate(cf_string, null(), sec_access_ref_pointer)
+        handle_sec_error(result)
+        sec_access_ref = unwrap(sec_access_ref_pointer)
+
+        result = Security.SecKeyCreatePair(
+            sec_keychain_ref,
+            alg_id,
+            key_size,
+            0,
+            SecurityConst.CSSM_KEYUSE_VERIFY,
+            SecurityConst.CSSM_KEYATTR_EXTRACTABLE | SecurityConst.CSSM_KEYATTR_PERMANENT,
+            SecurityConst.CSSM_KEYUSE_SIGN,
+            SecurityConst.CSSM_KEYATTR_EXTRACTABLE | SecurityConst.CSSM_KEYATTR_PERMANENT,
+            sec_access_ref,
+            public_key_pointer,
+            private_key_pointer
+        )
+        handle_sec_error(result)
 
         public_key_ref = unwrap(public_key_pointer)
         private_key_ref = unwrap(private_key_pointer)
@@ -414,6 +434,11 @@ def generate_pair(algorithm, bit_size=None, curve=None):
             CoreFoundation.CFRelease(cf_data_private)
         if cf_string:
             CoreFoundation.CFRelease(cf_string)
+        if sec_keychain_ref:
+            Security.SecKeychainDelete(sec_keychain_ref)
+            CoreFoundation.CFRelease(sec_keychain_ref)
+        if temp_dir:
+            shutil.rmtree(temp_dir)
         if sec_access_ref:
             CoreFoundation.CFRelease(sec_access_ref)
 
@@ -469,20 +494,43 @@ def generate_dh_parameters(bit_size):
     cf_data_public = None
     cf_data_private = None
     cf_string = None
+    sec_keychain_ref = None
     sec_access_ref = None
+    temp_dir = None
 
     try:
         public_key_pointer = new(Security, 'SecKeyRef *')
         private_key_pointer = new(Security, 'SecKeyRef *')
 
-        cf_string = CFHelpers.cf_string_from_unicode("Temporary key from oscrypto python library - safe to delete")
+        cf_string = CFHelpers.cf_string_from_unicode("Temporary oscrypto key")
+
+        passphrase_len = 16
+        rand_data = rand_bytes(10 + passphrase_len)
+        passphrase = rand_data[10:]
+
+        temp_filename = b32encode(rand_data[:10]).decode('utf-8')
+        temp_dir = tempfile.mkdtemp()
+        temp_path = os.path.join(temp_dir, temp_filename).encode('utf-8')
+
+        sec_keychain_ref_pointer = new(Security, 'SecKeychainRef *')
+        result = Security.SecKeychainCreate(
+            temp_path,
+            passphrase_len,
+            passphrase,
+            False,
+            null(),
+            sec_keychain_ref_pointer
+        )
+        handle_sec_error(result)
+        sec_keychain_ref = unwrap(sec_keychain_ref_pointer)
 
         sec_access_ref_pointer = new(Security, 'SecAccessRef *')
         result = Security.SecAccessCreate(cf_string, null(), sec_access_ref_pointer)
+        handle_sec_error(result)
         sec_access_ref = unwrap(sec_access_ref_pointer)
 
         result = Security.SecKeyCreatePair(
-            null(),
+            sec_keychain_ref,
             SecurityConst.CSSM_ALGID_DH,
             bit_size,
             0,
@@ -525,6 +573,11 @@ def generate_dh_parameters(bit_size):
             CoreFoundation.CFRelease(cf_data_private)
         if cf_string:
             CoreFoundation.CFRelease(cf_string)
+        if sec_keychain_ref:
+            Security.SecKeychainDelete(sec_keychain_ref)
+            CoreFoundation.CFRelease(sec_keychain_ref)
+        if temp_dir:
+            shutil.rmtree(temp_dir)
         if sec_access_ref:
             CoreFoundation.CFRelease(sec_access_ref)
 

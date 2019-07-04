@@ -104,6 +104,19 @@ class CSSM_APPLE_TP_CRL_OPTIONS(Structure):  # noqa
 
 
 try:
+    Security.SecKeychainCreate.argtypes = [
+        c_char_p,
+        c_uint32,
+        c_void_p,
+        Boolean,
+        SecAccessRef,
+        POINTER(SecKeychainRef)
+    ]
+    Security.SecKeychainCreate.restype = OSStatus
+
+    Security.SecKeychainDelete.argtypes = [SecKeychainRef]
+    Security.SecKeychainDelete.restype = OSStatus
+
     Security.SecRandomCopyBytes.argtypes = [
         SecRandomRef,
         c_size_t,
@@ -245,13 +258,6 @@ try:
         c_size_t
     ]
     Security.SecKeyRawVerify.restype = OSStatus
-
-    Security.SecKeyGeneratePair.argtypes = [
-        CFDictionaryRef,
-        POINTER(SecKeyRef),
-        POINTER(SecKeyRef)
-    ]
-    Security.SecKeyGeneratePair.restype = OSStatus
 
     Security.SecAccessCreate.argtypes = [
         CFStringRef,
