@@ -526,7 +526,7 @@ def _do_request(method, url, headers, data=None, query_params=None, timeout=20):
             args.append('--data-binary')
             args.append('@%s' % tempf_path)
             args.append(url)
-            stdout, stderr = _execute(args, os.getcwd())
+            stdout, stderr = _execute(args, os.getcwd(), 'Failed to connect to')
     finally:
         if tempf_path and os.path.exists(tempf_path):
             os.remove(tempf_path)
@@ -566,7 +566,7 @@ def _do_request(method, url, headers, data=None, query_params=None, timeout=20):
     return (content_type, encoding, body)
 
 
-def _execute(params, cwd):
+def _execute(params, cwd, retry=None):
     """
     Executes a subprocess
 
@@ -575,6 +575,9 @@ def _execute(params, cwd):
 
     :param cwd:
         The working directory to execute the command in
+
+    :param retry:
+        If this string is present in stderr, retry the operation
 
     :return:
         A 2-element tuple of (stdout, stderr)
@@ -589,7 +592,9 @@ def _execute(params, cwd):
     stdout, stderr = proc.communicate()
     code = proc.wait()
     if code != 0:
-        e = OSError('subprocess exit code for %r was %d: %s' % (params, code, stderr))
+        if retry and retry in stderr.decode('utf-8'):
+            return _execute(params, cwd)
+        e = OSError('subprocess exit code for "%s" was %d: %s' % (' '.join(params), code, stderr))
         e.stdout = stdout
         e.stderr = stderr
         raise e

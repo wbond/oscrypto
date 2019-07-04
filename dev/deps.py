@@ -78,7 +78,11 @@ def _download(url, dest):
         _execute([powershell_exe, '-Command', code], dest)
 
     else:
-        _execute(['curl', '-L', '--silent', '--show-error', '-O', url], dest)
+        _execute(
+            ['curl', '-L', '--silent', '--show-error', '-O', url],
+            dest,
+            'Failed to connect to'
+        )
 
     return dest_path
 
@@ -456,7 +460,7 @@ def _parse_requires(path):
     return packages
 
 
-def _execute(params, cwd):
+def _execute(params, cwd, retry=None):
     """
     Executes a subprocess
 
@@ -465,6 +469,9 @@ def _execute(params, cwd):
 
     :param cwd:
         The working directory to execute the command in
+
+    :param retry:
+        If this string is present in stderr, retry the operation
 
     :return:
         A 2-element tuple of (stdout, stderr)
@@ -479,7 +486,9 @@ def _execute(params, cwd):
     stdout, stderr = proc.communicate()
     code = proc.wait()
     if code != 0:
-        e = OSError('subprocess exit code for %r was %d: %s' % (params, code, stderr))
+        if retry and retry in stderr.decode('utf-8'):
+            return _execute(params, cwd)
+        e = OSError('subprocess exit code for "%s" was %d: %s' % (' '.join(params), code, stderr))
         e.stdout = stdout
         e.stderr = stderr
         raise e
