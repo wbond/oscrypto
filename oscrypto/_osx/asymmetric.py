@@ -5,14 +5,24 @@ import os
 import shutil
 import tempfile
 
-from asn1crypto import algos, keys, x509
+from asn1crypto import algos, keys, x509, core
 
+from .._asymmetric import (
+    _CertificateBase,
+    _fingerprint,
+    _parse_pkcs12,
+    _PrivateKeyBase,
+    _PublicKeyBase,
+    _unwrap_dump_private_key_info,
+    parse_certificate,
+    parse_private,
+    parse_public,
+)
 from .._errors import pretty_message
-from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null, is_null
+from .._ffi import new, unwrap, bytes_from_buffer, buffer_from_bytes, deref, null, is_null, pointer_set
 from ._security import Security, SecurityConst, handle_sec_error, osx_version_info
 from ._core_foundation import CoreFoundation, CFHelpers, handle_cf_error
 from .util import rand_bytes
-from ..keys import parse_public, parse_certificate, parse_private, parse_pkcs12
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
 from .._pkcs1 import add_pss_padding, verify_pss_padding, remove_pkcs1v15_encryption_padding
 from .._types import type_name, str_cls, byte_cls, int_types
@@ -29,6 +39,7 @@ __all__ = [
     'load_pkcs12',
     'load_private_key',
     'load_public_key',
+    'parse_pkcs12',
     'PrivateKey',
     'PublicKey',
     'rsa_oaep_decrypt',
@@ -42,13 +53,13 @@ __all__ = [
 ]
 
 
-class PrivateKey():
+class PrivateKey(_PrivateKeyBase):
     """
     Container for the OS crypto library representation of a private key
     """
 
     sec_key_ref = None
-    asn1 = None
+    _public_key = None
 
     # A reference to the library used in the destructor to make sure it hasn't
     # been garbage collected by the time this object is garbage collected
@@ -69,40 +80,88 @@ class PrivateKey():
         self._lib = CoreFoundation
 
     @property
-    def algorithm(self):
+    def public_key(self):
         """
         :return:
-            A unicode string of "rsa", "dsa" or "ec"
+            A PublicKey object corresponding to this private key.
         """
 
-        return self.asn1.algorithm
+        if self._public_key is None:
+            cf_data_private = None
+            try:
+                # We export here so that Security.framework will fill in the EC
+                # public key for us, instead of us having to compute it
+                cf_data_private_pointer = new(CoreFoundation, 'CFDataRef *')
+                result = Security.SecItemExport(self.sec_key_ref, 0, 0, null(), cf_data_private_pointer)
+                handle_sec_error(result)
+                cf_data_private = unwrap(cf_data_private_pointer)
+                private_key_bytes = CFHelpers.cf_data_to_bytes(cf_data_private)
+
+                key = parse_private(private_key_bytes)
+
+                if key.algorithm == 'rsa':
+                    public_asn1 = keys.PublicKeyInfo({
+                        'algorithm': keys.PublicKeyAlgorithm({
+                            'algorithm': 'rsa',
+                            'parameters': core.Null()
+                        }),
+                        'public_key': keys.RSAPublicKey({
+                            'modulus': key['private_key'].parsed['modulus'],
+                            'public_exponent': key['private_key'].parsed['public_exponent'],
+                        })
+                    })
+
+                elif key.algorithm == 'dsa':
+                    params = key['private_key_algorithm']['parameters']
+                    public_asn1 = keys.PublicKeyInfo({
+                        'algorithm': keys.PublicKeyAlgorithm({
+                            'algorithm': 'dsa',
+                            'parameters': params.copy()
+                        }),
+                        'public_key': core.Integer(pow(
+                            params['g'].native,
+                            key['private_key'].parsed.native,
+                            params['p'].native
+                        ))
+                    })
+
+                elif key.algorithm == 'ec':
+                    public_asn1 = keys.PublicKeyInfo({
+                        'algorithm': keys.PublicKeyAlgorithm({
+                            'algorithm': 'ec',
+                            'parameters': keys.ECDomainParameters(
+                                name='named',
+                                value=self.curve
+                            )
+                        }),
+                        'public_key': key['private_key'].parsed['public_key'],
+                    })
+
+            finally:
+                if cf_data_private:
+                    CoreFoundation.CFRelease(cf_data_private)
+
+            self._public_key = _load_key(public_asn1)
+
+        return self._public_key
 
     @property
-    def curve(self):
+    def fingerprint(self):
         """
+        Creates a fingerprint that can be compared with a public key to see if
+        the two form a pair.
+
+        This fingerprint is not compatible with fingerprints generated by any
+        other software.
+
         :return:
-            A unicode string of EC curve name
+            A byte string that is a sha256 hash of selected components (based
+            on the key type)
         """
 
-        return self.asn1.curve[1]
-
-    @property
-    def bit_size(self):
-        """
-        :return:
-            The number of bits in the key, as an integer
-        """
-
-        return self.asn1.bit_size
-
-    @property
-    def byte_size(self):
-        """
-        :return:
-            The number of bytes in the key, as an integer
-        """
-
-        return self.asn1.byte_size
+        if self._fingerprint is None:
+            self._fingerprint = _fingerprint(self.asn1, load_private_key)
+        return self._fingerprint
 
     def __del__(self):
         if self.sec_key_ref:
@@ -111,10 +170,16 @@ class PrivateKey():
             self.sec_key_ref = None
 
 
-class PublicKey(PrivateKey):
+class PublicKey(_PublicKeyBase):
     """
     Container for the OS crypto library representation of a public key
     """
+
+    sec_key_ref = None
+
+    # A reference to the library used in the destructor to make sure it hasn't
+    # been garbage collected by the time this object is garbage collected
+    _lib = None
 
     def __init__(self, sec_key_ref, asn1):
         """
@@ -126,16 +191,23 @@ class PublicKey(PrivateKey):
             An asn1crypto.keys.PublicKeyInfo object
         """
 
-        PrivateKey.__init__(self, sec_key_ref, asn1)
+        self.sec_key_ref = sec_key_ref
+        self.asn1 = asn1
+        self._lib = CoreFoundation
+
+    def __del__(self):
+        if self.sec_key_ref:
+            self._lib.CFRelease(self.sec_key_ref)
+            self._lib = None
+            self.sec_key_ref = None
 
 
-class Certificate():
+class Certificate(_CertificateBase):
     """
     Container for the OS crypto library representation of a certificate
     """
 
     sec_certificate_ref = None
-    asn1 = None
     _public_key = None
     _self_signed = None
 
@@ -151,42 +223,6 @@ class Certificate():
 
         self.sec_certificate_ref = sec_certificate_ref
         self.asn1 = asn1
-
-    @property
-    def algorithm(self):
-        """
-        :return:
-            A unicode string of "rsa", "dsa" or "ec"
-        """
-
-        return self.public_key.algorithm
-
-    @property
-    def curve(self):
-        """
-        :return:
-            A unicode string of EC curve name
-        """
-
-        return self.public_key.curve
-
-    @property
-    def bit_size(self):
-        """
-        :return:
-            The number of bits in the public key, as an integer
-        """
-
-        return self.public_key.bit_size
-
-    @property
-    def byte_size(self):
-        """
-        :return:
-            The number of bytes in the public key, as an integer
-        """
-
-        return self.public_key.byte_size
 
     @property
     def sec_key_ref(self):
@@ -794,45 +830,96 @@ def _load_key(key_object):
 
     if isinstance(key_object, keys.PublicKeyInfo):
         source = key_object.dump()
-        key_class = Security.kSecAttrKeyClassPublic
+        item_type = SecurityConst.kSecItemTypePublicKey
+
     else:
-        source = key_object.unwrap().dump()
-        key_class = Security.kSecAttrKeyClassPrivate
+        source = _unwrap_dump_private_key_info(key_object)
+
+        item_type = SecurityConst.kSecItemTypePrivateKey
 
     cf_source = None
-    cf_dict = None
-    cf_output = None
+    keys_array = None
+    attr_array = None
 
     try:
         cf_source = CFHelpers.cf_data_from_bytes(source)
-        key_type = {
-            'dsa': Security.kSecAttrKeyTypeDSA,
-            'ec': Security.kSecAttrKeyTypeECDSA,
-            'rsa': Security.kSecAttrKeyTypeRSA,
-        }[key_object.algorithm]
-        cf_dict = CFHelpers.cf_dictionary_from_pairs([
-            (Security.kSecAttrKeyType, key_type),
-            (Security.kSecAttrKeyClass, key_class),
-            (Security.kSecAttrCanSign, CoreFoundation.kCFBooleanTrue),
-            (Security.kSecAttrCanVerify, CoreFoundation.kCFBooleanTrue),
-        ])
-        error_pointer = new(CoreFoundation, 'CFErrorRef *')
-        sec_key_ref = Security.SecKeyCreateFromData(cf_dict, cf_source, error_pointer)
-        handle_cf_error(error_pointer)
 
-        if key_class == Security.kSecAttrKeyClassPublic:
+        format_pointer = new(Security, 'uint32_t *')
+        pointer_set(format_pointer, SecurityConst.kSecFormatOpenSSL)
+        type_pointer = new(Security, 'uint32_t *')
+        pointer_set(type_pointer, item_type)
+        keys_pointer = new(CoreFoundation, 'CFArrayRef *')
+
+        attr_array = CFHelpers.cf_array_from_list([
+            Security.kSecAttrIsExtractable
+        ])
+
+        import_export_params = new(Security, 'SecItemImportExportKeyParameters')
+        import_export_params.version = 0
+        import_export_params.flags = 0
+        import_export_params.passphrase = null()
+        import_export_params.alertTitle = null()
+        import_export_params.alertPrompt = null()
+        import_export_params.accessRef = null()
+        import_export_params.keyUsage = null()
+        import_export_params.keyAttributes = attr_array
+
+        res = Security.SecItemImport(
+            cf_source,
+            null(),
+            format_pointer,
+            type_pointer,
+            0,
+            import_export_params,
+            null(),
+            keys_pointer
+        )
+        handle_sec_error(res)
+        keys_array = unwrap(keys_pointer)
+
+        length = CoreFoundation.CFArrayGetCount(keys_array)
+        if length > 0:
+            sec_key_ref = CoreFoundation.CFArrayGetValueAtIndex(keys_array, 0)
+            CoreFoundation.CFRetain(sec_key_ref)
+
+        if item_type == SecurityConst.kSecItemTypePublicKey:
             return PublicKey(sec_key_ref, key_object)
 
-        if key_class == Security.kSecAttrKeyClassPrivate:
+        if item_type == SecurityConst.kSecItemTypePrivateKey:
             return PrivateKey(sec_key_ref, key_object)
 
     finally:
+        if attr_array:
+            CoreFoundation.CFRelease(attr_array)
+        if keys_array:
+            CoreFoundation.CFRelease(keys_array)
         if cf_source:
             CoreFoundation.CFRelease(cf_source)
-        if cf_dict:
-            CoreFoundation.CFRelease(cf_dict)
-        if cf_output:
-            CoreFoundation.CFRelease(cf_output)
+
+
+def parse_pkcs12(data, password=None):
+    """
+    Parses a PKCS#12 ANS.1 DER-encoded structure and extracts certs and keys
+
+    :param data:
+        A byte string of a DER-encoded PKCS#12 file
+
+    :param password:
+        A byte string of the password to any encrypted data
+
+    :raises:
+        ValueError - when any of the parameters are of the wrong type or value
+        OSError - when an error is returned by one of the OS decryption functions
+
+    :return:
+        A three-element tuple of:
+         1. An asn1crypto.keys.PrivateKeyInfo object
+         2. An asn1crypto.x509.Certificate object
+         3. A list of zero or more asn1crypto.x509.Certificate objects that are
+            "extra" certificates, possibly intermediates from the cert chain
+    """
+
+    return _parse_pkcs12(data, password, load_private_key)
 
 
 def load_pkcs12(source, password=None):

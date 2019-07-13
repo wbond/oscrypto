@@ -8,6 +8,7 @@ from asn1crypto import keys, x509, algos, core, pem
 from asn1crypto.util import OrderedDict
 
 from . import backend
+from ._asymmetric import _unwrap_dump_private_key_info
 from ._errors import pretty_message
 from ._types import type_name, str_cls
 from .errors import LibraryNotFoundError
@@ -437,7 +438,7 @@ def dump_openssl_private_key(private_key, passphrase):
     if is_oscrypto:
         private_key = private_key.asn1
 
-    output = private_key.unwrap().dump()
+    output = _unwrap_dump_private_key_info(private_key)
 
     headers = None
     if passphrase is not None:

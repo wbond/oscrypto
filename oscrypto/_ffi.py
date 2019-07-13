@@ -339,6 +339,8 @@ except (ImportError):
         return output
 
     def ref(value, offset=0):
+        if offset == 0:
+            return ctypes.byref(value)
         return ctypes.cast(ctypes.addressof(value) + offset, ctypes.POINTER(ctypes.c_byte))
 
     def native(type_, value):

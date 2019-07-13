@@ -5,7 +5,7 @@ import unittest
 import sys
 import os
 
-from asn1crypto import pem, algos
+from asn1crypto import pem, algos, keys, core
 from oscrypto import asymmetric, errors, backend
 
 from ._unittest_compat import patch
@@ -160,6 +160,10 @@ class AsymmetricTests(unittest.TestCase):
         raw_private = asymmetric.dump_private_key(private, None)
         asymmetric.load_private_key(raw_private, None)
 
+        self.assertIsInstance(private.fingerprint, byte_cls)
+        self.assertIsInstance(public.fingerprint, byte_cls)
+        self.assertEqual(private.fingerprint, public.fingerprint)
+
     def test_dsa_generate(self):
         public, private = asymmetric.generate_pair('dsa', bit_size=1024)
 
@@ -176,6 +180,10 @@ class AsymmetricTests(unittest.TestCase):
         raw_private = asymmetric.dump_private_key(private, None)
         asymmetric.load_private_key(raw_private, None)
 
+        self.assertIsInstance(private.fingerprint, byte_cls)
+        self.assertIsInstance(public.fingerprint, byte_cls)
+        self.assertEqual(private.fingerprint, public.fingerprint)
+
     def test_ec_generate(self):
         public, private = asymmetric.generate_pair('ec', curve='secp256r1')
 
@@ -191,6 +199,10 @@ class AsymmetricTests(unittest.TestCase):
         asymmetric.load_public_key(raw_public)
         raw_private = asymmetric.dump_private_key(private, None)
         asymmetric.load_private_key(raw_private, None)
+
+        self.assertIsInstance(private.fingerprint, byte_cls)
+        self.assertIsInstance(public.fingerprint, byte_cls)
+        self.assertEqual(private.fingerprint, public.fingerprint)
 
     def test_rsa_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
@@ -382,6 +394,29 @@ class AsymmetricTests(unittest.TestCase):
 
         asymmetric.rsa_pkcs1v15_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_fingerprint(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+
+        self.assertIsInstance(private.fingerprint, byte_cls)
+        self.assertIsInstance(public.fingerprint, byte_cls)
+        self.assertEqual(private.fingerprint, public.fingerprint)
+
+    def test_rsa_public_key_attr(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+
+        computed_public = private.public_key
+        self.assertEqual(public.asn1.dump(), computed_public.asn1.dump())
+
+    def test_rsa_private_key_unwrap(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
+        self.assertIsInstance(private.unwrap(), keys.RSAPrivateKey)
+
+    def test_rsa_public_key_unwrap(self):
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+        self.assertIsInstance(public.unwrap(), keys.RSAPublicKey)
+
     def test_rsa_pss_sign(self):
         original_data = b'This is data to sign'
         private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
@@ -421,6 +456,29 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(signature, byte_cls)
 
         asymmetric.dsa_verify(public, signature, original_data, 'sha1')
+
+    def test_dsa_fingerprint(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
+
+        self.assertIsInstance(private.fingerprint, byte_cls)
+        self.assertIsInstance(public.fingerprint, byte_cls)
+        self.assertEqual(private.fingerprint, public.fingerprint)
+
+    def test_dsa_public_key_attr(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
+
+        computed_public = private.public_key
+        self.assertEqual(public.asn1.dump(), computed_public.asn1.dump())
+
+    def test_dsa_private_key_unwrap(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.key'))
+        self.assertIsInstance(private.unwrap(), keys.DSAPrivateKey)
+
+    def test_dsa_public_key_unwrap(self):
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
+        self.assertIsInstance(public.unwrap(), core.Integer)
 
     def test_dsa_2048_sha1_sign(self):
         def do_run():
@@ -506,3 +564,26 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(signature, byte_cls)
 
         asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+
+    def test_ec_fingerprints(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
+
+        self.assertIsInstance(private.fingerprint, byte_cls)
+        self.assertIsInstance(public.fingerprint, byte_cls)
+        self.assertEqual(private.fingerprint, public.fingerprint)
+
+    def test_ec_public_key_attr(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
+
+        computed_public = private.public_key
+        self.assertEqual(public.asn1.dump(), computed_public.asn1.dump())
+
+    def test_ec_private_key_unwrap(self):
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-ec-named.key'))
+        self.assertIsInstance(private.unwrap(), keys.ECPrivateKey)
+
+    def test_ec_public_key_unwrap(self):
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
+        self.assertIsInstance(public.unwrap(), keys.ECPointBitString)

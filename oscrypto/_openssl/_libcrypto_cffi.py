@@ -138,6 +138,7 @@ ffi.cdef("""
     EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **a, const char **pp,
                     long length);
     EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const char **pp, long length);
+    int i2d_PUBKEY(EVP_PKEY *a, char **pp);
     void EVP_PKEY_free(EVP_PKEY *key);
 
     X509 *d2i_X509(X509 **px, const char **in, int len);

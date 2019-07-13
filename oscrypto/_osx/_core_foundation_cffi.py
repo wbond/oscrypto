@@ -88,6 +88,7 @@ ffi.cdef("""
     CFStringRef CFCopyTypeIDDescription(CFTypeID type_id);
 
     void CFRelease(CFTypeRef cf);
+    void CFRetain(CFTypeRef cf);
 
     CFStringRef CFErrorCopyDescription(CFErrorRef err);
     CFStringRef CFErrorGetDomain(CFErrorRef err);

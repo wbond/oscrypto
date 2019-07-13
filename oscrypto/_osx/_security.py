@@ -76,6 +76,11 @@ class SecurityConst():
     kSecTrustResultUnspecified = 4
     kSecTrustOptionImplicitAnchors = 0x00000040
 
+    kSecFormatOpenSSL = 1
+
+    kSecItemTypePrivateKey = 1
+    kSecItemTypePublicKey = 2
+
     kSSLSessionOptionBreakOnServerAuth = 0
 
     kSSLProtocol2 = 1

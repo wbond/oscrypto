@@ -36,7 +36,9 @@ ffi.cdef("""
     typedef uint32_t SecTrustSettingsDomain;
     typedef uint32_t SecPadding;
     typedef uint32_t SecItemImportExportFlags;
+    typedef uint32_t SecKeyImportExportFlags;
     typedef uint32_t SecExternalFormat;
+    typedef uint32_t SecExternalItemType;
     typedef uint32_t CSSM_ALGORITHMS;
     typedef uint64_t CSSM_CC_HANDLE;
     typedef uint32_t CSSM_KEYUSE;
@@ -60,6 +62,17 @@ ffi.cdef("""
     typedef ... *SecPolicyRef;
     typedef ... *SecPolicySearchRef;
     typedef ... *SecItemImportExportKeyParameters;
+    typedef struct
+    {
+        uint32_t version;
+        SecKeyImportExportFlags flags;
+        CFTypeRef passphrase;
+        CFStringRef alertTitle;
+        CFStringRef alertPrompt;
+        SecAccessRef accessRef;
+        CFArrayRef keyUsage;
+        CFArrayRef keyAttributes;
+    } SecItemImportExportKeyParameters;
     typedef ... *SecAccessRef;
     typedef ... *SecKeychainRef;
     typedef ... *SSLContextRef;
@@ -113,6 +126,10 @@ ffi.cdef("""
                     char *sig, size_t * sigLen);
     OSStatus SecKeyRawVerify(SecKeyRef key, SecPadding padding, const char *signedData, size_t signedDataLen,
                     const char *sig, size_t sigLen);
+    OSStatus SecItemImport(CFDataRef importedData, CFStringRef fileNameOrExtension,
+                    SecExternalFormat *inputFormat, SecExternalItemType *itemType,
+                    SecItemImportExportFlags flags, const SecItemImportExportKeyParameters *keyParams,
+                    SecKeychainRef importKeychain, CFArrayRef *outItems);
     OSStatus SecItemExport(CFTypeRef secItemOrArray, SecExternalFormat outputFormat, SecItemImportExportFlags flags,
                     const SecItemImportExportKeyParameters *keyParams, CFDataRef *exportedData);
     OSStatus SecAccessCreate(CFStringRef descriptor, CFArrayRef trustedlist, SecAccessRef *accessRef);
@@ -173,9 +190,7 @@ ffi.cdef("""
     CFStringRef kSecDigestLengthAttribute;
     CFStringRef kSecIVKey;
 
-    CFStringRef kSecAttrKeyClass;
-    CFTypeRef kSecAttrKeyClassPublic;
-    CFTypeRef kSecAttrKeyClassPrivate;
+    CFStringRef kSecAttrIsExtractable;
 
     CFStringRef kSecDigestSHA1;
     CFStringRef kSecDigestSHA2;
