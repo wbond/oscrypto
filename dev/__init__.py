@@ -21,7 +21,7 @@ md_source_map = {
     'docs/oscrypto.md': ['oscrypto/__init__.py'],
     'docs/asymmetric.md': ['oscrypto/asymmetric.py', 'oscrypto/_openssl/asymmetric.py'],
     'docs/kdf.md': ['oscrypto/kdf.py', 'oscrypto/_openssl/util.py'],
-    'docs/keys.md': ['oscrypto/keys.py'],
+    'docs/keys.md': ['oscrypto/keys.py', 'oscrypto/_asymmetric.py', 'oscrypto/_openssl/asymmetric.py'],
     'docs/symmetric.md': ['oscrypto/_openssl/symmetric.py'],
     'docs/tls.md': ['oscrypto/tls.py', 'oscrypto/_openssl/tls.py'],
     'docs/trust_list.md': ['oscrypto/trust_list.py'],
