@@ -470,9 +470,6 @@ def generate_pair(algorithm, bit_size=None, curve=None):
     return (load_public_key(public_key_bytes), load_private_key(private_key_bytes))
 
 
-generate_pair.shimmed = False
-
-
 def generate_dh_parameters(bit_size):
     """
     Generates DH parameters for use with Diffie-Hellman key exchange. Returns
@@ -538,9 +535,6 @@ def generate_dh_parameters(bit_size):
     finally:
         if dh:
             libcrypto.DH_free(dh)
-
-
-generate_dh_parameters.shimmed = False
 
 
 def load_certificate(source):
