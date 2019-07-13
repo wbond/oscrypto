@@ -512,19 +512,22 @@ class TLSSocket(object):
                 else:
                     info = peek_openssl_error()
 
-                    if libcrypto_version_info < (1, 1):
-                        dh_key_info = (
-                            LibsslConst.ERR_LIB_SSL,
-                            LibsslConst.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM,
-                            LibsslConst.SSL_R_DH_KEY_TOO_SMALL
-                        )
-                    else:
-                        dh_key_info = (
-                            LibsslConst.ERR_LIB_SSL,
-                            LibsslConst.SSL_F_TLS_PROCESS_SKE_DHE,
-                            LibsslConst.SSL_R_DH_KEY_TOO_SMALL
-                        )
-                    if info == dh_key_info:
+                    dh_key_info_1 = (
+                        LibsslConst.ERR_LIB_SSL,
+                        LibsslConst.SSL_F_SSL3_CHECK_CERT_AND_ALGORITHM,
+                        LibsslConst.SSL_R_DH_KEY_TOO_SMALL
+                    )
+                    dh_key_info_2 = (
+                        LibsslConst.ERR_LIB_SSL,
+                        LibsslConst.SSL_F_TLS_PROCESS_SKE_DHE,
+                        LibsslConst.SSL_R_DH_KEY_TOO_SMALL
+                    )
+                    dh_key_info_3 = (
+                        LibsslConst.ERR_LIB_SSL,
+                        LibsslConst.SSL_F_SSL3_GET_KEY_EXCHANGE,
+                        LibsslConst.SSL_R_BAD_DH_P_LENGTH
+                    )
+                    if info == dh_key_info_1 or info == dh_key_info_2 or info == dh_key_info_3:
                         raise_dh_params()
 
                     if libcrypto_version_info < (1, 1):
