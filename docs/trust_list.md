@@ -68,7 +68,7 @@ functions comprise the public API:
 ### `get_path()` function
 
 > ```python
-> def get_path(temp_dir=None, cache_length=24, map_vendor_oids=True, cert_callback=None):
+> def get_path(temp_dir=None, cache_length=24, cert_callback=None):
 >     """
 >     :param temp_dir:
 >         The temporary directory to cache the CA certs in on OS X and Windows.
@@ -77,22 +77,6 @@ functions comprise the public API:
 >
 >     :param cache_length:
 >         The number of hours to cache the CA certs on OS X and Windows
->
->     :param map_vendor_oids:
->         A bool indicating if the following mapping of OIDs should happen for
->         trust information from the OS trust list:
->          - 1.2.840.113635.100.1.3 (apple_ssl) -> 1.3.6.1.5.5.7.3.1 (server_auth)
->          - 1.2.840.113635.100.1.3 (apple_ssl) -> 1.3.6.1.5.5.7.3.2 (client_auth)
->          - 1.2.840.113635.100.1.8 (apple_smime) -> 1.3.6.1.5.5.7.3.4 (email_protection)
->          - 1.2.840.113635.100.1.9 (apple_eap) -> 1.3.6.1.5.5.7.3.13 (eap_over_ppp)
->          - 1.2.840.113635.100.1.9 (apple_eap) -> 1.3.6.1.5.5.7.3.14 (eap_over_lan)
->          - 1.2.840.113635.100.1.11 (apple_ipsec) -> 1.3.6.1.5.5.7.3.5 (ipsec_end_system)
->          - 1.2.840.113635.100.1.11 (apple_ipsec) -> 1.3.6.1.5.5.7.3.6 (ipsec_tunnel)
->          - 1.2.840.113635.100.1.11 (apple_ipsec) -> 1.3.6.1.5.5.7.3.7 (ipsec_user)
->          - 1.2.840.113635.100.1.11 (apple_ipsec) -> 1.3.6.1.5.5.7.3.17 (ipsec_ike)
->          - 1.2.840.113635.100.1.16 (apple_code_signing) -> 1.3.6.1.5.5.7.3.3 (code_signing)
->          - 1.2.840.113635.100.1.20 (apple_time_stamping) -> 1.3.6.1.5.5.7.3.8 (time_stamping)
->          - 1.3.6.1.4.1.311.10.3.2 (microsoft_time_stamp_signing) -> 1.3.6.1.5.5.7.3.8 (time_stamping)
 >
 >     :param cert_callback:
 >         A callback that is called once for each certificate in the trust store.

@@ -174,7 +174,9 @@ The API consists of:
 > >     """
 > >     :param marker:
 > >         A byte string or regex object from re.compile(). Used to determine
-> >         when to stop reading.
+> >         when to stop reading. Regex objects are more inefficient since
+> >         they must scan the entire byte string of read data each time data
+> >         is read off the socket.
 > >
 > >     :return:
 > >         A byte string of the data read, including the marker
