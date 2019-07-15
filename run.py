@@ -43,6 +43,9 @@ if task.startswith('use_openssl='):
 elif task == 'use_winlegacy=true':
     os.environ['OSCRYPTO_USE_WINLEGACY'] = 'true'
     task, next_arg = get_arg(next_arg)
+elif task == 'use_ctypes=true':
+    os.environ['OSCRYPTO_USE_CTYPES'] = 'true'
+    task, next_arg = get_arg(next_arg)
 
 
 if task not in set(['api_docs', 'lint', 'tests', 'coverage', 'deps', 'ci', 'release']):

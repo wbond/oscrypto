@@ -1,14 +1,14 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError
+from .. import ffi
 
 # Initialize OpenSSL
 from ._libcrypto import libcrypto_version_info
 
-try:
+if ffi() == 'cffi':
     from ._libssl_cffi import libssl
-except (FFIEngineError, ImportError):
+else:
     from ._libssl_ctypes import libssl
 
 

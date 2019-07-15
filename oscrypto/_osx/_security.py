@@ -1,13 +1,14 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError, null
+from .. import ffi
+from .._ffi import null
 from ..errors import TLSDisconnectError, TLSGracefulDisconnectError
 
-try:
+if ffi() == 'cffi':
     from ._security_cffi import Security, version_info as osx_version_info
     from ._core_foundation_cffi import CoreFoundation, CFHelpers
-except (FFIEngineError, ImportError):
+else:
     from ._security_ctypes import Security, version_info as osx_version_info
     from ._core_foundation_ctypes import CoreFoundation, CFHelpers
 

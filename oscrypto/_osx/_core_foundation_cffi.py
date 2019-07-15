@@ -7,18 +7,13 @@ from .._ffi import (
     buffer_from_bytes,
     byte_string_from_buffer,
     deref,
-    FFIEngineError,
     is_null,
     new,
     register_ffi,
 )
 from ..errors import LibraryNotFoundError
 
-try:
-    from cffi import FFI
-
-except (ImportError):
-    raise FFIEngineError('Error importing cffi')
+from cffi import FFI
 
 
 __all__ = [

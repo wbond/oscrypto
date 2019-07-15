@@ -4,14 +4,10 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import platform
 from ctypes.util import find_library
 
-from .._ffi import FFIEngineError, register_ffi
+from .._ffi import register_ffi
 from ..errors import LibraryNotFoundError
 
-try:
-    from cffi import FFI
-
-except (ImportError):
-    raise FFIEngineError('Error importing cffi')
+from cffi import FFI
 
 
 __all__ = [

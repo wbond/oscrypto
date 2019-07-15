@@ -1,13 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from .._ffi import FFIEngineError, register_ffi
+from .._ffi import register_ffi
 
-try:
-    from cffi import FFI
-
-except (ImportError):
-    raise FFIEngineError('Error importing cffi')
+from cffi import FFI
 
 
 __all__ = [

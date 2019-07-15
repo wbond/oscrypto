@@ -38,6 +38,9 @@ def local_oscrypto():
     elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
         _local_module.use_winlegacy()
 
+    if os.environ.get('OSCRYPTO_USE_CTYPES'):
+        _local_module.use_ctypes()
+
     return _local_module
 
 

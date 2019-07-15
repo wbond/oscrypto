@@ -4,15 +4,11 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from ctypes.util import find_library
 
 from .. import _backend_config
-from .._ffi import FFIEngineError, register_ffi
+from .._ffi import register_ffi
 from ..errors import LibraryNotFoundError
 from ._libcrypto import libcrypto_version_info
 
-try:
-    from cffi import FFI
-
-except (ImportError):
-    raise FFIEngineError('Error importing cffi')
+from cffi import FFI
 
 
 __all__ = [

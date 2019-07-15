@@ -3,15 +3,11 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 
-from .._ffi import FFIEngineError, register_ffi
+from .._ffi import register_ffi
 from .._types import str_cls
 from ..errors import LibraryNotFoundError
 
-try:
-    import cffi
-
-except (ImportError):
-    raise FFIEngineError('Error importing cffi')
+import cffi
 
 
 __all__ = [
