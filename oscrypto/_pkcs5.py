@@ -3,7 +3,6 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 import sys
 import hashlib
-import math
 import hmac
 import struct
 
@@ -109,35 +108,35 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     algo = getattr(hashlib, hash_algorithm)
 
     hash_length = {
-        'md5': 16,
-        'sha1': 20,
-        'sha224': 28,
-        'sha256': 32,
-        'sha384': 48,
-        'sha512': 64
+        'md5'    : 16,
+        'sha1'   : 20,
+        'sha224' : 28,
+        'sha256' : 32,
+        'sha384' : 48,
+        'sha512' : 64
     }[hash_algorithm]
-
-    blocks = int(math.ceil(key_length / hash_length))
 
     original_hmac = hmac.new(password, None, algo)
 
-    int_pack = struct.Struct(b'>I').pack
-
+    block  = 1
     output = b''
-    for block in range(1, blocks + 1):
-        prf = original_hmac.copy()
-        prf.update(salt + int_pack(block))
+
+    while len(output) < key_length:
+        prf  = original_hmac.copy()
+        prf.update(salt + struct.pack('>I', block))
         last = prf.digest()
+
         u = int_from_bytes(last)
-        for _ in range(2, iterations + 1):
+
+        for _ in range(iterations-1):
             prf = original_hmac.copy()
             prf.update(last)
             last = prf.digest()
             u ^= int_from_bytes(last)
-        t = int_to_bytes(u)
-        output += t
+
+        output += int_to_bytes(u, width=hash_length)
+        block += 1
 
     return output[0:key_length]
-
 
 pbkdf2.pure_python = True
