@@ -108,22 +108,22 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
     algo = getattr(hashlib, hash_algorithm)
 
     hash_length = {
-        'md5'    : 16,
-        'sha1'   : 20,
-        'sha224' : 28,
-        'sha256' : 32,
-        'sha384' : 48,
-        'sha512' : 64
+        'md5': 16,
+        'sha1': 20,
+        'sha224': 28,
+        'sha256': 32,
+        'sha384': 48,
+        'sha512': 64
     }[hash_algorithm]
 
     original_hmac = hmac.new(password, None, algo)
 
-    block  = 1
+    block = 1
     output = b''
 
     while len(output) < key_length:
-        prf  = original_hmac.copy()
-        prf.update(salt + struct.pack('>I', block))
+        prf = original_hmac.copy()
+        prf.update(salt + struct.pack(b'>I', block))
         last = prf.digest()
 
         u = int_from_bytes(last)
@@ -138,5 +138,6 @@ def pbkdf2(hash_algorithm, password, salt, iterations, key_length):
         block += 1
 
     return output[0:key_length]
+
 
 pbkdf2.pure_python = True
