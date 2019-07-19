@@ -848,7 +848,8 @@ def _load_key(key_object):
             Security.kSecAttrIsExtractable
         ])
 
-        import_export_params = new(Security, 'SecItemImportExportKeyParameters')
+        import_export_params_pointer = new(Security, 'SecItemImportExportKeyParameters *')
+        import_export_params = unwrap(import_export_params_pointer)
         import_export_params.version = 0
         import_export_params.flags = 0
         import_export_params.passphrase = null()
@@ -864,7 +865,7 @@ def _load_key(key_object):
             format_pointer,
             type_pointer,
             0,
-            import_export_params,
+            import_export_params_pointer,
             null(),
             keys_pointer
         )

@@ -57,7 +57,7 @@ ffi.cdef("""
     typedef ... *SecRandomRef;
     typedef ... *SecPolicyRef;
     typedef ... *SecPolicySearchRef;
-    typedef ... *SecItemImportExportKeyParameters;
+    typedef ... *SecAccessRef;
     typedef struct
     {
         uint32_t version;
@@ -69,7 +69,6 @@ ffi.cdef("""
         CFArrayRef keyUsage;
         CFArrayRef keyAttributes;
     } SecItemImportExportKeyParameters;
-    typedef ... *SecAccessRef;
     typedef ... *SecKeychainRef;
     typedef ... *SSLContextRef;
     typedef ... *SecTrustRef;
