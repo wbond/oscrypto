@@ -14,7 +14,7 @@ for non-debugging purposes is likely a sign tight-coupling.*
 > def backend():
 >     """
 >     :return:
->         A unicode string of the backend being used: "openssl", "osx", "win",
+>         A unicode string of the backend being used: "openssl", "mac", "win",
 >         "winlegacy"
 >     """
 > ```

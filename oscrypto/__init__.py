@@ -31,7 +31,7 @@ _module_values = {
 def backend():
     """
     :return:
-        A unicode string of the backend being used: "openssl", "osx", "win",
+        A unicode string of the backend being used: "openssl", "mac", "win",
         "winlegacy"
     """
 
@@ -49,7 +49,7 @@ def backend():
             else:
                 _module_values['backend'] = 'win'
         elif sys.platform == 'darwin':
-            _module_values['backend'] = 'osx'
+            _module_values['backend'] = 'mac'
         else:
             _module_values['backend'] = 'openssl'
 

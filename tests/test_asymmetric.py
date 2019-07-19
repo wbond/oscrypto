@@ -40,7 +40,7 @@ def _win_version_pair():
 
 
 def _should_support_sha2():
-    if _backend == 'osx':
+    if _backend == 'mac':
         return False
     if _backend == 'winlegacy':
         return False
@@ -542,7 +542,7 @@ class AsymmetricTests(unittest.TestCase):
 
             asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
-        if _backend == 'osx' or openssl_098 or _backend == 'winlegacy':
+        if _backend == 'mac' or openssl_098 or _backend == 'winlegacy':
             with self.assertRaises(errors.AsymmetricKeyError):
                 do_run()
         elif _backend == 'win':

@@ -8,8 +8,8 @@ from ._asymmetric import parse_certificate, parse_private, parse_public
 _backend = backend()
 
 
-if _backend == 'osx':
-    from ._osx.asymmetric import parse_pkcs12
+if _backend == 'mac':
+    from ._mac.asymmetric import parse_pkcs12
 elif _backend == 'win' or _backend == 'winlegacy':
     from ._win.asymmetric import parse_pkcs12
 else:

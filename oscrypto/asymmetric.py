@@ -19,8 +19,8 @@ from .util import rand_bytes
 _backend = backend()
 
 
-if _backend == 'osx':
-    from ._osx.asymmetric import (
+if _backend == 'mac':
+    from ._mac.asymmetric import (
         Certificate,
         dsa_sign,
         dsa_verify,

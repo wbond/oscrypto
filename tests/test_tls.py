@@ -113,8 +113,8 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_connect_revoked(self):
-        if _backend == 'osx':
-            from oscrypto._osx._security import osx_version_info
+        if _backend == 'mac':
+            from oscrypto._mac._security import osx_version_info
 
             # macOS 10.12 will read the OCSP Staple response and raise a revoked
             # error, even though we have revocation checking disabled
