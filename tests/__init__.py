@@ -6,7 +6,8 @@ import os
 import unittest
 
 
-_local_module = None
+_asn1crypto_module = None
+_oscrypto_module = None
 
 
 def local_oscrypto():
@@ -14,34 +15,41 @@ def local_oscrypto():
     Make sure oscrypto is initialized and the backend is selected via env vars
 
     :return:
-        The oscrypto module
+        A 2-element tuple with the (asn1crypto, oscrypto) modules
     """
 
-    global _local_module
+    global _asn1crypto_module
+    global _oscrypto_module
 
-    if _local_module:
-        return _local_module
+    if _oscrypto_module:
+        return (_asn1crypto_module, _oscrypto_module)
+
+    asn1_src_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'asn1crypto'))
+    if os.path.exists(asn1_src_dir):
+        asn1_module_info = imp.find_module('asn1crypto', [asn1_src_dir])
+        _asn1crypto_module = imp.load_module('asn1crypto', *asn1_module_info)
+    else:
+        import asn1crypto as _asn1crypto_module
 
     # Make sure the module is loaded from this source folder
-    module_name = 'oscrypto'
-    src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-    module_info = imp.find_module(module_name, [src_dir])
-    _local_module = imp.load_module(module_name, *module_info)
+    src_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    module_info = imp.find_module('oscrypto', [src_dir])
+    _oscrypto_module = imp.load_module('oscrypto', *module_info)
 
     # Configuring via env vars so CI for other packages doesn't need to do
     # anything complicated to get the alternate backends
     if os.environ.get('OSCRYPTO_USE_OPENSSL'):
         paths = os.environ.get('OSCRYPTO_USE_OPENSSL').split(',')
         if len(paths) != 2:
-            raise ValueError('Value for OSCRYPTO_USE_OPENSSL env var must be two path separated by a comma')
-        _local_module.use_openssl(*paths)
+            raise ValueError('Value for OSCRYPTO_USE_OPENSSL env var must be two paths separated by a comma')
+        _oscrypto_module.use_openssl(*paths)
     elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
-        _local_module.use_winlegacy()
+        _oscrypto_module.use_winlegacy()
 
     if os.environ.get('OSCRYPTO_USE_CTYPES'):
-        _local_module.use_ctypes()
+        _oscrypto_module.use_ctypes()
 
-    return _local_module
+    return (_asn1crypto_module, _oscrypto_module)
 
 
 def make_suite():
