@@ -15,6 +15,7 @@ from .._asymmetric import (
     _parse_pkcs12,
     _PrivateKeyBase,
     _PublicKeyBase,
+    _unwrap_private_key_info,
     parse_certificate,
     parse_private,
     parse_public,
@@ -1888,7 +1889,7 @@ def _bcrypt_load_key(key_object, key_info, container, curve_name):
                 params = key_info['algorithm']['parameters']
             else:
                 blob_type = BcryptConst.BCRYPT_DSA_PRIVATE_BLOB
-                public_key = key_info.public_key.native
+                public_key = _unwrap_private_key_info(key_info)['public_key'].native
                 private_bytes = int_to_bytes(key_info['private_key'].parsed.native)
                 params = key_info['private_key_algorithm']['parameters']
 
@@ -1958,10 +1959,20 @@ def _bcrypt_load_key(key_object, key_info, container, curve_name):
         elif algo == 'ec':
             if key_type == 'public':
                 blob_type = BcryptConst.BCRYPT_ECCPUBLIC_BLOB
-                public_key = key_info['public_key']
+                x, y = key_info['public_key'].to_coords()
             else:
                 blob_type = BcryptConst.BCRYPT_ECCPRIVATE_BLOB
-                public_key = key_info.public_key
+                public_key = key_info['private_key'].parsed['public_key']
+                # We aren't guaranteed to get the public key coords with the
+                # key info structure, but BCrypt doesn't seem to have an issue
+                # importing the private key with 0 values, which can only be
+                # presumed that it is generating the x and y points from the
+                # private key value and base point
+                if public_key:
+                    x, y = public_key.to_coords()
+                else:
+                    x = 0
+                    y = 0
                 private_bytes = int_to_bytes(key_info['private_key'].parsed['private_key'].native)
 
             blob_struct_pointer = struct(bcrypt, 'BCRYPT_ECCKEY_BLOB')
@@ -1981,8 +1992,6 @@ def _bcrypt_load_key(key_object, key_info, container, curve_name):
                 'secp384r1': 48,
                 'secp521r1': 66
             }[curve_name]
-
-            x, y = public_key.to_coords()
 
             x_bytes = int_to_bytes(x)
             y_bytes = int_to_bytes(y)

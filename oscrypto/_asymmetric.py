@@ -209,7 +209,7 @@ class _CertificateBase():
         return self.public_key.byte_size
 
 
-def _unwrap_dump_private_key_info(key_info):
+def _unwrap_private_key_info(key_info):
     """
     Unwraps an asn1crypto.keys.PrivateKeyInfo object into an
     asn1crypto.keys.RSAPrivateKey, asn1crypto.keys.DSAPrivateKey
@@ -226,7 +226,7 @@ def _unwrap_dump_private_key_info(key_info):
     """
 
     if key_info.algorithm == 'rsa':
-        return key_info['private_key'].parsed.dump()
+        return key_info['private_key'].parsed
 
     if key_info.algorithm == 'dsa':
         params = key_info['private_key_algorithm']['parameters']
@@ -242,14 +242,14 @@ def _unwrap_dump_private_key_info(key_info):
                 params['p'].native
             )),
             'private_key': parsed,
-        }).dump()
+        })
 
     if key_info.algorithm == 'ec':
         parsed = key_info['private_key'].parsed
         parsed['parameters'] = key_info['private_key_algorithm']['parameters']
-        return parsed.dump()
+        return parsed
 
-    return None
+    raise ValueError('Unsupported key_info.algorithm "%s"' % key_info.algorithm)
 
 
 def _fingerprint(key_object, load_private_key):

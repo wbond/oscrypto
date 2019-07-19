@@ -11,7 +11,7 @@ from .._asymmetric import (
     _parse_pkcs12,
     _PrivateKeyBase,
     _PublicKeyBase,
-    _unwrap_dump_private_key_info,
+    _unwrap_private_key_info,
     parse_certificate,
     parse_private,
     parse_public,
@@ -734,7 +734,7 @@ def _load_key(private_object):
             private_object.bit_size
         ))
 
-    source = _unwrap_dump_private_key_info(private_object)
+    source = _unwrap_private_key_info(private_object).dump()
 
     buffer = buffer_from_bytes(source)
     evp_pkey = libcrypto.d2i_AutoPrivateKey(null(), buffer_pointer(buffer), len(source))

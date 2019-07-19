@@ -8,7 +8,7 @@ from asn1crypto import keys, x509, algos, core, pem
 from asn1crypto.util import OrderedDict
 
 from . import backend
-from ._asymmetric import _unwrap_dump_private_key_info
+from ._asymmetric import _unwrap_private_key_info
 from ._errors import pretty_message
 from ._types import type_name, str_cls
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
@@ -420,7 +420,7 @@ def dump_openssl_private_key(private_key, passphrase):
     if is_oscrypto:
         private_key = private_key.asn1
 
-    output = _unwrap_dump_private_key_info(private_key)
+    output = _unwrap_private_key_info(private_key).dump()
 
     headers = None
     if passphrase is not None:

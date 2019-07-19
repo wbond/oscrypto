@@ -13,7 +13,7 @@ from .._asymmetric import (
     _parse_pkcs12,
     _PrivateKeyBase,
     _PublicKeyBase,
-    _unwrap_dump_private_key_info,
+    _unwrap_private_key_info,
     parse_certificate,
     parse_private,
     parse_public,
@@ -827,8 +827,7 @@ def _load_key(key_object):
         item_type = SecurityConst.kSecItemTypePublicKey
 
     else:
-        source = _unwrap_dump_private_key_info(key_object)
-
+        source = _unwrap_private_key_info(key_object).dump()
         item_type = SecurityConst.kSecItemTypePrivateKey
 
     cf_source = None
