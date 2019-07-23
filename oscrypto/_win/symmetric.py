@@ -789,7 +789,10 @@ def _encrypt(cipher, key, data, iv, padding):
         ))
 
     if cipher != 'rc4' and not padding:
-        raise ValueError('padding must be specified')
+        # AES in CBC mode can be allowed with no padding if
+        # the data is an exact multiple of the key size
+        if not (cipher == 'aes' and padding is False and len(data) % len(key) == 0):
+            raise ValueError('padding must be specified')
 
     if _backend == 'winlegacy':
         return _advapi32_encrypt(cipher, key, data, iv, padding)
