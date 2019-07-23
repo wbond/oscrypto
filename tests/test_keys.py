@@ -161,6 +161,13 @@ class KeyTests(unittest.TestCase):
         # Make sure we can parse the whole structure
         private_object.native
 
+    def test_parse_private_pem_leading_whitespace(self):
+        with open(os.path.join(fixtures_dir, 'keys/test.key'), 'rb') as f:
+            private_object = keys.parse_private(b'   \n' + f.read(), None)
+
+        # Make sure we can parse the whole structure
+        private_object.native
+
     @staticmethod
     def public_keys():
         return (
@@ -204,6 +211,13 @@ class KeyTests(unittest.TestCase):
             parsed = keys.parse_public(f.read())
 
         self.assertEqual(algo, parsed['algorithm']['algorithm'].native)
+
+        # Make sure we can parse the whole structure
+        parsed.native
+
+    def test_parse_public_pem_leading_whitespace(self):
+        with open(os.path.join(fixtures_dir, 'keys/test-public-rsa.key'), 'rb') as f:
+            parsed = keys.parse_public(b'  \r\n' + f.read())
 
         # Make sure we can parse the whole structure
         parsed.native
@@ -260,6 +274,13 @@ class KeyTests(unittest.TestCase):
 
         self.assertEqual(algo, parsed['tbs_certificate']['subject_public_key_info']['algorithm']['algorithm'].native)
         self.assertEqual('Codex Non Sufficit LC', parsed['tbs_certificate']['subject'].native['organization_name'])
+
+        # Make sure we can parse the whole structure
+        parsed.native
+
+    def test_parse_certificate_pem_leading_whitespace(self):
+        with open(os.path.join(fixtures_dir, 'keys/test.crt'), 'rb') as f:
+            parsed = keys.parse_certificate(b'\n' + f.read())
 
         # Make sure we can parse the whole structure
         parsed.native

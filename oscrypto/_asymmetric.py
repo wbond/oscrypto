@@ -389,7 +389,7 @@ def parse_public(data):
     key_type = None
 
     # Appears to be PEM formatted
-    if data[0:5] == b'-----':
+    if re.match(b'\\s*-----', data) is not None:
         key_type, algo, data = _unarmor_pem(data)
 
         if key_type == 'private key':
@@ -460,7 +460,7 @@ def parse_certificate(data):
     key_type = None
 
     # Appears to be PEM formatted
-    if data[0:5] == b'-----':
+    if re.match(b'\\s*-----', data) is not None:
         key_type, _, data = _unarmor_pem(data)
 
         if key_type == 'private key':
@@ -539,7 +539,7 @@ def parse_private(data, password=None):
         password = b''
 
     # Appears to be PEM formatted
-    if data[0:5] == b'-----':
+    if re.match(b'\\s*-----', data) is not None:
         key_type, _, data = _unarmor_pem(data, password)
 
         if key_type == 'public key':
