@@ -10,6 +10,7 @@ jobs:
         os:
           - ubuntu-18.04
           - macOS-10.14
+          - windows-2019
         python:
           - '2.7'
           - '3.7'
