@@ -210,6 +210,7 @@ def _codecov_submit():
 
         query = {
             'service': 'custom',
+            'token': json_data['token'],
             'branch': branch,
             'tag': tag,
             'slug': os.getenv('GITHUB_REPOSITORY'),
