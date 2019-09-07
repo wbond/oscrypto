@@ -1,0 +1,25 @@
+name: CI
+on: [push]
+
+jobs:
+  build:
+    name: CI
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-18.04
+          - macOS-10.14
+        python:
+          - '2.7.16'
+          - '3.7.4'
+          - 'pypy3'
+    name: Python ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+      - run: env
+      - run: python run.py deps
+      - run: python run.py ci

@@ -158,6 +158,29 @@ def _codecov_submit():
             root = os.getcwdu()
         else:
             root = os.getcwd()
+
+    elif os.getenv('GITHUB_WORKSPACE'):
+        branch = ''
+        tag = ''
+        ref = os.getenv('GITHUB_REF', '')
+        if ref.startswith('refs/tags/'):
+            tag = ref[10:]
+        elif ref.startswith('refs/heads/'):
+            branch = ref[11:]
+
+        query = {
+            'service': 'github',
+            'branch': branch,
+            'build': 0,
+            'pr': 0,
+            'job': 0,
+            'tag': tag,
+            'slug': os.getenv('GITHUB_REPOSITORY'),
+            'commit': os.getenv('GITHUB_SHA'),
+            'build_url': '',
+        }
+        root = os.getenv('GITHUB_WORKSPACE')
+
     else:
         root = package_root
         if not os.path.exists(os.path.join(root, '.git')):
