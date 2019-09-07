@@ -650,8 +650,9 @@ def _execute(params, cwd, retry=None):
     if code != 0:
         if retry:
             stderr_str = stderr.decode('utf-8')
-            if isinstance(retry, Pattern) and retry.search(stderr_str) is not None:
-                return _execute(params, cwd, retry)
+            if isinstance(retry, Pattern):
+                if retry.search(stderr_str) is not None:
+                    return _execute(params, cwd, retry)
             elif retry in stderr_str:
                 return _execute(params, cwd, retry)
         e = OSError('subprocess exit code for "%s" was %d: %s' % (' '.join(params), code, stderr))
