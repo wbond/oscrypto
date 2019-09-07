@@ -4,10 +4,18 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import hashlib
 import binascii
 
-from asn1crypto import keys, x509, algos, core, pem
-from asn1crypto.util import OrderedDict
-
 from . import backend
+from ._asn1 import (
+    armor,
+    Certificate as Asn1Certificate,
+    DHParameters,
+    EncryptedPrivateKeyInfo,
+    Null,
+    OrderedDict,
+    Pbkdf2Salt,
+    PrivateKeyInfo,
+    PublicKeyInfo,
+)
 from ._asymmetric import _unwrap_private_key_info
 from ._errors import pretty_message
 from ._types import type_name, str_cls
@@ -147,7 +155,7 @@ def dump_dh_parameters(dh_parameters, encoding='pem'):
             repr(encoding)
         ))
 
-    if not isinstance(dh_parameters, algos.DHParameters):
+    if not isinstance(dh_parameters, DHParameters):
         raise TypeError(pretty_message(
             '''
             dh_parameters must be an instance of asn1crypto.algos.DHParameters,
@@ -158,7 +166,7 @@ def dump_dh_parameters(dh_parameters, encoding='pem'):
 
     output = dh_parameters.dump()
     if encoding == 'pem':
-        output = pem.armor('DH PARAMETERS', output)
+        output = armor('DH PARAMETERS', output)
     return output
 
 
@@ -185,7 +193,7 @@ def dump_public_key(public_key, encoding='pem'):
         ))
 
     is_oscrypto = isinstance(public_key, PublicKey)
-    if not isinstance(public_key, keys.PublicKeyInfo) and not is_oscrypto:
+    if not isinstance(public_key, PublicKeyInfo) and not is_oscrypto:
         raise TypeError(pretty_message(
             '''
             public_key must be an instance of oscrypto.asymmetric.PublicKey or
@@ -199,7 +207,7 @@ def dump_public_key(public_key, encoding='pem'):
 
     output = public_key.dump()
     if encoding == 'pem':
-        output = pem.armor('PUBLIC KEY', output)
+        output = armor('PUBLIC KEY', output)
     return output
 
 
@@ -226,7 +234,7 @@ def dump_certificate(certificate, encoding='pem'):
         ))
 
     is_oscrypto = isinstance(certificate, Certificate)
-    if not isinstance(certificate, x509.Certificate) and not is_oscrypto:
+    if not isinstance(certificate, Asn1Certificate) and not is_oscrypto:
         raise TypeError(pretty_message(
             '''
             certificate must be an instance of oscrypto.asymmetric.Certificate
@@ -240,7 +248,7 @@ def dump_certificate(certificate, encoding='pem'):
 
     output = certificate.dump()
     if encoding == 'pem':
-        output = pem.armor('CERTIFICATE', output)
+        output = armor('CERTIFICATE', output)
     return output
 
 
@@ -297,7 +305,7 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
             ))
 
     is_oscrypto = isinstance(private_key, PrivateKey)
-    if not isinstance(private_key, keys.PrivateKeyInfo) and not is_oscrypto:
+    if not isinstance(private_key, PrivateKeyInfo) and not is_oscrypto:
         raise TypeError(pretty_message(
             '''
             private_key must be an instance of oscrypto.asymmetric.PrivateKey
@@ -325,21 +333,21 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
         key = pbkdf2(kdf_hmac, passphrase_bytes, kdf_salt, iterations, key_length)
         iv, ciphertext = aes_cbc_pkcs7_encrypt(key, output, None)
 
-        output = keys.EncryptedPrivateKeyInfo({
+        output = EncryptedPrivateKeyInfo({
             'encryption_algorithm': {
                 'algorithm': 'pbes2',
                 'parameters': {
                     'key_derivation_func': {
                         'algorithm': 'pbkdf2',
                         'parameters': {
-                            'salt': algos.Pbkdf2Salt(
+                            'salt': Pbkdf2Salt(
                                 name='specified',
                                 value=kdf_salt
                             ),
                             'iteration_count': iterations,
                             'prf': {
                                 'algorithm': kdf_hmac,
-                                'parameters': core.Null()
+                                'parameters': Null()
                             }
                         }
                     },
@@ -357,7 +365,7 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
             object_type = 'PRIVATE KEY'
         else:
             object_type = 'ENCRYPTED PRIVATE KEY'
-        output = pem.armor(object_type, output)
+        output = armor(object_type, output)
 
     return output
 
@@ -408,7 +416,7 @@ def dump_openssl_private_key(private_key, passphrase):
             ))
 
     is_oscrypto = isinstance(private_key, PrivateKey)
-    if not isinstance(private_key, keys.PrivateKeyInfo) and not is_oscrypto:
+    if not isinstance(private_key, PrivateKeyInfo) and not is_oscrypto:
         raise TypeError(pretty_message(
             '''
             private_key must be an instance of oscrypto.asymmetric.PrivateKey or
@@ -447,4 +455,4 @@ def dump_openssl_private_key(private_key, passphrase):
     elif private_key.algorithm == 'dsa':
         object_type = 'DSA PRIVATE KEY'
 
-    return pem.armor(object_type, output, headers=headers)
+    return armor(object_type, output, headers=headers)

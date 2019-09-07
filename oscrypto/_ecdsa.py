@@ -5,12 +5,19 @@ import hashlib
 import hmac
 import sys
 
-from asn1crypto import keys
-from asn1crypto.algos import DSASignature
-from asn1crypto.x509 import Certificate
-from asn1crypto.util import int_from_bytes
-
 from . import backend
+from ._asn1 import (
+    Certificate,
+    DSASignature,
+    ECDomainParameters,
+    ECPointBitString,
+    ECPrivateKey,
+    int_from_bytes,
+    PrivateKeyAlgorithm,
+    PrivateKeyInfo,
+    PublicKeyAlgorithm,
+    PublicKeyInfo,
+)
 from ._errors import pretty_message
 from ._types import type_name, byte_cls
 from .util import rand_bytes
@@ -96,16 +103,16 @@ def ec_generate_pair(curve):
         if private_key_int > 0 and private_key_int < curve_base_point.order:
             break
 
-    private_key_info = keys.PrivateKeyInfo({
+    private_key_info = PrivateKeyInfo({
         'version': 0,
-        'private_key_algorithm': keys.PrivateKeyAlgorithm({
+        'private_key_algorithm': PrivateKeyAlgorithm({
             'algorithm': 'ec',
-            'parameters': keys.ECDomainParameters(
+            'parameters': ECDomainParameters(
                 name='named',
                 value=curve
             )
         }),
-        'private_key': keys.ECPrivateKey({
+        'private_key': ECPrivateKey({
             'version': 'ecPrivkeyVer1',
             'private_key': private_key_int
         }),
@@ -131,7 +138,7 @@ def ec_compute_public_key_point(private_key):
         An asn1crypto.keys.ECPointBitString object
     """
 
-    if not isinstance(private_key, keys.PrivateKeyInfo):
+    if not isinstance(private_key, PrivateKeyInfo):
         raise TypeError(pretty_message(
             '''
             private_key must be an instance of the
@@ -173,7 +180,7 @@ def ec_compute_public_key_point(private_key):
         }[details]
 
     public_point = base_point * private_key['private_key'].parsed['private_key'].native
-    return keys.ECPointBitString.from_coords(public_point.x, public_point.y)
+    return ECPointBitString.from_coords(public_point.x, public_point.y)
 
 
 def ec_public_key_info(public_key_point, curve):
@@ -201,10 +208,10 @@ def ec_public_key_info(public_key_point, curve):
             repr(curve)
         ))
 
-    return keys.PublicKeyInfo({
-        'algorithm': keys.PublicKeyAlgorithm({
+    return PublicKeyInfo({
+        'algorithm': PublicKeyAlgorithm({
             'algorithm': 'ec',
-            'parameters': keys.ECDomainParameters(
+            'parameters': ECDomainParameters(
                 name='named',
                 value=curve
             )
@@ -235,7 +242,7 @@ def ecdsa_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if not hasattr(private_key, 'asn1') or not isinstance(private_key.asn1, keys.PrivateKeyInfo):
+    if not hasattr(private_key, 'asn1') or not isinstance(private_key.asn1, PrivateKeyInfo):
         raise TypeError(pretty_message(
             '''
             private_key must be an instance of the
@@ -366,7 +373,7 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
 
     has_asn1 = hasattr(certificate_or_public_key, 'asn1')
-    if not has_asn1 or not isinstance(certificate_or_public_key.asn1, (keys.PublicKeyInfo, Certificate)):
+    if not has_asn1 or not isinstance(certificate_or_public_key.asn1, (PublicKeyInfo, Certificate)):
         raise TypeError(pretty_message(
             '''
             certificate_or_public_key must be an instance of the

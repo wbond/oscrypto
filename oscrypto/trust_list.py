@@ -7,9 +7,7 @@ import sys
 import tempfile
 import threading
 
-from asn1crypto.pem import armor
-from asn1crypto.x509 import Certificate
-
+from ._asn1 import armor, Certificate
 from ._errors import pretty_message
 from .errors import CACertsError
 

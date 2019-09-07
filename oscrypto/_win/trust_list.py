@@ -5,8 +5,7 @@ import datetime
 import hashlib
 import struct
 
-from asn1crypto.x509 import Certificate
-
+from .._asn1 import Certificate
 from .._ffi import (
     array_from_pointer,
     buffer_from_bytes,

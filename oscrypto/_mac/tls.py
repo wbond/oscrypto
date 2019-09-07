@@ -10,11 +10,13 @@ import numbers
 import errno
 import weakref
 
-from asn1crypto import x509
-from asn1crypto.util import int_to_bytes, timezone
-
 from ._security import Security, osx_version_info, handle_sec_error, SecurityConst
 from ._core_foundation import CoreFoundation, handle_cf_error, CFHelpers
+from .._asn1 import (
+    Certificate as Asn1Certificate,
+    int_to_bytes,
+    timezone,
+)
 from .._errors import pretty_message
 from .._ffi import (
     array_from_pointer,
@@ -359,7 +361,7 @@ class TLSSession(object):
                 elif isinstance(extra_trust_root, str_cls):
                     with open(extra_trust_root, 'rb') as f:
                         extra_trust_root = parse_certificate(f.read())
-                elif not isinstance(extra_trust_root, x509.Certificate):
+                elif not isinstance(extra_trust_root, Asn1Certificate):
                     raise TypeError(pretty_message(
                         '''
                         extra_trust_roots must be a list of byte strings, unicode
@@ -1373,7 +1375,7 @@ class TLSSocket(object):
                 handle_cf_error(result)
                 cf_data_ref = None
 
-                cert = x509.Certificate.load(cert_data)
+                cert = Asn1Certificate.load(cert_data)
 
                 if index == 0:
                     self._certificate = cert

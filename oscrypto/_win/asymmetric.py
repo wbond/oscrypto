@@ -6,9 +6,23 @@ import sys
 import hashlib
 import random
 
-from asn1crypto import algos, core, keys, x509
-from asn1crypto.util import int_from_bytes, int_to_bytes
-
+from .._asn1 import (
+    Certificate as Asn1Certificate,
+    DHParameters,
+    DSAParams,
+    DSASignature,
+    ECDomainParameters,
+    ECPrivateKey,
+    Integer,
+    int_from_bytes,
+    int_to_bytes,
+    PrivateKeyAlgorithm,
+    PrivateKeyInfo,
+    PublicKeyAlgorithm,
+    PublicKeyInfo,
+    RSAPrivateKey,
+    RSAPublicKey,
+)
 from .._asymmetric import (
     _CertificateBase,
     _fingerprint,
@@ -437,12 +451,12 @@ class PrivateKey(_WinKey, _PrivateKeyBase):
                 # to CRYPT_EXPORTABLE, so we manually recreated the public key
                 # ASN.1
                 params = self.asn1['private_key_algorithm']['parameters']
-                pub_asn1 = keys.PublicKeyInfo({
-                    'algorithm': keys.PublicKeyAlgorithm({
+                pub_asn1 = PublicKeyInfo({
+                    'algorithm': PublicKeyAlgorithm({
                         'algorithm': 'dsa',
                         'parameters': params
                     }),
-                    'public_key': core.Integer(pow(
+                    'public_key': Integer(pow(
                         params['g'].native,
                         self.asn1['private_key'].parsed.native,
                         params['p'].native
@@ -454,11 +468,11 @@ class PrivateKey(_WinKey, _PrivateKeyBase):
                 # as insurmountable. This is just a simpler/faster solution
                 # since the private key has all of the data we need anyway
                 parsed = self.asn1['private_key'].parsed
-                pub_asn1 = keys.PublicKeyInfo({
-                    'algorithm': keys.PublicKeyAlgorithm({
+                pub_asn1 = PublicKeyInfo({
+                    'algorithm': PublicKeyAlgorithm({
                         'algorithm': 'rsa'
                     }),
-                    'public_key': keys.RSAPublicKey({
+                    'public_key': RSAPublicKey({
                         'modulus': parsed['modulus'],
                         'public_exponent': parsed['public_exponent']
                     })
@@ -1058,7 +1072,7 @@ def generate_dh_parameters(bit_size):
             if not divisible and _is_prime(bit_size, p):
                 q = p // 2
                 if _is_prime(bit_size, q):
-                    return algos.DHParameters({'p': p, 'g': g})
+                    return DHParameters({'p': p, 'g': g})
 
     finally:
         if alg_handle:
@@ -1149,17 +1163,17 @@ def _advapi32_interpret_rsa_key_blob(bit_size, blob_struct, blob):
     coefficient = int_from_bytes(blob[coefficient_offset:private_exponent_offset][::-1])
     private_exponent = int_from_bytes(blob[private_exponent_offset:private_exponent_offset + len1][::-1])
 
-    public_key_info = keys.PublicKeyInfo({
-        'algorithm': keys.PublicKeyAlgorithm({
+    public_key_info = PublicKeyInfo({
+        'algorithm': PublicKeyAlgorithm({
             'algorithm': 'rsa',
         }),
-        'public_key': keys.RSAPublicKey({
+        'public_key': RSAPublicKey({
             'modulus': modulus,
             'public_exponent': public_exponent,
         }),
     })
 
-    rsa_private_key = keys.RSAPrivateKey({
+    rsa_private_key = RSAPrivateKey({
         'version': 'two-prime',
         'modulus': modulus,
         'public_exponent': public_exponent,
@@ -1171,9 +1185,9 @@ def _advapi32_interpret_rsa_key_blob(bit_size, blob_struct, blob):
         'coefficient': coefficient,
     })
 
-    private_key_info = keys.PrivateKeyInfo({
+    private_key_info = PrivateKeyInfo({
         'version': 0,
-        'private_key_algorithm': keys.PrivateKeyAlgorithm({
+        'private_key_algorithm': PrivateKeyAlgorithm({
             'algorithm': 'rsa',
         }),
         'private_key': rsa_private_key,
@@ -1215,29 +1229,29 @@ def _advapi32_interpret_dsa_key_blob(bit_size, public_blob, private_blob):
     x = int_from_bytes(private_blob[x_offset:x_offset + len1][::-1])
     y = int_from_bytes(public_blob[y_offset:y_offset + len2][::-1])
 
-    public_key_info = keys.PublicKeyInfo({
-        'algorithm': keys.PublicKeyAlgorithm({
+    public_key_info = PublicKeyInfo({
+        'algorithm': PublicKeyAlgorithm({
             'algorithm': 'dsa',
-            'parameters': keys.DSAParams({
+            'parameters': DSAParams({
                 'p': p,
                 'q': q,
                 'g': g,
             })
         }),
-        'public_key': core.Integer(y),
+        'public_key': Integer(y),
     })
 
-    private_key_info = keys.PrivateKeyInfo({
+    private_key_info = PrivateKeyInfo({
         'version': 0,
-        'private_key_algorithm': keys.PrivateKeyAlgorithm({
+        'private_key_algorithm': PrivateKeyAlgorithm({
             'algorithm': 'dsa',
-            'parameters': keys.DSAParams({
+            'parameters': DSAParams({
                 'p': p,
                 'q': q,
                 'g': g,
             })
         }),
-        'private_key': core.Integer(x),
+        'private_key': Integer(x),
     })
 
     return (public_key_info, private_key_info)
@@ -1271,11 +1285,11 @@ def _bcrypt_interpret_rsa_key_blob(key_type, blob_struct, blob):
     modulus = int_from_bytes(blob[modulus_offset:modulus_offset + modulus_byte_length])
 
     if key_type == 'public':
-        return keys.PublicKeyInfo({
-            'algorithm': keys.PublicKeyAlgorithm({
+        return PublicKeyInfo({
+            'algorithm': PublicKeyAlgorithm({
                 'algorithm': 'rsa',
             }),
-            'public_key': keys.RSAPublicKey({
+            'public_key': RSAPublicKey({
                 'modulus': modulus,
                 'public_exponent': public_exponent,
             }),
@@ -1299,7 +1313,7 @@ def _bcrypt_interpret_rsa_key_blob(key_type, blob_struct, blob):
         coefficient = int_from_bytes(blob[coefficient_offset:private_exponent_offset])
         private_exponent = int_from_bytes(blob[private_exponent_offset:private_exponent_offset + modulus_byte_length])
 
-        rsa_private_key = keys.RSAPrivateKey({
+        rsa_private_key = RSAPrivateKey({
             'version': 'two-prime',
             'modulus': modulus,
             'public_exponent': public_exponent,
@@ -1311,9 +1325,9 @@ def _bcrypt_interpret_rsa_key_blob(key_type, blob_struct, blob):
             'coefficient': coefficient,
         })
 
-        return keys.PrivateKeyInfo({
+        return PrivateKeyInfo({
             'version': 0,
-            'private_key_algorithm': keys.PrivateKeyAlgorithm({
+            'private_key_algorithm': PrivateKeyAlgorithm({
                 'algorithm': 'rsa',
             }),
             'private_key': rsa_private_key,
@@ -1383,31 +1397,31 @@ def _bcrypt_interpret_dsa_key_blob(key_type, version, blob_struct, blob):
 
     if key_type == 'public':
         public = int_from_bytes(blob[public_offset:private_offset])
-        return keys.PublicKeyInfo({
-            'algorithm': keys.PublicKeyAlgorithm({
+        return PublicKeyInfo({
+            'algorithm': PublicKeyAlgorithm({
                 'algorithm': 'dsa',
-                'parameters': keys.DSAParams({
+                'parameters': DSAParams({
                     'p': p,
                     'q': q,
                     'g': g,
                 })
             }),
-            'public_key': core.Integer(public),
+            'public_key': Integer(public),
         })
 
     elif key_type == 'private':
         private = int_from_bytes(blob[private_offset:private_offset + key_byte_length])
-        return keys.PrivateKeyInfo({
+        return PrivateKeyInfo({
             'version': 0,
-            'private_key_algorithm': keys.PrivateKeyAlgorithm({
+            'private_key_algorithm': PrivateKeyAlgorithm({
                 'algorithm': 'dsa',
-                'parameters': keys.DSAParams({
+                'parameters': DSAParams({
                     'p': p,
                     'q': q,
                     'g': g,
                 })
             }),
-            'private_key': core.Integer(private),
+            'private_key': Integer(private),
         })
 
     else:
@@ -1452,10 +1466,10 @@ def _bcrypt_interpret_ec_key_blob(key_type, blob_struct, blob):
     public = b'\x04' + blob[0:key_byte_length * 2]
 
     if key_type == 'public':
-        return keys.PublicKeyInfo({
-            'algorithm': keys.PublicKeyAlgorithm({
+        return PublicKeyInfo({
+            'algorithm': PublicKeyAlgorithm({
                 'algorithm': 'ec',
-                'parameters': keys.ECDomainParameters(
+                'parameters': ECDomainParameters(
                     name='named',
                     value=curve
                 )
@@ -1465,16 +1479,16 @@ def _bcrypt_interpret_ec_key_blob(key_type, blob_struct, blob):
 
     elif key_type == 'private':
         private = int_from_bytes(blob[key_byte_length * 2:key_byte_length * 3])
-        return keys.PrivateKeyInfo({
+        return PrivateKeyInfo({
             'version': 0,
-            'private_key_algorithm': keys.PrivateKeyAlgorithm({
+            'private_key_algorithm': PrivateKeyAlgorithm({
                 'algorithm': 'ec',
-                'parameters': keys.ECDomainParameters(
+                'parameters': ECDomainParameters(
                     name='named',
                     value=curve
                 )
             }),
-            'private_key': keys.ECPrivateKey({
+            'private_key': ECPrivateKey({
                 'version': 'ecPrivkeyVer1',
                 'private_key': private,
                 'public_key': public,
@@ -1506,7 +1520,7 @@ def load_certificate(source):
         A Certificate object
     """
 
-    if isinstance(source, x509.Certificate):
+    if isinstance(source, Asn1Certificate):
         certificate = source
 
     elif isinstance(source, byte_cls):
@@ -1551,7 +1565,7 @@ def _load_key(key_object, container):
     """
 
     key_info = key_object
-    if isinstance(key_object, x509.Certificate):
+    if isinstance(key_object, Asn1Certificate):
         key_info = key_object['tbs_certificate']['subject_public_key_info']
 
     algo = key_info.algorithm
@@ -1634,7 +1648,7 @@ def _advapi32_load_key(key_object, key_info, container):
         A PrivateKey, PublicKey or Certificate object, based on container
     """
 
-    key_type = 'public' if isinstance(key_info, keys.PublicKeyInfo) else 'private'
+    key_type = 'public' if isinstance(key_info, PublicKeyInfo) else 'private'
     algo = key_info.algorithm
 
     if algo == 'rsa':
@@ -1828,7 +1842,7 @@ def _bcrypt_load_key(key_object, key_info, container, curve_name):
     alg_handle = None
     key_handle = None
 
-    key_type = 'public' if isinstance(key_info, keys.PublicKeyInfo) else 'private'
+    key_type = 'public' if isinstance(key_info, PublicKeyInfo) else 'private'
     algo = key_info.algorithm
 
     try:
@@ -2049,7 +2063,7 @@ def load_private_key(source, password=None):
         A PrivateKey object
     """
 
-    if isinstance(source, keys.PrivateKeyInfo):
+    if isinstance(source, PrivateKeyInfo):
         private_object = source
 
     else:
@@ -2100,7 +2114,7 @@ def load_public_key(source):
         A PublicKey object
     """
 
-    if isinstance(source, keys.PublicKeyInfo):
+    if isinstance(source, PublicKeyInfo):
         public_key = source
 
     elif isinstance(source, byte_cls):
@@ -2509,7 +2523,7 @@ def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm,
             # Windows doesn't use the ASN.1 Sequence for DSA signatures,
             # so we have to convert it here for the verification to work
             try:
-                signature = algos.DSASignature.load(signature).to_p1363()
+                signature = DSASignature.load(signature).to_p1363()
                 # Switch the two integers so that the reversal later will
                 # result in the correct order
                 half_len = len(signature) // 2
@@ -2601,7 +2615,7 @@ def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, r
         # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
         try:
-            signature = algos.DSASignature.load(signature).to_p1363()
+            signature = DSASignature.load(signature).to_p1363()
         except (ValueError, OverflowError, TypeError):
             raise SignatureError('Signature is invalid')
 
@@ -2939,7 +2953,7 @@ def _advapi32_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             output = output[half_len:] + output[:half_len]
             # Windows doesn't use the ASN.1 Sequence for DSA signatures,
             # so we have to convert it here for the verification to work
-            output = algos.DSASignature.from_p1363(output).dump()
+            output = DSASignature.from_p1363(output).dump()
 
         return output
 
@@ -3061,7 +3075,7 @@ def _bcrypt_sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
     if private_key.algorithm != 'rsa':
         # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
-        signature = algos.DSASignature.from_p1363(signature).dump()
+        signature = DSASignature.from_p1363(signature).dump()
 
     return signature
 

@@ -5,8 +5,17 @@ import os
 import shutil
 import tempfile
 
-from asn1crypto import algos, keys, x509, core
-
+from .._asn1 import (
+    Certificate as Asn1Certificate,
+    ECDomainParameters,
+    Integer,
+    KeyExchangeAlgorithm,
+    Null,
+    PrivateKeyInfo,
+    PublicKeyAlgorithm,
+    PublicKeyInfo,
+    RSAPublicKey,
+)
 from .._asymmetric import (
     _CertificateBase,
     _fingerprint,
@@ -100,12 +109,12 @@ class PrivateKey(_PrivateKeyBase):
                 key = parse_private(private_key_bytes)
 
                 if key.algorithm == 'rsa':
-                    public_asn1 = keys.PublicKeyInfo({
-                        'algorithm': keys.PublicKeyAlgorithm({
+                    public_asn1 = PublicKeyInfo({
+                        'algorithm': PublicKeyAlgorithm({
                             'algorithm': 'rsa',
-                            'parameters': core.Null()
+                            'parameters': Null()
                         }),
-                        'public_key': keys.RSAPublicKey({
+                        'public_key': RSAPublicKey({
                             'modulus': key['private_key'].parsed['modulus'],
                             'public_exponent': key['private_key'].parsed['public_exponent'],
                         })
@@ -113,12 +122,12 @@ class PrivateKey(_PrivateKeyBase):
 
                 elif key.algorithm == 'dsa':
                     params = key['private_key_algorithm']['parameters']
-                    public_asn1 = keys.PublicKeyInfo({
-                        'algorithm': keys.PublicKeyAlgorithm({
+                    public_asn1 = PublicKeyInfo({
+                        'algorithm': PublicKeyAlgorithm({
                             'algorithm': 'dsa',
                             'parameters': params.copy()
                         }),
-                        'public_key': core.Integer(pow(
+                        'public_key': Integer(pow(
                             params['g'].native,
                             key['private_key'].parsed.native,
                             params['p'].native
@@ -126,10 +135,10 @@ class PrivateKey(_PrivateKeyBase):
                     })
 
                 elif key.algorithm == 'ec':
-                    public_asn1 = keys.PublicKeyInfo({
-                        'algorithm': keys.PublicKeyAlgorithm({
+                    public_asn1 = PublicKeyInfo({
+                        'algorithm': PublicKeyAlgorithm({
                             'algorithm': 'ec',
-                            'parameters': keys.ECDomainParameters(
+                            'parameters': ECDomainParameters(
                                 name='named',
                                 value=self.curve
                             )
@@ -593,7 +602,7 @@ def generate_dh_parameters(bit_size):
         result = Security.SecKeychainItemDelete(private_key_ref)
         handle_sec_error(result)
 
-        return algos.KeyExchangeAlgorithm.load(private_key_bytes)['parameters']
+        return KeyExchangeAlgorithm.load(private_key_bytes)['parameters']
 
     finally:
         if public_key_ref:
@@ -632,7 +641,7 @@ def load_certificate(source):
         A Certificate object
     """
 
-    if isinstance(source, x509.Certificate):
+    if isinstance(source, Asn1Certificate):
         certificate = source
 
     elif isinstance(source, byte_cls):
@@ -701,7 +710,7 @@ def load_private_key(source, password=None):
         A PrivateKey object
     """
 
-    if isinstance(source, keys.PrivateKeyInfo):
+    if isinstance(source, PrivateKeyInfo):
         private_object = source
 
     else:
@@ -752,7 +761,7 @@ def load_public_key(source):
         A PublicKey object
     """
 
-    if isinstance(source, keys.PublicKeyInfo):
+    if isinstance(source, PublicKeyInfo):
         public_key = source
 
     elif isinstance(source, byte_cls):
@@ -822,7 +831,7 @@ def _load_key(key_object):
             '''
         ))
 
-    if isinstance(key_object, keys.PublicKeyInfo):
+    if isinstance(key_object, PublicKeyInfo):
         source = key_object.dump()
         item_type = SecurityConst.kSecItemTypePublicKey
 

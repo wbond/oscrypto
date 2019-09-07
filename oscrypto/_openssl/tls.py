@@ -7,11 +7,10 @@ import socket as socket_
 import select
 import numbers
 
-from asn1crypto import x509
-
 from ._libssl import libssl, LibsslConst
 from ._libcrypto import libcrypto, libcrypto_version_info, handle_openssl_error, peek_openssl_error
 from .. import _backend_config
+from .._asn1 import Certificate as Asn1Certificate
 from .._errors import pretty_message
 from .._ffi import null, bytes_from_buffer, buffer_from_bytes, is_null, buffer_pointer
 from .._types import type_name, str_cls, byte_cls, int_types
@@ -157,7 +156,7 @@ class TLSSession(object):
                 elif isinstance(extra_trust_root, str_cls):
                     with open(extra_trust_root, 'rb') as f:
                         extra_trust_root = parse_certificate(f.read())
-                elif not isinstance(extra_trust_root, x509.Certificate):
+                elif not isinstance(extra_trust_root, Asn1Certificate):
                     raise TypeError(pretty_message(
                         '''
                         extra_trust_roots must be a list of byte strings, unicode
@@ -1118,7 +1117,7 @@ class TLSSocket(object):
             handle_openssl_error(cert_length)
             cert_data = bytes_from_buffer(cert_buffer, cert_length)
 
-            cert = x509.Certificate.load(cert_data)
+            cert = Asn1Certificate.load(cert_data)
 
             if index == 0:
                 self._certificate = cert

@@ -6,7 +6,23 @@ import hmac
 import re
 import binascii
 
-from asn1crypto import core, pkcs12, cms, keys, x509, pem
+from ._asn1 import (
+    CertBag,
+    Certificate,
+    DSAPrivateKey,
+    ECPrivateKey,
+    EncryptedData,
+    EncryptedPrivateKeyInfo,
+    Integer,
+    OctetString,
+    Pfx,
+    PrivateKeyInfo,
+    PublicKeyInfo,
+    RSAPrivateKey,
+    RSAPublicKey,
+    SafeContents,
+    unarmor,
+)
 
 from .kdf import pbkdf1, pbkdf2, pkcs12_kdf
 from .symmetric import (
@@ -41,7 +57,7 @@ class _PrivateKeyBase():
 
         if self.algorithm == 'dsa':
             params = self.asn1['private_key_algorithm']['parameters']
-            return keys.DSAPrivateKey({
+            return DSAPrivateKey({
                 'version': 0,
                 'p': params['p'],
                 'q': params['q'],
@@ -231,12 +247,12 @@ def _unwrap_private_key_info(key_info):
     if key_info.algorithm == 'dsa':
         params = key_info['private_key_algorithm']['parameters']
         parsed = key_info['private_key'].parsed
-        return keys.DSAPrivateKey({
+        return DSAPrivateKey({
             'version': 0,
             'p': params['p'],
             'q': params['q'],
             'g': params['g'],
-            'public_key': core.Integer(pow(
+            'public_key': Integer(pow(
                 params['g'].native,
                 parsed.native,
                 params['p'].native
@@ -266,7 +282,7 @@ def _fingerprint(key_object, load_private_key):
         A byte string fingerprint
     """
 
-    if isinstance(key_object, keys.PrivateKeyInfo):
+    if isinstance(key_object, PrivateKeyInfo):
         key = key_object['private_key'].parsed
 
         if key_object.algorithm == 'rsa':
@@ -277,7 +293,7 @@ def _fingerprint(key_object, load_private_key):
 
         elif key_object.algorithm == 'dsa':
             params = key_object['private_key_algorithm']['parameters']
-            public_key = core.Integer(pow(
+            public_key = Integer(pow(
                 params['g'].native,
                 key_object['private_key'].parsed.native,
                 params['p'].native
@@ -310,7 +326,7 @@ def _fingerprint(key_object, load_private_key):
 
         return hashlib.sha256(to_hash).digest()
 
-    if isinstance(key_object, keys.PublicKeyInfo):
+    if isinstance(key_object, PublicKeyInfo):
         if key_object.algorithm == 'rsa':
             key = key_object['public_key'].parsed
 
@@ -404,11 +420,11 @@ def parse_public(data):
         # of RSA, that means the DER structure is of the type RSAPublicKey, so
         # we need to wrap it in the PublicKeyInfo structure.
         if algo == 'rsa':
-            return keys.PublicKeyInfo.wrap(data, 'rsa')
+            return PublicKeyInfo.wrap(data, 'rsa')
 
     if key_type is None or key_type == 'public key':
         try:
-            pki = keys.PublicKeyInfo.load(data)
+            pki = PublicKeyInfo.load(data)
             # Call .native to fully parse since asn1crypto is lazy
             pki.native
             return pki
@@ -416,16 +432,16 @@ def parse_public(data):
             pass  # Data was not PublicKeyInfo
 
         try:
-            rpk = keys.RSAPublicKey.load(data)
+            rpk = RSAPublicKey.load(data)
             # Call .native to fully parse since asn1crypto is lazy
             rpk.native
-            return keys.PublicKeyInfo.wrap(rpk, 'rsa')
+            return PublicKeyInfo.wrap(rpk, 'rsa')
         except (ValueError):
             pass  # Data was not an RSAPublicKey
 
     if key_type is None or key_type == 'certificate':
         try:
-            parsed_cert = x509.Certificate.load(data)
+            parsed_cert = Certificate.load(data)
             key_info = parsed_cert['tbs_certificate']['subject_public_key_info']
             return key_info
         except (ValueError):
@@ -481,7 +497,7 @@ def parse_certificate(data):
 
     if key_type is None or key_type == 'certificate':
         try:
-            return x509.Certificate.load(data)
+            return Certificate.load(data)
         except (ValueError):
             pass  # Data was not a Certificate
 
@@ -559,7 +575,7 @@ def parse_private(data, password=None):
             ))
 
     try:
-        pki = keys.PrivateKeyInfo.load(data)
+        pki = PrivateKeyInfo.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         pki.native
         return pki
@@ -567,11 +583,11 @@ def parse_private(data, password=None):
         pass  # Data was not PrivateKeyInfo
 
     try:
-        parsed_wrapper = keys.EncryptedPrivateKeyInfo.load(data)
+        parsed_wrapper = EncryptedPrivateKeyInfo.load(data)
         encryption_algorithm_info = parsed_wrapper['encryption_algorithm']
         encrypted_data = parsed_wrapper['encrypted_data'].native
         decrypted_data = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_data, password)
-        pki = keys.PrivateKeyInfo.load(decrypted_data)
+        pki = PrivateKeyInfo.load(decrypted_data)
         # Call .native to fully parse since asn1crypto is lazy
         pki.native
         return pki
@@ -579,26 +595,26 @@ def parse_private(data, password=None):
         pass  # Data was not EncryptedPrivateKeyInfo
 
     try:
-        parsed = keys.RSAPrivateKey.load(data)
+        parsed = RSAPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         parsed.native
-        return keys.PrivateKeyInfo.wrap(parsed, 'rsa')
+        return PrivateKeyInfo.wrap(parsed, 'rsa')
     except (ValueError):
         pass  # Data was not an RSAPrivateKey
 
     try:
-        parsed = keys.DSAPrivateKey.load(data)
+        parsed = DSAPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         parsed.native
-        return keys.PrivateKeyInfo.wrap(parsed, 'dsa')
+        return PrivateKeyInfo.wrap(parsed, 'dsa')
     except (ValueError):
         pass  # Data was not a DSAPrivateKey
 
     try:
-        parsed = keys.ECPrivateKey.load(data)
+        parsed = ECPrivateKey.load(data)
         # Call .native to fully parse since asn1crypto is lazy
         parsed.native
-        return keys.PrivateKeyInfo.wrap(parsed, 'ec')
+        return PrivateKeyInfo.wrap(parsed, 'ec')
     except (ValueError):
         pass  # Data was not an ECPrivateKey
 
@@ -627,7 +643,7 @@ def _unarmor_pem(data, password=None):
         or "ec".
     """
 
-    object_type, headers, der_bytes = pem.unarmor(data)
+    object_type, headers, der_bytes = unarmor(data)
 
     type_regex = '^((DSA|EC|RSA) PRIVATE KEY|ENCRYPTED PRIVATE KEY|PRIVATE KEY|PUBLIC KEY|RSA PUBLIC KEY|CERTIFICATE)'
     armor_type = re.match(type_regex, object_type)
@@ -799,7 +815,7 @@ def _parse_pkcs12(data, password, load_private_key):
     certs = {}
     private_keys = {}
 
-    pfx = pkcs12.Pfx.load(data)
+    pfx = Pfx.load(data)
 
     auth_safe = pfx['auth_safe']
     if auth_safe['content_type'].native != 'data':
@@ -839,10 +855,10 @@ def _parse_pkcs12(data, password, load_private_key):
     for content_info in authenticated_safe:
         content = content_info['content']
 
-        if isinstance(content, core.OctetString):
+        if isinstance(content, OctetString):
             _parse_safe_contents(content.native, certs, private_keys, password, load_private_key)
 
-        elif isinstance(content, cms.EncryptedData):
+        elif isinstance(content, EncryptedData):
             encrypted_content_info = content['encrypted_content_info']
 
             encryption_algorithm_info = encrypted_content_info['content_encryption_algorithm']
@@ -912,28 +928,28 @@ def _parse_safe_contents(safe_contents, certs, private_keys, password, load_priv
     """
 
     if isinstance(safe_contents, byte_cls):
-        safe_contents = pkcs12.SafeContents.load(safe_contents)
+        safe_contents = SafeContents.load(safe_contents)
 
     for safe_bag in safe_contents:
         bag_value = safe_bag['bag_value']
 
-        if isinstance(bag_value, pkcs12.CertBag):
+        if isinstance(bag_value, CertBag):
             if bag_value['cert_id'].native == 'x509':
                 cert = bag_value['cert_value'].parsed
                 public_key_info = cert['tbs_certificate']['subject_public_key_info']
                 certs[_fingerprint(public_key_info, None)] = bag_value['cert_value'].parsed
 
-        elif isinstance(bag_value, keys.PrivateKeyInfo):
+        elif isinstance(bag_value, PrivateKeyInfo):
             private_keys[_fingerprint(bag_value, load_private_key)] = bag_value
 
-        elif isinstance(bag_value, keys.EncryptedPrivateKeyInfo):
+        elif isinstance(bag_value, EncryptedPrivateKeyInfo):
             encryption_algorithm_info = bag_value['encryption_algorithm']
             encrypted_key_bytes = bag_value['encrypted_data'].native
             decrypted_key_bytes = _decrypt_encrypted_data(encryption_algorithm_info, encrypted_key_bytes, password)
-            private_key = keys.PrivateKeyInfo.load(decrypted_key_bytes)
+            private_key = PrivateKeyInfo.load(decrypted_key_bytes)
             private_keys[_fingerprint(private_key, load_private_key)] = private_key
 
-        elif isinstance(bag_value, pkcs12.SafeContents):
+        elif isinstance(bag_value, SafeContents):
             _parse_safe_contents(bag_value, certs, private_keys, password, load_private_key)
 
         else:
