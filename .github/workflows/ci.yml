@@ -3,6 +3,7 @@ on: [push]
 
 jobs:
   build:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -13,12 +14,10 @@ jobs:
           - '2.7.16'
           - '3.7.4'
           - 'pypy3'
-    name: Python ${{ matrix.python }}
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python }}
-      - run: env
       - run: python run.py deps
       - run: python run.py ci

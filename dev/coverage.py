@@ -159,7 +159,7 @@ def _codecov_submit():
         else:
             root = os.getcwd()
 
-    elif os.getenv('GITHUB_WORKSPACE'):
+    elif os.getenv('GITHUB_ACTIONS') == 'true':
         branch = ''
         tag = ''
         ref = os.getenv('GITHUB_REF', '')
