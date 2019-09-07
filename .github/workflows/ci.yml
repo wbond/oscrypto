@@ -13,7 +13,6 @@ jobs:
         python:
           - '2.7'
           - '3.7'
-          - 'pypy3'
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v1
