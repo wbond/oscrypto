@@ -6,6 +6,10 @@ import os
 import unittest
 
 
+__version__ = '0.20.0.dev1'
+__version_info__ = (0, 20, 0, 'dev1')
+
+
 _asn1crypto_module = None
 _oscrypto_module = None
 
@@ -24,17 +28,27 @@ def local_oscrypto():
     if _oscrypto_module:
         return (_asn1crypto_module, _oscrypto_module)
 
-    asn1_src_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'asn1crypto'))
-    if os.path.exists(asn1_src_dir):
-        asn1_module_info = imp.find_module('asn1crypto', [asn1_src_dir])
-        _asn1crypto_module = imp.load_module('asn1crypto', *asn1_module_info)
-    else:
+    tests_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # If we are in a source checkout, load the local oscrypto module, and
+    # local asn1crypto module if possible. Otherwise do a normal import.
+    in_source_checkout = os.path.basename(tests_dir) == 'tests'
+
+    if in_source_checkout:
+        _asn1crypto_module = _import_from(
+            'asn1crypto',
+            os.path.abspath(os.path.join(tests_dir, '..', '..', 'asn1crypto'))
+        )
+    if _asn1crypto_module is None:
         import asn1crypto as _asn1crypto_module
 
-    # Make sure the module is loaded from this source folder
-    src_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-    module_info = imp.find_module('oscrypto', [src_dir])
-    _oscrypto_module = imp.load_module('oscrypto', *module_info)
+    if in_source_checkout:
+        _oscrypto_module = _import_from(
+            'oscrypto',
+            os.path.abspath(os.path.join(tests_dir, '..'))
+        )
+    if _oscrypto_module is None:
+        import oscrypto as _oscrypto_module
 
     # Configuring via env vars so CI for other packages doesn't need to do
     # anything complicated to get the alternate backends
@@ -50,6 +64,40 @@ def local_oscrypto():
         _oscrypto_module.use_ctypes()
 
     return (_asn1crypto_module, _oscrypto_module)
+
+
+def _import_from(mod, path, mod_dir=None):
+    """
+    Imports a module from a specific path
+
+    :param mod:
+        A unicode string of the module name
+
+    :param path:
+        A unicode string to the directory containing the module
+
+    :param mod_dir:
+        If the sub directory of "path" is different than the "mod" name,
+        pass the sub directory as a unicode string
+
+    :return:
+        None if not loaded, otherwise the module
+    """
+
+    if mod_dir is None:
+        mod_dir = mod
+
+    if not os.path.exists(path):
+        return None
+
+    if not os.path.exists(os.path.join(path, mod_dir)):
+        return None
+
+    try:
+        mod_info = imp.find_module(mod_dir, [path])
+        return imp.load_module(mod, *mod_info)
+    except ImportError:
+        return None
 
 
 def make_suite():
@@ -77,7 +125,13 @@ def test_classes():
         A list of unittest.TestCase classes
     """
 
-    local_oscrypto()
+    _, oscrypto = local_oscrypto()
+
+    if oscrypto.__version__ != __version__:
+        raise AssertionError(
+            ('oscrypto_tests version %s can not be run with ' % __version__) +
+            ('oscrypto version %s' % oscrypto.__version__)
+        )
 
     from .test_kdf import KDFTests
     from .test_keys import KeyTests

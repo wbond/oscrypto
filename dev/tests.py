@@ -1,13 +1,12 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import imp
-import os
 import unittest
 import re
 import sys
 
-from . import build_root
+from . import requires_oscrypto
+from ._import import _preload
 
 from tests import test_classes
 
@@ -29,30 +28,14 @@ def run(matcher=None, repeat=1, ci=False):
     :param repeat:
         An integer - the number of times to run the tests
 
+    :param ci:
+        A bool, indicating if the tests are being run as part of CI
+
     :return:
         A bool - if the tests succeeded
     """
 
-    if not ci:
-        print('Python ' + sys.version.replace('\n', ''))
-
-    oscrypto_tests_module_info = imp.find_module('tests', [os.path.join(build_root, 'oscrypto')])
-    oscrypto_tests = imp.load_module('oscrypto.tests', *oscrypto_tests_module_info)
-    asn1crypto, oscrypto = oscrypto_tests.local_oscrypto()
-    if not ci:
-        print(
-            '\nasn1crypto: %s, %s' % (
-                asn1crypto.__version__,
-                os.path.dirname(asn1crypto.__file__)
-            )
-        )
-        print(
-            'oscrypto: %s backend, %s, %s\n' % (
-                oscrypto.backend(),
-                oscrypto.__version__,
-                os.path.dirname(oscrypto.__file__)
-            )
-        )
+    _preload(requires_oscrypto, not ci)
 
     loader = unittest.TestLoader()
     # We have to manually track the list of applicable tests because for

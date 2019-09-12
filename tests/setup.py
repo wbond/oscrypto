@@ -5,13 +5,13 @@ import sys
 import warnings
 
 import setuptools
-from setuptools import find_packages, setup, Command
+from setuptools import setup, Command
 from setuptools.command.egg_info import egg_info
 
 
 PACKAGE_NAME = 'oscrypto'
 PACKAGE_VERSION = '0.20.0.dev1'
-PACKAGE_ROOT = os.path.dirname(os.path.abspath(__file__))
+TEST_PACKAGE_NAME = '%s_tests' % PACKAGE_NAME
 
 
 # setuptools 38.6.0 and newer know about long_description_content_type, but
@@ -26,27 +26,24 @@ if svi >= (38, 6):
     )
 
 
-# Try to load the tests first from the source repository layout. If that
-# doesn't work, we assume this file is in the release package, and the tests
-# are part of the package {PACKAGE_NAME}_tests.
-if os.path.exists(os.path.join(PACKAGE_ROOT, 'tests')):
-    tests_require = []
-    test_suite = 'tests.make_suite'
-else:
-    tests_require = ['%s_tests' % PACKAGE_NAME]
-    test_suite = '%s_tests.make_suite' % PACKAGE_NAME
-
-
-# This allows us to send the LICENSE and docs when creating a sdist. Wheels
-# automatically include the LICENSE, and don't need the docs. For these
-# to be included, the command must be "python setup.py sdist".
-package_data = {}
-if sys.argv[1:] == ['sdist'] or sorted(sys.argv[1:]) == ['-q', 'sdist']:
-    package_data[PACKAGE_NAME] = [
-        '../LICENSE',
-        '../*.md',
-        '../docs/*.md',
+package_data = {
+    TEST_PACKAGE_NAME: [
+        'fixtures/*',
+        'fixtures/*/*',
     ]
+}
+# This allows us to send the LICENSE when creating a sdist. Wheels
+# automatically include the license, and don't need the docs. For these
+# to be included, the command must be "python setup.py sdist".
+if sys.argv[1:] == ['sdist'] or sorted(sys.argv[1:]) == ['-q', 'sdist']:
+    package_data[TEST_PACKAGE_NAME].extend([
+        'LICENSE',
+        'readme.md',
+    ])
+
+
+tests_root = os.path.dirname(os.path.abspath(__file__))
+package_root = os.path.abspath(os.path.join(tests_root, '..'))
 
 
 # Ensures a copy of the LICENSE is included with the egg-info for
@@ -54,13 +51,13 @@ if sys.argv[1:] == ['sdist'] or sorted(sys.argv[1:]) == ['-q', 'sdist']:
 class EggInfoCommand(egg_info):
     def run(self):
         egg_info_path = os.path.join(
-            PACKAGE_ROOT,
-            '%s.egg-info' % PACKAGE_NAME
+            tests_root,
+            '%s.egg-info' % TEST_PACKAGE_NAME
         )
         if not os.path.exists(egg_info_path):
             os.mkdir(egg_info_path)
         shutil.copy2(
-            os.path.join(PACKAGE_ROOT, 'LICENSE'),
+            os.path.join(package_root, 'LICENSE'),
             os.path.join(egg_info_path, 'LICENSE')
         )
         egg_info.run(self)
@@ -78,14 +75,14 @@ class CleanCommand(Command):
         pass
 
     def run(self):
-        sub_folders = ['build', 'temp', '%s.egg-info' % PACKAGE_NAME]
+        sub_folders = ['build', 'temp', '%s.egg-info' % TEST_PACKAGE_NAME]
         if self.all:
             sub_folders.append('dist')
         for sub_folder in sub_folders:
-            full_path = os.path.join(PACKAGE_ROOT, sub_folder)
+            full_path = os.path.join(tests_root, sub_folder)
             if os.path.exists(full_path):
                 shutil.rmtree(full_path)
-        for root, dirs, files in os.walk(os.path.join(PACKAGE_ROOT, PACKAGE_NAME)):
+        for root, dirs, files in os.walk(tests_root):
             for filename in files:
                 if filename[-4:] == '.pyc':
                     os.unlink(os.path.join(root, filename))
@@ -95,19 +92,16 @@ class CleanCommand(Command):
 
 
 readme = ''
-with codecs.open(os.path.join(PACKAGE_ROOT, 'readme.md'), 'r', 'utf-8') as f:
+with codecs.open(os.path.join(tests_root, 'readme.md'), 'r', 'utf-8') as f:
     readme = f.read()
 
 
 setup(
-    name=PACKAGE_NAME,
+    name=TEST_PACKAGE_NAME,
     version=PACKAGE_VERSION,
 
     description=(
-        'TLS (SSL) sockets, key generation, encryption, decryption, signing, '
-        'verification and KDFs using the OS crypto libraries. Does not require '
-        'a compiler, and relies on the OS for patching. Works on Windows, OS X '
-        'and Linux/BSD.'
+        'Test suite for oscrypto, separated due to file size'
     ),
     long_description=readme,
     long_description_content_type='text/markdown',
@@ -141,13 +135,13 @@ setup(
 
     keywords='crypto pki tls ssl x509 certificate encrypt decrypt sign verify rsa dsa ec dh',
 
-    install_requires=['asn1crypto>=0.25.0.dev1'],
-
-    packages=find_packages(exclude=['tests*', 'dev*']),
+    packages=[TEST_PACKAGE_NAME],
+    package_dir={TEST_PACKAGE_NAME: '.'},
     package_data=package_data,
 
-    tests_require=tests_require,
-    test_suite=test_suite,
+    install_requires=[
+        '%s==%s' % (PACKAGE_NAME, PACKAGE_VERSION),
+    ],
 
     cmdclass={
         'clean': CleanCommand,
