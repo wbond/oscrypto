@@ -55,7 +55,7 @@ if task not in set(['api_docs', 'lint', 'tests', 'coverage', 'deps', 'ci', 'vers
 if task != 'tests' and task != 'version' and len(sys.argv) - next_arg > 0:
     show_usage()
 
-
+params = []
 kwargs = {}
 if task == 'api_docs':
     from dev.api_docs import run
@@ -97,5 +97,5 @@ elif task == 'build':
 elif task == 'release':
     from dev.release import run
 
-result = run(**kwargs)
+result = run(*params, **kwargs)
 sys.exit(int(not result))
