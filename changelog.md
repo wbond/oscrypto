@@ -1,5 +1,52 @@
 # changelog
 
+## 1.0.0
+
+ - Backwards Compatibility Breaks
+    - `oscrypto.backend()` will now return `"mac"` instead of `"osx"` when
+      running on a Mac and not explicitly configured to use OpenSSL
+ - Enhancements
+    - Added functionality to calculate public keys from private keys since that
+      was removed from asn1crypto:
+       - `asn1crypto.keys.PrivateKeyInfo().unwrap()` is now
+         `asymmetric.PrivateKey().unwrap()`
+       - `asn1crypto.keys.PrivateKeyInfo().public_key` is now
+         `asymmetric.PrivateKey().public_key.unwrap()`
+       - `asn1crypto.keys.PrivateKeyInfo().public_key_info` is now
+         `asymmetric.PrivateKey().public_key.asn1`
+       - `asn1crypto.keys.PrivateKeyInfo().fingerprint` is now
+         `asymmetric.PrivateKey().fingerprint`
+       - `asn1crypto.keys.PublicKeyInfo().unwrap()` is now
+         `asymmetric.PublicKey().unwrap()`
+       - `asn1crypto.keys.PublicKeyInfo().fingerprint` is now
+         `asymmetric.PublicKey().fingerprint`
+    - Added `oscrypto.use_ctypes()` to avoid CFFI if desired
+    - Added `tls.TLSSocket().port` property
+    - Improved handling of disconnects with `tls.TLSSocket()`
+    - Improved error messages when dealing with failures originating in OpenSSL
+    - Allow PEM-encoded files to have leading whitespace when loaded via
+      `keys.parse_private()`, `keys.parse_public()` and
+      `keys.parse_certificate()`
+    - Restructured internal imports of asn1crypto to make vendoring easier
+    - No longer touch the user keychain on Macs when generating keys, instead
+      use a temporary one
+ - Bug Fixes
+    - Fixed compatibility with Python 3.7+
+    - Fixed compatibility with LibreSSL version 2.2.x+
+    - Fixed a bug where `tls.TLSSocket().read_until()` that would sometimes read
+      more data from the socket than necessary
+    - Fixed a buffer overflow when reading data from an OpenSSL memory bio
+    - Fixed a bug in `util.pbkdf2()` that would cause incorrect output in some
+      situations when run on Windows XP or with OpenSSL 0.9.8
+    - Fixed `aes_cbc_no_padding_encrypt()` so it can be executed when the backend
+      is OpenSSL
+    - A `SecTrustRef` obtained from `SSLCopyPeerTrust()` on Mac is now
+      properly released
+ - Packaging
+    - `wheel`, `sdist` and `bdist_egg` releases now all include LICENSE,
+      `sdist` includes docs
+    - Added `oscrypto_tests` package to PyPi
+
 ## 0.19.1
 
  - Fixed a bug where `trust_list.get_path()` would not call the `cert_callback`

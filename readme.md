@@ -192,12 +192,12 @@ Some downsides include:
 
 ## Current Release
 
-0.19.1 - [changelog](changelog.md)
+1.0.0 - [changelog](changelog.md)
 
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7 or pypy
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8 or pypy
 
 ## Installation
 
