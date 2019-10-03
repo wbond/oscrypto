@@ -18,6 +18,7 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
  - [Development](#development)
  - [CI Tasks](#ci-tasks)
 
+[![GitHub Actions CI](https://github.com/wbond/oscrypto/workflows/CI/badge.svg)](https://github.com/wbond/oscrypto/actions?workflow=CI)
 [![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
 [![CircleCI](https://circleci.com/gh/wbond/oscrypto.svg?style=shield)](https://circleci.com/gh/wbond/oscrypto)
@@ -56,6 +57,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - OS X 10.11 with OpenSSL 1.1.0
      - macOS 10.12
      - macOS 10.13 with LibreSSL 2.2.7
+     - macOS 10.14
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
@@ -221,7 +223,15 @@ pip install oscrypto
 
 ## Testing
 
-Tests are written using `unittest` and require no third-party packages:
+Tests are written using `unittest` and require no third-party packages.
+
+Depending on what type of source is available for the package, the following
+commands can be used to run the test suite.
+
+### Git Repository
+
+When working within a Git working copy, or an archive of the Git repository,
+the full test suite is run via:
 
 ```bash
 python run.py tests
@@ -243,10 +253,29 @@ python run.py tests aes 20
 ```
 
 To run tests using a custom build of OpenSSL, or to use OpenSSL on Windows or
-OS X, add `use_openssl` after `run.py`, like:
+Mac, add `use_openssl` after `run.py`, like:
 
 ```bash
 python run.py use_openssl=/path/to/libcrypto.dylib,/path/to/libssl.dylib tests
+```
+
+### PyPi Source Distribution
+
+When working within an extracted source distribution (aka `.tar.gz`) from
+PyPi, the full test suite is run via:
+
+```bash
+python setup.py test
+```
+
+### Package
+
+When the package has been installed via pip (or another method), the package
+`oscrypto_tests` may be installed and invoked to run the full test suite:
+
+```bash
+pip install oscrypto_tests
+python -m oscrypto_tests
 ```
 
 ## Development
