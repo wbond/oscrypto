@@ -15,6 +15,8 @@ __all__ = [
     '__version__',
     '__version_info__',
     'backend',
+    'ffi',
+    'use_ctypes',
     'use_openssl',
     'use_winlegacy',
 ]
