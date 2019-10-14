@@ -16,6 +16,7 @@ __all__ = [
     '__version_info__',
     'backend',
     'ffi',
+    'load_order',
     'use_ctypes',
     'use_openssl',
     'use_winlegacy',
@@ -219,3 +220,129 @@ def _record_ffi(module):
         if _module_values['ffi'] is not None:
             return
         _module_values['ffi'] = module
+
+
+def load_order():
+    """
+    Returns a list of the module and sub-module names for oscrypto in
+    dependency load order, for the sake of live reloading code
+
+    :return:
+        A list of unicode strings of module names, as they would appear in
+        sys.modules, ordered by which module should be reloaded first
+    """
+
+    return [
+        'oscrypto._asn1',  # none
+        'oscrypto._cipher_suites',  # none
+        'oscrypto._errors',  # none
+        'oscrypto._int',  # none
+        'oscrypto._types',  # none
+        'oscrypto.errors',  # none
+        'oscrypto.version',  # none
+
+        'oscrypto',  # _types, errors, version
+        'oscrypto._ffi',  # _types, oscrypto
+        'oscrypto._pkcs12',  # _asn1, _errors, _types
+        'oscrypto._pkcs5',  # _asn1, _errors, _types
+        'oscrypto._rand',  # _errors, _types
+        'oscrypto._tls',  # _asn1, _ciphersuites, errors
+
+        'oscrypto._linux_bsd.trust_list',  # _asn1, _errors
+
+        'oscrypto._mac._common_crypto_cffi',  # _ffi
+        'oscrypto._mac._common_crypto_ctypes',  # _ffi, errors
+        # _mac._common_crypto_cffi, _mac._common_crypto_ctypes, oscrypto
+        'oscrypto._mac._common_crypto',
+        'oscrypto._mac._core_foundation_cffi',  # _ffi, errors
+        'oscrypto._mac._core_foundation_ctypes',  # _ffi, errors
+        # _ffi, _mac._core_foundation_cffi, _mac._core_foundation_ctypes, oscrypto
+        'oscrypto._mac._core_foundation',
+        'oscrypto._mac._security_cffi',  # _ffi, errors
+        'oscrypto._mac._security_ctypes',  # _ffi, errors
+        # _ffi, _mac._core_foundation_cffi, _mac._core_foundation_ctypes,
+        # _mac._security_cffi, _mac._security_ctypes, errors, oscrypto
+        'oscrypto._mac._security',
+        'oscrypto._mac.trust_list',  # _asn1, _ffi, _mac._core_foundation, _mac._security
+        # _errors, _ffi, _mac._common_crypto, _mac._security, _types, errors
+        'oscrypto._mac.util',
+
+        'oscrypto._openssl._libcrypto_cffi',  # _errors, _ffi, errors, oscrypto
+        'oscrypto._openssl._libcrypto_ctypes',  # _errors, _ffi, errors, oscrypto
+        # _ffi, _openssl._libcrypto_cffi, _openssl._libcrypto_ctypes, _types, oscrypto
+        'oscrypto._openssl._libcrypto',
+        'oscrypto._openssl._libssl_cffi',  # _errors, _ffi, errors, oscrypto
+        'oscrypto._openssl._libssl_ctypes',  # _errors, _ffi, errors, oscrypto
+        # _openssl._libcrypto, _openssl._libssl_cffi, _openssl._libssl_ctypes, oscrypto
+        'oscrypto._openssl._libssl',
+        'oscrypto._openssl.util',  # _errors, _ffi, _openssl._libcrypto, _rand, _types
+
+        'oscrypto._win._cng_cffi',  # _ffi, _types, errors
+        'oscrypto._win._cng_ctypes',  # _ffi, _types, errors
+        # _ffi, _win._cng_cffi, _win._cng_ctypes, oscrypto
+        'oscrypto._win._cng',
+        'oscrypto._win._decode',  # _types
+        'oscrypto._win._advapi32_cffi',  # _ffi, _types, errors
+        'oscrypto._win._advapi32_ctypes',  # _ffi, _types, errors
+        # _ffi, _types, _win._advapi32_cffi, _win._advapi32_ctypes,
+        # _win._decode, errors, oscrypto
+        'oscrypto._win._advapi32',
+        'oscrypto._win._kernel32_cffi',  # _ffi, _types, errors
+        'oscrypto._win._kernel32_ctypes',  # _ffi, _types, errors
+        # _types, _win._kernel32_cffi, _win._kernel32_ctypes, _win._decode, oscrypto
+        'oscrypto._win._kernel32',
+        'oscrypto._win._secur32_cffi',  # _ffi, _types, errors
+        'oscrypto._win._secur32_ctypes',  # _ffi, _types, errors
+        # _types, _win._secur32_cffi, _win._secur32_ctypes, _win._decode, errors, oscrypto
+        'oscrypto._win._secur32',
+        'oscrypto._win._crypt32_cffi',  # _ffi, _types, errors
+        'oscrypto._win._crypt32_ctypes',  # _ffi, _types, _win._kernel32, errors
+        # _ffi, _types, _win._crypt32_cffi, _win._crypt32_ctypes, _win._decode, oscrypto
+        'oscrypto._win._crypt32',
+        'oscrypto._win.trust_list',  # _asn1, _ffi, _types, _win._crypt32
+        'oscrypto._win.util',  # _errors, _ffi, _pkcs12, _types, oscrypto
+
+        # _asn1, _errors, _linux_bsd.trust_list, _mac.trust_list, _win.trust_list, errors
+        'oscrypto.trust_list',
+        'oscrypto.util',  # _errors, _mac.util, _types, _openssl.util, _win.util
+        # _errors, _ffi, _mac.util, _openssl.util, _types,
+        # _win._kernel32, _win.util, oscrypto, util
+        'oscrypto.kdf',
+
+        # _errors, _ffi, _mac._core_foundation, _mac._security, _mac.util, _types
+        'oscrypto._mac.symmetric',
+        # _errors, _ffi, _openssl._libcrypto, _openssl.util, _types, util
+        'oscrypto._openssl.symmetric',
+        'oscrypto._win.symmetric',  # _errors, _ffi, _types, _win.util, oscrypto
+        # _mac.symmetric, _openssl.symmetric, _win.symmetric, oscrypto
+        'oscrypto.symmetric',
+
+        'oscrypto._asymmetric',  # _asn1, _errors, _types, kdf, symmetric, util
+        'oscrypto._ecdsa',  # _asn1, _errors, _types, errors, oscrypto, util
+        'oscrypto._pkcs1',  # _asn1, _errors, _int, _types, oscrypto, util
+
+        # _asn1, _asymmetric, _errors, _ffi, _mac._core_foundation, _mac._security,
+        # _mac.util, _pkcs1, _types, errors
+        'oscrypto._mac.asymmetric',
+        # _asn1, _asymmetric, _errors, _ffi, _openssl._libcrypto, _types,
+        # errors, util
+        'oscrypto._openssl.asymmetric',
+        # _asn1, _asymmetric, _ecdsa, _errors, _ffi, _int, _win._advapi32, _win._cng,
+        # _pkcs1, _types, errors, oscrypto, util
+        'oscrypto._win.asymmetric',
+        # _asn1, _asymmetric, _errors, _types, kdf, oscrypto, symmetric, util
+        'oscrypto.asymmetric',
+        # _mac.asymmetric, _openssl.asymmetric, _win.asymmetric, oscrypto
+        'oscrypto.keys',
+
+        # _asn1, _ciphersuites, _errors, _ffi, _mac._core_foundation, _mac._security,
+        # _mac.asymmetric, _mac.util, _tls, _types, errors, keys
+        'oscrypto._mac.tls',
+        # _asn1, _errors, _ffi, _openssl._libcrypto, _openssl._libssl, _openssl.asymmetric,
+        # _tls, _types, errors, keys, oscrypto, trust_list
+        'oscrypto._openssl.tls',
+        # _asn1, _errors, _ffi, _tls, _types, _win._crypt32, _win._kernel32, _win._secur32,
+        # _win.asymmetric, errors, keys
+        'oscrypto._win.tls',
+        'oscrypto.tls',  # _mac.tls, _openssl.tls, _win.tls, oscrypto
+    ]

@@ -139,6 +139,7 @@ def test_classes():
     from .test_symmetric import SymmetricTests
     from .test_trust_list import TrustListTests
     from .test_tls import TLSTests
+    from .test_init import InitTests
 
     return [
         KDFTests,
@@ -146,5 +147,6 @@ def test_classes():
         AsymmetricTests,
         SymmetricTests,
         TrustListTests,
-        TLSTests
+        TLSTests,
+        InitTests,
     ]
