@@ -1,6 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
+import platform
+import sys
+
 import re
 from ctypes.util import find_library
 
@@ -21,10 +24,14 @@ __all__ = [
     'version_info',
 ]
 
-
 libcrypto_path = _backend_config().get('libcrypto_path')
 if libcrypto_path is None:
     libcrypto_path = find_library('crypto')
+    # if we are on catalina, we want to strongly version libcrypto since unversioned libcrypto has a non-stable ABI
+    if sys.platform == 'darwin' and platform.mac_ver()[0].startswith('10.15') and \
+            libcrypto_path.endswith('libcrypto.dylib'):
+        # libcrypto.42.dylib is in libressl-2.6 which as a OpenSSL 1.0.1-compatible API
+        libcrypto_path = libcrypto_path.replace('libcrypto.dylib', 'libcrypto.42.dylib')
 if not libcrypto_path:
     raise LibraryNotFoundError('The library libcrypto could not be found')
 
