@@ -171,43 +171,43 @@ ffi.cdef("""
     OSStatus SecPolicySetValue(SecPolicyRef policyRef, const CSSM_DATA *value);
     OSStatus SecTrustEvaluate(SecTrustRef trust, SecTrustResultType *result);
 
-    SecRandomRef kSecRandomDefault;
+        extern SecRandomRef kSecRandomDefault;
 
-    CFStringRef kSecPaddingKey;
-    CFStringRef kSecPaddingPKCS7Key;
-    CFStringRef kSecPaddingPKCS5Key;
-    CFStringRef kSecPaddingPKCS1Key;
-    CFStringRef kSecPaddingOAEPKey;
-    CFStringRef kSecPaddingNoneKey;
-    CFStringRef kSecModeCBCKey;
-    CFStringRef kSecTransformInputAttributeName;
-    CFStringRef kSecDigestTypeAttribute;
-    CFStringRef kSecDigestLengthAttribute;
-    CFStringRef kSecIVKey;
+    extern CFStringRef kSecPaddingKey;
+    extern CFStringRef kSecPaddingPKCS7Key;
+    extern CFStringRef kSecPaddingPKCS5Key;
+    extern CFStringRef kSecPaddingPKCS1Key;
+    extern CFStringRef kSecPaddingOAEPKey;
+    extern CFStringRef kSecPaddingNoneKey;
+    extern CFStringRef kSecModeCBCKey;
+    extern CFStringRef kSecTransformInputAttributeName;
+    extern CFStringRef kSecDigestTypeAttribute;
+    extern CFStringRef kSecDigestLengthAttribute;
+    extern CFStringRef kSecIVKey;
 
-    CFStringRef kSecAttrIsExtractable;
+    extern CFStringRef kSecAttrIsExtractable;
 
-    CFStringRef kSecDigestSHA1;
-    CFStringRef kSecDigestSHA2;
-    CFStringRef kSecDigestMD5;
+    extern CFStringRef kSecDigestSHA1;
+    extern CFStringRef kSecDigestSHA2;
+    extern CFStringRef kSecDigestMD5;
 
-    CFStringRef kSecAttrKeyType;
+    extern CFStringRef kSecAttrKeyType;
 
-    CFTypeRef kSecAttrKeyTypeRSA;
-    CFTypeRef kSecAttrKeyTypeDSA;
-    CFTypeRef kSecAttrKeyTypeECDSA;
+    extern CFTypeRef kSecAttrKeyTypeRSA;
+    extern CFTypeRef kSecAttrKeyTypeDSA;
+    extern CFTypeRef kSecAttrKeyTypeECDSA;
 
-    CFStringRef kSecAttrKeySizeInBits;
-    CFStringRef kSecAttrLabel;
+    extern CFStringRef kSecAttrKeySizeInBits;
+    extern CFStringRef kSecAttrLabel;
 
-    CFTypeRef kSecAttrCanSign;
-    CFTypeRef kSecAttrCanVerify;
+    extern CFTypeRef kSecAttrCanSign;
+    extern CFTypeRef kSecAttrCanVerify;
 
-    CFTypeRef kSecAttrKeyTypeAES;
-    CFTypeRef kSecAttrKeyTypeRC4;
-    CFTypeRef kSecAttrKeyTypeRC2;
-    CFTypeRef kSecAttrKeyType3DES;
-    CFTypeRef kSecAttrKeyTypeDES;
+    extern CFTypeRef kSecAttrKeyTypeAES;
+    extern CFTypeRef kSecAttrKeyTypeRC4;
+    extern CFTypeRef kSecAttrKeyTypeRC2;
+    extern CFTypeRef kSecAttrKeyType3DES;
+    extern CFTypeRef kSecAttrKeyTypeDES;
 """)
 
 if version_info < (10, 8):
