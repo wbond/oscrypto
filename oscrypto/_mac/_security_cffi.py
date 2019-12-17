@@ -171,7 +171,7 @@ ffi.cdef("""
     OSStatus SecPolicySetValue(SecPolicyRef policyRef, const CSSM_DATA *value);
     OSStatus SecTrustEvaluate(SecTrustRef trust, SecTrustResultType *result);
 
-        extern SecRandomRef kSecRandomDefault;
+    extern SecRandomRef kSecRandomDefault;
 
     extern CFStringRef kSecPaddingKey;
     extern CFStringRef kSecPaddingPKCS7Key;
