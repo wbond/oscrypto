@@ -566,6 +566,7 @@ def _do_request(method, url, headers, data=None, query_params=None, timeout=20):
         else:
             args = [
                 'curl',
+                '--http1.1',
                 '--request',
                 method,
                 '--location',
