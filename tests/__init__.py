@@ -50,6 +50,9 @@ def local_oscrypto():
     if _oscrypto_module is None:
         import oscrypto as _oscrypto_module
 
+    if os.environ.get('OSCRYPTO_USE_CTYPES'):
+        _oscrypto_module.use_ctypes()
+
     # Configuring via env vars so CI for other packages doesn't need to do
     # anything complicated to get the alternate backends
     if os.environ.get('OSCRYPTO_USE_OPENSSL'):
@@ -59,9 +62,6 @@ def local_oscrypto():
         _oscrypto_module.use_openssl(*paths)
     elif os.environ.get('OSCRYPTO_USE_WINLEGACY'):
         _oscrypto_module.use_winlegacy()
-
-    if os.environ.get('OSCRYPTO_USE_CTYPES'):
-        _oscrypto_module.use_ctypes()
 
     return (_asn1crypto_module, _oscrypto_module)
 
