@@ -105,11 +105,11 @@ ffi.cdef("""
     CFIndex CFDictionaryGetKeysAndValues(CFDictionaryRef theDict, const void **keys, const void **values);
     CFTypeID CFGetTypeID(CFTypeRef cf);
 
-    CFAllocatorRef kCFAllocatorDefault;
-    CFArrayCallBacks kCFTypeArrayCallBacks;
-    CFBooleanRef kCFBooleanTrue;
-    CFDictionaryKeyCallBacks kCFTypeDictionaryKeyCallBacks;
-    CFDictionaryValueCallBacks kCFTypeDictionaryValueCallBacks;
+    extern CFAllocatorRef kCFAllocatorDefault;
+    extern CFArrayCallBacks kCFTypeArrayCallBacks;
+    extern CFBooleanRef kCFBooleanTrue;
+    extern CFDictionaryKeyCallBacks kCFTypeDictionaryKeyCallBacks;
+    extern CFDictionaryValueCallBacks kCFTypeDictionaryValueCallBacks;
 """)
 
 core_foundation_path = find_library('CoreFoundation')
