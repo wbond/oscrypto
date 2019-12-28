@@ -16,20 +16,24 @@ _non_local = {'patched': False}
 
 
 def patch():
-    if not sys.version_info < (2, 7):
+    if sys.version_info >= (3, 0):
         return
 
     if _non_local['patched']:
         return
 
-    unittest.TestCase.assertIsInstance = _assert_is_instance
-    unittest.TestCase.assertRegexpMatches = _assert_regexp_matches
-    unittest.TestCase.assertRaises = _assert_raises
-    unittest.TestCase.assertRaisesRegexp = _assert_raises_regexp
-    unittest.TestCase.assertLess = _assert_less
-    unittest.TestCase.assertLessEqual = _assert_less_equal
-    unittest.TestCase.assertIn = _assert_in
-    unittest.TestCase.assertNotIn = _assert_not_in
+    if sys.version_info < (2, 7):
+        unittest.TestCase.assertIsInstance = _assert_is_instance
+        unittest.TestCase.assertRegex = _assert_regex
+        unittest.TestCase.assertRaises = _assert_raises
+        unittest.TestCase.assertRaisesRegex = _assert_raises_regex
+        unittest.TestCase.assertLess = _assert_less
+        unittest.TestCase.assertLessEqual = _assert_less_equal
+        unittest.TestCase.assertIn = _assert_in
+        unittest.TestCase.assertNotIn = _assert_not_in
+    else:
+        unittest.TestCase.assertRegex = unittest.TestCase.assertRegexpMatches
+        unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
     _non_local['patched'] = True
 
 
@@ -75,7 +79,7 @@ def _assert_not_in(self, member, container, msg=None):
         self.fail(_format_message(msg, standard_msg))
 
 
-def _assert_regexp_matches(self, text, expected_regexp, msg=None):
+def _assert_regex(self, text, expected_regexp, msg=None):
     """Fail the test unless the text matches the regular expression."""
     if isinstance(expected_regexp, str_cls):
         expected_regexp = re.compile(expected_regexp)
@@ -93,7 +97,7 @@ def _assert_raises(self, excClass, callableObj=None, *args, **kwargs):  # noqa
         callableObj(*args, **kwargs)
 
 
-def _assert_raises_regexp(self, expected_exception, expected_regexp, callable_obj=None, *args, **kwargs):
+def _assert_raises_regex(self, expected_exception, expected_regexp, callable_obj=None, *args, **kwargs):
     if expected_regexp is not None:
         expected_regexp = re.compile(expected_regexp)
     context = _AssertRaisesContext(expected_exception, self, expected_regexp)

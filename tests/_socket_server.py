@@ -38,3 +38,4 @@ def make_socket_server(port, on_read=None):
         args=(server, on_read)
     )
     t.start()
+    return server

@@ -131,13 +131,16 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_error_ftp(self):
+        s = None
         try:
             def_timeout = socket.getdefaulttimeout()
             socket.setdefaulttimeout(5)
-            make_socket_server(8021, lambda s, d: s.send(b'220 Welcome to FooFTP\n'))
+            s = make_socket_server(8021, lambda s, d: s.send(b'220 Welcome to FooFTP\n'))
             with assert_exception(self, errors.TLSError, 'remote end closed the connection|server responded using FTP'):
                 tls.TLSSocket('localhost', 8021)
         finally:
+            if s:
+                s.close()
             socket.setdefaulttimeout(def_timeout)
 
     @connection_timeout()

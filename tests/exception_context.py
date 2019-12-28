@@ -30,7 +30,7 @@ def assert_exception(test_case, expected_class, expected_msg):
             test_case.assertIsInstance(e, expected_class)
             msg = str_cls(e)
             if expected_re.search(msg):
-                test_case.assertRegexpMatches(msg, expected_re)
+                test_case.assertRegex(msg, expected_re)
                 should_raise = False
         if should_raise:
             raise
