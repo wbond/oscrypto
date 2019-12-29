@@ -628,7 +628,7 @@ def _do_request(method, url, headers, data=None, query_params=None, timeout=20):
     return (content_type, encoding, body)
 
 
-def _execute(params, cwd, retry=None, retries=0):
+def _execute(params, cwd, retry=None, retries=0, backoff=2):
     """
     Executes a subprocess
 
@@ -661,11 +661,11 @@ def _execute(params, cwd, retry=None, retries=0):
             stderr_str = stderr.decode('utf-8')
             if isinstance(retry, Pattern):
                 if retry.search(stderr_str) is not None:
-                    time.sleep(5)
-                    return _execute(params, cwd, retry, retries - 1)
+                    time.sleep(backoff)
+                    return _execute(params, cwd, retry, retries - 1, backoff * 2)
             elif retry in stderr_str:
-                time.sleep(5)
-                return _execute(params, cwd, retry, retries - 1)
+                time.sleep(backoff)
+                return _execute(params, cwd, retry, retries - 1, backoff * 2)
         e = OSError('subprocess exit code for "%s" was %d: %s' % (' '.join(params), code, stderr))
         e.stdout = stdout
         e.stderr = stderr
