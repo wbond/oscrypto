@@ -14,6 +14,24 @@ other_packages = [
     "ocspbuilder"
 ]
 
+task_keyword_args = [
+    {
+        'name': 'use_openssl',
+        'placeholder': '/path/to/libcrypto,/path/to/libssl',
+        'env_var': 'OSCRYPTO_USE_OPENSSL',
+    },
+    {
+        'name': 'use_winlegacy',
+        'placeholder': 'true',
+        'env_var': 'OSCRYPTO_USE_WINLEGACY',
+    },
+    {
+        'name': 'use_ctypes',
+        'placeholder': 'true',
+        'env_var': 'OSCRYPTO_USE_CTYPES',
+    },
+]
+
 requires_oscrypto = True
 has_tests_package = True
 
