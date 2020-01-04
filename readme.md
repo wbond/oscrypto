@@ -192,7 +192,7 @@ Some downsides include:
 
 ## Current Release
 
-1.1.0 - [changelog](changelog.md)
+1.1.1 - [changelog](changelog.md)
 
 ## Dependencies
 

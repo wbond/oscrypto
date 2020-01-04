@@ -1,5 +1,11 @@
 # changelog
 
+## 1.1.1
+
+ - Use versioned libcrypto.dylib and libssl.dylib on macOS Catalina to prevent
+   segfaults
+ - Fix warnings reported when using with cffi 1.13.2
+
 ## 1.1.0
 
  - Added `oscrypto.load_order()`, which returns a `list` of unicode strings
