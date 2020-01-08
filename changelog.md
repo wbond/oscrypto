@@ -1,5 +1,11 @@
 # changelog
 
+## 1.2.0
+
+ - Allow `oscrypto.use_ctypes()`, `oscrypto.use_openssl()` and
+   `oscrypto.use_winlegacy()` to be called after initialization as long as the
+   configuration does not change
+
 ## 1.1.1
 
  - Use versioned libcrypto.dylib and libssl.dylib on macOS Catalina to prevent
