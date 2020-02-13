@@ -31,6 +31,11 @@ from .symmetric import (
     rc2_cbc_pkcs5_decrypt,
     rc4_decrypt,
     tripledes_cbc_pkcs5_decrypt,
+    rc2_cbc_pkcs5_encrypt,
+    rc4_encrypt,
+    des_cbc_pkcs5_encrypt,
+    tripledes_cbc_pkcs5_encrypt,
+    aes_cbc_pkcs7_encrypt,
 )
 from .util import constant_compare
 from ._errors import pretty_message
@@ -1036,3 +1041,104 @@ def _decrypt_encrypted_data(encryption_algorithm_info, encrypted_content, passwo
             plaintext = decrypt_func(enc_key, encrypted_content, enc_iv)
 
     return plaintext
+
+
+encrypt_funcs = {
+    "rc2": rc2_cbc_pkcs5_encrypt,
+    "rc4": rc4_encrypt,
+    "des": des_cbc_pkcs5_encrypt,
+    "tripledes": tripledes_cbc_pkcs5_encrypt,
+    "aes": aes_cbc_pkcs7_encrypt,
+}
+
+
+def _encrypt_data(encryption_algorithm_info, plaintext, password):
+    """
+    Encrypts ASN.1 data
+
+    :param encryption_algorithm_info:
+        An instance of asn1crypto.pkcs5.Pkcs5EncryptionAlgorithm
+
+    :param plaintext:
+        A byte string of the plain content
+
+    :param password:
+        A byte string of the plain content's password
+
+    :return:
+        A byte string of the encrypted plaintext
+    """
+
+    encrypt_func = encrypt_funcs[encryption_algorithm_info.encryption_cipher]
+
+    # Modern, PKCS#5 PBES2-based encryption
+    if encryption_algorithm_info.kdf == "pbkdf2":
+
+        if encryption_algorithm_info.encryption_cipher == "rc5":
+            raise ValueError(
+                pretty_message(
+                    """
+                PBES2 encryption scheme utilizing RC5 encryption is not supported
+                """
+                )
+            )
+
+        enc_key = pbkdf2(
+            encryption_algorithm_info.kdf_hmac,
+            password,
+            encryption_algorithm_info.kdf_salt,
+            encryption_algorithm_info.kdf_iterations,
+            encryption_algorithm_info.key_length,
+        )
+        enc_iv = encryption_algorithm_info.encryption_iv
+
+        encrypted_content = encrypt_func(enc_key, plaintext, enc_iv)
+
+    elif encryption_algorithm_info.kdf == "pbkdf1":
+        derived_output = pbkdf1(
+            encryption_algorithm_info.kdf_hmac,
+            password,
+            encryption_algorithm_info.kdf_salt,
+            encryption_algorithm_info.kdf_iterations,
+            encryption_algorithm_info.key_length + 8,
+        )
+        enc_key = derived_output[0:8]
+        enc_iv = derived_output[8:16]
+
+        encrypted_content = encrypt_func(enc_key, plaintext, enc_iv)
+
+    elif encryption_algorithm_info.kdf == "pkcs12_kdf":
+        enc_key = pkcs12_kdf(
+            encryption_algorithm_info.kdf_hmac,
+            password,
+            encryption_algorithm_info.kdf_salt,
+            encryption_algorithm_info.kdf_iterations,
+            encryption_algorithm_info.key_length,
+            1,  # ID 1 is for generating a key
+        )
+
+        # Since RC4 is a stream cipher, we don't use an IV
+        if encryption_algorithm_info.encryption_cipher == "rc4":
+            encrypted_content = encrypt_func(enc_key, plaintext)
+
+        else:
+            enc_iv = pkcs12_kdf(
+                encryption_algorithm_info.kdf_hmac,
+                password,
+                encryption_algorithm_info.kdf_salt,
+                encryption_algorithm_info.kdf_iterations,
+                encryption_algorithm_info.encryption_block_size,
+                2,  # ID 2 is for generating an IV
+            )
+            encrypted_content = encrypt_func(enc_key, plaintext, enc_iv)
+    else:
+        raise ValueError(
+            pretty_message(
+                """
+            PBES2 unknown encryption scheme
+            """
+            )
+        )
+
+    iv, ciphertext = encrypted_content
+    return ciphertext
