@@ -4,9 +4,11 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import unittest
 import sys
 import os
+import io
+import hashlib
 
 from asn1crypto import pem, algos, keys, core
-from oscrypto import asymmetric, errors, backend
+from oscrypto import asymmetric, errors, backend, keys as keysc
 
 from ._unittest_compat import patch
 
@@ -587,3 +589,21 @@ class AsymmetricTests(unittest.TestCase):
     def test_ec_public_key_unwrap(self):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
         self.assertIsInstance(public.unwrap(), keys.ECPointBitString)
+
+    def test_dump_pkcs12(self):
+        with open(os.path.join(fixtures_dir, 'keys/test-third.p12'), 'rb') as f:
+            key_info, cert_info, extra_cert_infos = keysc.parse_pkcs12(f.read(), b'password123')
+
+        f = io.BytesIO()
+        key = asymmetric.dump_pkcs12(key_info, cert_info, extra_cert_infos, b'password123')
+        f.write(key)
+
+        f.seek(0, 0)
+        key_info1, cert_info1, extra_cert_infos1 = keysc.parse_pkcs12(f.read(), b'password123')
+        self.assertEqual(asymmetric._fingerprint(key_info, None), asymmetric._fingerprint(key_info1, None))
+        self.assertEqual(hashlib.sha1(cert_info.dump()).digest(), hashlib.sha1(cert_info1.dump()).digest())
+        self.assertEqual(len(extra_cert_infos), len(extra_cert_infos1))
+        for i in range(len(extra_cert_infos)):
+            hash1 = hashlib.sha1(extra_cert_infos[i].dump()).digest()
+            hash2 = hashlib.sha1(extra_cert_infos1[i].dump()).digest()
+            self.assertEqual(hash1, hash2)
