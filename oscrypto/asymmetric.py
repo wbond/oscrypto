@@ -2,8 +2,10 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import hashlib
+import hmac
 import binascii
 
+from asn1crypto import core, cms, pkcs12
 from . import backend
 from ._asn1 import (
     armor,
@@ -16,9 +18,10 @@ from ._asn1 import (
     PrivateKeyInfo,
     PublicKeyInfo,
 )
-from ._asymmetric import _unwrap_private_key_info
+from ._asymmetric import _unwrap_private_key_info,  _encrypt_data, _fingerprint
 from ._errors import pretty_message
-from ._types import type_name, str_cls
+from ._pkcs12 import pkcs12_kdf
+from ._types import type_name, str_cls, byte_cls
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
 from .symmetric import aes_cbc_pkcs7_encrypt
 from .util import rand_bytes
@@ -130,6 +133,7 @@ __all__ = [
     'rsa_pkcs1v15_verify',
     'rsa_pss_sign',
     'rsa_pss_verify',
+    "dump_pkcs12",
 ]
 
 
@@ -456,3 +460,195 @@ def dump_openssl_private_key(private_key, passphrase):
         object_type = 'DSA PRIVATE KEY'
 
     return armor(object_type, output, headers=headers)
+
+
+def dump_pkcs12(private_key, certificate, other_certificates, passphrase):
+    """
+    Serializes the certificate object along with the private key and
+    an optional list of additional certificates into a byte string
+    of the PKCS#12 format
+
+    :param private_key:
+        An asn1crypto.x509.PrivateKeyInfo object, a private key that is
+        a pair to the public key specified in the parameter certificate
+
+    :param certificate:
+        An asn1crypto.x509.Certificate object
+
+    :param other_certificates:
+        An list of asn1crypto.x509.Certificate object
+
+    :param passphrase:
+        A non-empty byte string to encrypt sensitive components of the PKCS#12 container
+
+    :raises:
+        TypeError - when passphrase is not byte string instance
+        ValueError - when a blank string is provided for the passphrase
+
+    :return:
+        A byte string of the PKCS#12 structure
+    """
+
+    if not isinstance(private_key, PrivateKeyInfo):
+        raise TypeError(pretty_message(
+            '''
+            private_key must be an instance of asn1crypto.keys.PrivateKeyInfo, not %s
+            ''',
+            type_name(private_key)
+        ))
+
+    if not isinstance(passphrase, byte_cls):
+        raise TypeError(pretty_message(
+            '''
+            passphrase must be a byte string, not %s
+            ''',
+            type_name(passphrase)
+        ))
+    if passphrase == b'':
+        raise ValueError(pretty_message(
+            '''
+            passphrase may not be a blank string
+            '''
+        ))
+
+    if not isinstance(certificate, Asn1Certificate):
+        raise TypeError(pretty_message(
+            '''
+            certificate must be an instance of asn1crypto.x509.Certificate,
+            not %s
+            ''',
+            type_name(certificate)
+        ))
+
+    if not isinstance(other_certificates, list):
+        raise TypeError(pretty_message(
+            '''
+            other_certificates must be an list of asn1crypto.x509.Certificate,
+            not %s
+            ''',
+            type_name(other_certificates)
+        ))
+    for other_certificate in other_certificates:
+        if not isinstance(certificate, Asn1Certificate):
+            raise TypeError(pretty_message(
+                '''
+                element of other_certificates must be an instance
+                of asn1crypto.x509.Certificate, not %s
+                ''',
+                type_name(other_certificate)
+            ))
+
+    public_key_info = certificate['tbs_certificate']['subject_public_key_info']
+    if _fingerprint(public_key_info, None) != _fingerprint(private_key, None):
+        raise ValueError(pretty_message(
+            '''
+            private key does not match the provided certificate
+            '''
+        ))
+
+    #
+    # some parameters have values that match the default values used in the openssl pkcs12 command
+    #
+    #   lkid = fingerprint of certificate which matches private key
+    #   pkcs12_sha1_rc2_40 - Certificate PBE algorithm
+    #   pkcs12_sha1_tripledes_3key - Private key PBE algorithm
+    #   mac_algo - (sha1) Digest algorithm used in MAC
+    #   mac_iterations - (2048) number of iterations used to compute MAC
+    #   mac_key_length - (20) desired MAC key length
+    #
+    # created files with default settings were successfully imported in IE11, Chrome, Firefox, Thunderbird
+    #
+    lkid = hashlib.sha1(certificate.dump()).digest()
+    salt = rand_bytes(8)
+    eai = cms.EncryptionAlgorithm(
+        {
+            "algorithm": "pkcs12_sha1_rc2_40",
+            "parameters": {"salt": salt, "iterations": 2048},
+        }
+    )
+    content = [
+        pkcs12.SafeBag(
+            {
+                "bag_id": "cert_bag",
+                "bag_value": pkcs12.CertBag({"cert_id": "x509", "cert_value": certificate}),
+                "bag_attributes": pkcs12.Attributes(
+                    [{"type": "local_key_id", "values": [core.OctetString(lkid)]}]
+                ),
+            }
+        )
+    ]
+    for other_certificate in other_certificates:
+        content.append(
+            pkcs12.SafeBag(
+                {
+                    "bag_id": "cert_bag",
+                    "bag_value": pkcs12.CertBag(
+                        {"cert_id": "x509", "cert_value": other_certificate}
+                    ),
+                }
+            )
+        )
+    content = pkcs12.SafeContents(content).dump()
+    # encrypt all certificates
+    content = _encrypt_data(eai, content, passphrase)
+    safe_cert = cms.EncryptedData(
+        {
+            "version": "v0",
+            "encrypted_content_info": cms.EncryptedContentInfo(
+                {
+                    "content_type": "data",
+                    "content_encryption_algorithm": eai,
+                    "encrypted_content": content,
+                }
+            ),
+            "unprotected_attrs": None,
+        }
+    )
+
+    salt = rand_bytes(8)
+    eai = cms.EncryptionAlgorithm(
+        {
+            "algorithm": "pkcs12_sha1_tripledes_3key",
+            "parameters": {"salt": salt, "iterations": 2048},
+        }
+    )
+    # encrypt private key
+    content = _encrypt_data(eai, private_key.dump(), passphrase)
+    safe_key = pkcs12.SafeBag(
+        {
+            "bag_id": "pkcs8_shrouded_key_bag",
+            "bag_value": pkcs12.EncryptedPrivateKeyInfo(
+                {"encryption_algorithm": eai, "encrypted_data": content}
+            ),
+            "bag_attributes": pkcs12.Attributes(
+                [{"type": "local_key_id", "values": [core.OctetString(lkid)]}]
+            ),
+        }
+    )
+    config = [
+        cms.ContentInfo({"content_type": "encrypted_data", "content": safe_cert}),
+        cms.ContentInfo(
+            {"content_type": "data", "content": pkcs12.SafeContents([safe_key]).dump()}
+        ),
+    ]
+    content = pkcs12.AuthenticatedSafe(config).dump()
+    mac_salt = rand_bytes(8)
+    mac_algo = "sha1"
+    mac_iterations = 2048
+    mac_key_length = 20
+    mac_key = pkcs12_kdf(mac_algo, passphrase, mac_salt, mac_iterations, mac_key_length, 3)
+    hash_mod = getattr(hashlib, mac_algo)
+    digest = hmac.new(mac_key, content, hash_mod).digest()
+    config = {
+        "version": "v3",
+        "auth_safe": {"content_type": "data", "content": content},
+        "mac_data": {
+            "mac": {
+                "digest_algorithm": {"algorithm": mac_algo, "parameters": None},
+                "digest": digest,
+            },
+            "mac_salt": mac_salt,
+            "iterations": mac_iterations,
+        },
+    }
+    return pkcs12.Pfx(config).dump()
