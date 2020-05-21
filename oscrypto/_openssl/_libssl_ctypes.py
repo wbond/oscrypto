@@ -20,8 +20,9 @@ __all__ = [
 libssl_path = _backend_config().get('libssl_path')
 if libssl_path is None:
     libssl_path = find_library('ssl')
-    # if we are on catalina, we want to strongly version libssl since unversioned libcrypto has a non-stable ABI
-    if sys.platform == 'darwin' and platform.mac_ver()[0].startswith('10.15') and libssl_path.endswith('libssl.dylib'):
+    # if we are on macOS 10.15+, we want to strongly version libssl since unversioned libcrypto has a non-stable ABI
+    if sys.platform == 'darwin' and list(map(int, platform.mac_ver()[0].split('.')))[1] >= 15 and \
+            libssl_path == '/usr/lib/libssl.dylib':
         # libssl.44.dylib is in libressl-2.6 which as a OpenSSL 1.0.1-compatible API
         libssl_path = libssl_path.replace('libssl.dylib', 'libssl.44.dylib')
 if not libssl_path:

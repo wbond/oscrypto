@@ -27,9 +27,9 @@ __all__ = [
 libcrypto_path = _backend_config().get('libcrypto_path')
 if libcrypto_path is None:
     libcrypto_path = find_library('crypto')
-    # if we are on catalina, we want to strongly version libcrypto since unversioned libcrypto has a non-stable ABI
-    if sys.platform == 'darwin' and platform.mac_ver()[0].startswith('10.15') and \
-            libcrypto_path.endswith('libcrypto.dylib'):
+    # if we are on macOS 10.15+, we want to strongly version libcrypto since unversioned libcrypto has a non-stable ABI
+    if sys.platform == 'darwin' and list(map(int, platform.mac_ver()[0].split('.')))[1] >= 15 and \
+            libcrypto_path == '/usr/lib/libcrypto.dylib':
         # libcrypto.42.dylib is in libressl-2.6 which as a OpenSSL 1.0.1-compatible API
         libcrypto_path = libcrypto_path.replace('libcrypto.dylib', 'libcrypto.42.dylib')
 if not libcrypto_path:
