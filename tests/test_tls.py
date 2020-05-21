@@ -120,9 +120,9 @@ class TLSTests(unittest.TestCase):
             # error, even though we have revocation checking disabled
             if osx_version_info >= (10, 12):
                 with assert_exception(self, errors.TLSError, 'revoked'):
-                    tls.TLSSocket('revoked.grc.com', 443)
+                    tls.TLSSocket('global-root-ca-revoked.chain-demos.digicert.com', 443)
                 return
-        tls.TLSSocket('revoked.grc.com', 443)
+        tls.TLSSocket('global-root-ca-revoked.chain-demos.digicert.com', 443)
 
     @connection_timeout()
     def test_tls_error_http(self):
