@@ -22,7 +22,6 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
 [![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
 [![CircleCI](https://circleci.com/gh/wbond/oscrypto.svg?style=shield)](https://circleci.com/gh/wbond/oscrypto)
-[![Codecov](https://codecov.io/gh/wbond/oscrypto/branch/master/graph/badge.svg)](https://codecov.io/gh/wbond/oscrypto)
 [![PyPI](https://img.shields.io/pypi/v/oscrypto.svg)](https://pypi.python.org/pypi/oscrypto)
 
 ## Supported Operating Systems
@@ -216,10 +215,12 @@ pip install oscrypto
 
 ## Continuous Integration
 
- - [Windows](https://ci.appveyor.com/project/wbond/oscrypto/history) via AppVeyor
- - [OS X](https://circleci.com/gh/wbond/oscrypto) via CircleCI
- - [Linux](https://travis-ci.org/wbond/oscrypto/builds) via Travis CI
- - [Test Coverage](https://codecov.io/gh/wbond/oscrypto/commits) via Codecov
+Various combinations of platforms and versions of Python are tested via:
+
+ - [AppVeyor](https://ci.appveyor.com/project/wbond/oscrypto/history)
+ - [CircleCI](https://circleci.com/gh/wbond/oscrypto)
+ - [GitHub Actions](https://github.com/wbond/oscrypto/actions)
+ - [Travis CI](https://travis-ci.org/wbond/oscrypto/builds)
 
 ## Testing
 
