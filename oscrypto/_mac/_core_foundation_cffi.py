@@ -9,7 +9,6 @@ from .._ffi import (
     new,
     register_ffi,
 )
-from ..errors import LibraryNotFoundError
 
 from cffi import FFI
 

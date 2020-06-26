@@ -4,7 +4,6 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import platform
 
 from .._ffi import register_ffi
-from ..errors import LibraryNotFoundError
 
 from cffi import FFI
 

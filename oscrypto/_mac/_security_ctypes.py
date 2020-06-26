@@ -6,7 +6,6 @@ from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint3
 from ctypes import CDLL, POINTER, CFUNCTYPE, Structure
 
 from .._ffi import FFIEngineError
-from ..errors import LibraryNotFoundError
 
 
 __all__ = [

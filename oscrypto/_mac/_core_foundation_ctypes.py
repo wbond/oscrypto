@@ -6,7 +6,6 @@ from ctypes import CDLL, string_at, cast, POINTER, byref
 import ctypes
 
 from .._ffi import FFIEngineError, buffer_from_bytes, byte_string_from_buffer
-from ..errors import LibraryNotFoundError
 
 
 __all__ = [
