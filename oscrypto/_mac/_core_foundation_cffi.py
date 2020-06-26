@@ -1,8 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from ctypes.util import find_library
-
 from .._ffi import (
     buffer_from_bytes,
     byte_string_from_buffer,
@@ -112,9 +110,7 @@ ffi.cdef("""
     extern CFDictionaryValueCallBacks kCFTypeDictionaryValueCallBacks;
 """)
 
-core_foundation_path = find_library('CoreFoundation')
-if not core_foundation_path:
-    raise LibraryNotFoundError('The library CoreFoundation could not be found')
+core_foundation_path = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
 
 CoreFoundation = ffi.dlopen(core_foundation_path)
 register_ffi(CoreFoundation, ffi)
