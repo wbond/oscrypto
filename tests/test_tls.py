@@ -90,7 +90,6 @@ class TLSTests(unittest.TestCase):
         return (
             ('google', 'www.google.com', 443),
             ('package_control', 'packagecontrol.io', 443),
-            ('howsmyssl', 'www.howsmyssl.com', 443),
             ('dh1024', 'dh1024.badtls.io', 10005),
         )
 
