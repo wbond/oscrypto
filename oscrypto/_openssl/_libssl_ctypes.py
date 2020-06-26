@@ -21,7 +21,8 @@ libssl_path = _backend_config().get('libssl_path')
 if libssl_path is None:
     libssl_path = find_library('ssl')
     # If we are on macOS 10.16+, find_library doesn't work, so we set a static path
-    if sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
+    if not libssl_path and sys.platform == 'darwin' and \
+            tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
         libssl_path = '/usr/lib/libssl.44.dylib'
     # if we are on macOS 10.15+, we want to strongly version libssl since unversioned libcrypto has a non-stable ABI
     if sys.platform == 'darwin' and list(map(int, platform.mac_ver()[0].split('.')))[1] >= 15 and \

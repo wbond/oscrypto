@@ -28,7 +28,8 @@ libcrypto_path = _backend_config().get('libcrypto_path')
 if libcrypto_path is None:
     libcrypto_path = find_library('crypto')
     # If we are on macOS 10.16+, find_library doesn't work, so we set a static path
-    if sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
+    if not libcrypto_path and sys.platform == 'darwin' and \
+            tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
         libcrypto_path == '/usr/lib/libcrypto.42.dylib'
     # if we are on macOS 10.15+, we want to strongly version libcrypto since unversioned libcrypto has a non-stable ABI
     if sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 15) and \
