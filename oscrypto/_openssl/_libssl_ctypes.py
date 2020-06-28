@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t, c_long
 
 from .. import _backend_config
-from ..util import get_library
+from .._ffi import get_library
 from .._ffi import FFIEngineError
 from ..errors import LibraryNotFoundError
 from ._libcrypto import libcrypto_version_info

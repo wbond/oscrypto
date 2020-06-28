@@ -7,6 +7,9 @@ Exceptions and compatibility shims for consistently using ctypes and cffi
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
+import platform
+
+from ctypes.util import find_library
 
 from . import ffi
 from ._types import str_cls, byte_cls, int_types, bytes_to_list
@@ -26,6 +29,7 @@ __all__ = [
     'deref',
     'errno',
     'FFIEngineError',
+    'get_library',
     'is_null',
     'native',
     'new',
@@ -384,6 +388,31 @@ else:
         return getattr(library, signature_type)(func)
 
     engine = 'ctypes'
+
+
+def get_library(name, unversioned, fallback):
+    """
+    Retrieves the C library, falling back to a specified library if one is not found
+
+    :param name:
+        The library to search the system for
+
+    :param unversioned:
+        The unversioned library we don't want to use
+
+    :param fallback:
+        Fallback library when we don't find a suitable library to use
+
+    :return:
+        Path to the library
+    """
+    library = find_library(name)
+    if not library and sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
+        library == fallback
+    elif sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 15) and \
+            library == unversioned:
+        library = fallback
+    return library
 
 
 class FFIEngineError(Exception):

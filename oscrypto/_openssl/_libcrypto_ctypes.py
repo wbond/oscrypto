@@ -6,8 +6,8 @@ import re
 from ctypes import CDLL, c_void_p, c_char_p, c_int, c_ulong, c_uint, c_long, c_size_t, POINTER
 
 from .. import _backend_config
-from ..util import get_library
 from .._errors import pretty_message
+from .._ffi import get_library
 from .._ffi import FFIEngineError
 from ..errors import LibraryNotFoundError
 

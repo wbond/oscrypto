@@ -2,7 +2,7 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 from .. import _backend_config
-from ..util import get_library
+from .._ffi import get_library
 from .._ffi import register_ffi
 from ..errors import LibraryNotFoundError
 from ._libcrypto import libcrypto_version_info
