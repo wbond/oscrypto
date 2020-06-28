@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-core_foundation_path = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+core_foundation_path = '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'
 
 CoreFoundation = CDLL(core_foundation_path, use_errno=True)
 

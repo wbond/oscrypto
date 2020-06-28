@@ -1,13 +1,10 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import platform
-import sys
-
 import re
-from ctypes.util import find_library
 
 from .. import _backend_config
+from ..util import get_library
 from .._errors import pretty_message
 from .._ffi import register_ffi
 from ..errors import LibraryNotFoundError
@@ -26,15 +23,7 @@ __all__ = [
 
 libcrypto_path = _backend_config().get('libcrypto_path')
 if libcrypto_path is None:
-    libcrypto_path = find_library('crypto')
-    # If we are on macOS 10.16+, find_library doesn't work, so we set a static path
-    if not libcrypto_path and sys.platform == 'darwin' and \
-            tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
-        libcrypto_path == '/usr/lib/libcrypto.42.dylib'
-    # if we are on macOS 10.15+, we want to strongly version libcrypto since unversioned libcrypto has a non-stable ABI
-    if sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 15) and \
-            libcrypto_path == '/usr/lib/libcrypto.dylib':
-        libcrypto_path = libcrypto_path.replace('libcrypto.dylib', 'libcrypto.42.dylib')
+    libcrypto_path = get_library('crypto', '/usr/lib/libcrypto.dylib', '/usr/lib/libcrypto.42.dylib')
 if not libcrypto_path:
     raise LibraryNotFoundError('The library libcrypto could not be found')
 

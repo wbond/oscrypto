@@ -109,7 +109,7 @@ ffi.cdef("""
     extern CFDictionaryValueCallBacks kCFTypeDictionaryValueCallBacks;
 """)
 
-core_foundation_path = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+core_foundation_path = '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'
 
 CoreFoundation = ffi.dlopen(core_foundation_path)
 register_ffi(CoreFoundation, ffi)

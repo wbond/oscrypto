@@ -1,12 +1,10 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import platform
-import sys
-from ctypes.util import find_library
 from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t, c_long
 
 from .. import _backend_config
+from ..util import get_library
 from .._ffi import FFIEngineError
 from ..errors import LibraryNotFoundError
 from ._libcrypto import libcrypto_version_info
@@ -19,16 +17,7 @@ __all__ = [
 
 libssl_path = _backend_config().get('libssl_path')
 if libssl_path is None:
-    libssl_path = find_library('ssl')
-    # If we are on macOS 10.16+, find_library doesn't work, so we set a static path
-    if not libssl_path and sys.platform == 'darwin' and \
-            tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
-        libssl_path = '/usr/lib/libssl.44.dylib'
-    # if we are on macOS 10.15+, we want to strongly version libssl since unversioned libcrypto has a non-stable ABI
-    if sys.platform == 'darwin' and list(map(int, platform.mac_ver()[0].split('.')))[1] >= 15 and \
-            libssl_path == '/usr/lib/libssl.dylib':
-        # libssl.44.dylib is in libressl-2.6 which as a OpenSSL 1.0.1-compatible API
-        libssl_path = libssl_path.replace('libssl.dylib', 'libssl.44.dylib')
+    libssl_path = get_library('ssl', '/usr/lib/libssl.dylib', '/usr/lib/libssl.44.dylib')
 if not libssl_path:
     raise LibraryNotFoundError('The library libssl could not be found')
 

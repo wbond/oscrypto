@@ -232,7 +232,7 @@ else:
         OSStatus SSLSetProtocolVersionMax(SSLContextRef context, SSLProtocol maxVersion);
     """)
 
-security_path = "/System/Library/Frameworks/Security.framework/Security"
+security_path = '/System/Library/Frameworks/Security.framework/Security'
 
 Security = ffi.dlopen(security_path)
 register_ffi(Security, ffi)
