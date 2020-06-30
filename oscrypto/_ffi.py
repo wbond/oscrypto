@@ -390,28 +390,32 @@ else:
     engine = 'ctypes'
 
 
-def get_library(name, unversioned, fallback):
+def get_library(name, dylib_name, version):
     """
-    Retrieves the C library, falling back to a specified library if one is not found
-
+    Retrieve the C library path with special handling for macOS.
+    
     :param name:
-        The library to search the system for
-
-    :param unversioned:
-        The unversioned library we don't want to use
-
-    :param fallback:
-        Fallback library when we don't find a suitable library to use
-
+        The library to search the system for.
+    :param dylib_name:
+        The expected unversioned dylib name.
+    :param version:
+        dylib version override.
+        Preferred for macOS 15.15+
+        and used as a fallback for 10.16 where `find_library` doesn't work.
     :return:
-        Path to the library
+        Path to the library.
     """
     library = find_library(name)
-    if not library and sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 16):
-        library == fallback
-    elif sys.platform == 'darwin' and tuple(map(int,  platform.mac_ver()[0].split('.'))) >= (10, 15) and \
-            library == unversioned:
-        library = fallback
+    if sys.platform == 'darwin':
+        unversioned = '/usr/lib/{}'.format(dylib_name)
+        versioned = unversioned.replace('.dylib', '.{}.dylib'.format(version))
+        mac_ver = tuple(map(int, platform.mac_ver()[0].split('.')))
+        if not library and mac_ver >= (10, 16):
+            # On macOS 10.16+, find_library doesn't work, so we set a static path
+            library = versioned
+        elif mac_ver >= (10, 15) and library == unversioned:
+            # On macOS 10.15+, we want to strongly version since unversioned libcrypto has a non-stable ABI
+            library = versioned
     return library
 
 
