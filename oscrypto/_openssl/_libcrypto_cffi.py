@@ -5,8 +5,7 @@ import re
 
 from .. import _backend_config
 from .._errors import pretty_message
-from .._ffi import get_library
-from .._ffi import register_ffi
+from .._ffi import get_library, register_ffi
 from ..errors import LibraryNotFoundError
 
 from cffi import FFI
