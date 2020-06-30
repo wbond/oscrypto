@@ -22,7 +22,7 @@ __all__ = [
 
 libcrypto_path = _backend_config().get('libcrypto_path')
 if libcrypto_path is None:
-    libcrypto_path = get_library('crypto', '/usr/lib/libcrypto.dylib', '/usr/lib/libcrypto.42.dylib')
+    libcrypto_path = get_library('crypto', 'libcrypto.dylib', '42')
 if not libcrypto_path:
     raise LibraryNotFoundError('The library libcrypto could not be found')
 

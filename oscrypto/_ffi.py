@@ -393,7 +393,7 @@ else:
 def get_library(name, dylib_name, version):
     """
     Retrieve the C library path with special handling for macOS.
-    
+
     :param name:
         The library to search the system for.
     :param dylib_name:

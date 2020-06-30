@@ -18,7 +18,7 @@ ffi = FFI()
 
 libssl_path = _backend_config().get('libssl_path')
 if libssl_path is None:
-    libssl_path = get_library('ssl', '/usr/lib/libssl.dylib', '/usr/lib/libssl.44.dylib')
+    libssl_path = get_library('ssl', 'libssl', '44')
 if not libssl_path:
     raise LibraryNotFoundError('The library libssl could not be found')
 
