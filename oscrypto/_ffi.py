@@ -407,8 +407,8 @@ def get_library(name, dylib_name, version):
     """
     library = find_library(name)
     if sys.platform == 'darwin':
-        unversioned = '/usr/lib/{}'.format(dylib_name)
-        versioned = unversioned.replace('.dylib', '.{}.dylib'.format(version))
+        unversioned = '/usr/lib/%s' % dylib_name
+        versioned = unversioned.replace('.dylib', '.%s.dylib' % version)
         mac_ver = tuple(map(int, platform.mac_ver()[0].split('.')))
         if not library and mac_ver >= (10, 16):
             # On macOS 10.16+, find_library doesn't work, so we set a static path
