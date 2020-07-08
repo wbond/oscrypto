@@ -2,10 +2,8 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import platform
-from ctypes.util import find_library
 
 from .._ffi import register_ffi
-from ..errors import LibraryNotFoundError
 
 from cffi import FFI
 
@@ -234,9 +232,7 @@ else:
         OSStatus SSLSetProtocolVersionMax(SSLContextRef context, SSLProtocol maxVersion);
     """)
 
-security_path = find_library('Security')
-if not security_path:
-    raise LibraryNotFoundError('The library Security could not be found')
+security_path = '/System/Library/Frameworks/Security.framework/Security'
 
 Security = ffi.dlopen(security_path)
 register_ffi(Security, ffi)
