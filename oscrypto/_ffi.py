@@ -392,20 +392,28 @@ else:
 
 def get_library(name, dylib_name, version):
     """
-    Retrieve the C library path with special handling for macOS.
+    Retrieve the C library path with special handling for Mac
 
     :param name:
-        The library to search the system for.
+        A unicode string of the library to search the system for
+
     :param dylib_name:
-        The expected unversioned dylib name.
+        Mac only - a unicode string of the unversioned dylib name
+
     :param version:
-        dylib version override.
-        Preferred for macOS 15.15+
-        and used as a fallback for 10.16 where `find_library` doesn't work.
+        Mac only - a unicode string of the dylib version to use. Used on macOS
+        10.15+ when the unversioned dylib is found, since unversioned
+        OpenSSL/LibreSSL are just placeholders, and a versioned dylib must be
+        imported. Used on macOS 10.16+ when find_library() doesn't return a
+        result, due to system dylibs not being present on the filesystem any
+        longer.
+
     :return:
-        Path to the library.
+        A unicode string of the path to the library
     """
+
     library = find_library(name)
+
     if sys.platform == 'darwin':
         unversioned = '/usr/lib/%s' % dylib_name
         versioned = unversioned.replace('.dylib', '.%s.dylib' % version)
@@ -416,6 +424,7 @@ def get_library(name, dylib_name, version):
         elif mac_ver >= (10, 15) and library == unversioned:
             # On macOS 10.15+, we want to strongly version since unversioned libcrypto has a non-stable ABI
             library = versioned
+
     return library
 
 
