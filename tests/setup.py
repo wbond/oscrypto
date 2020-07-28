@@ -10,7 +10,7 @@ from setuptools.command.egg_info import egg_info
 
 
 PACKAGE_NAME = 'oscrypto'
-PACKAGE_VERSION = '1.2.0'
+PACKAGE_VERSION = '1.2.1'
 TEST_PACKAGE_NAME = '%s_tests' % PACKAGE_NAME
 TESTS_ROOT = os.path.dirname(os.path.abspath(__file__))
 

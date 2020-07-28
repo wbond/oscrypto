@@ -1,5 +1,15 @@
 # changelog
 
+## 1.2.1
+
+ - Fix running in an environment with a custom OpenSSL install on macOS 10.15
+ - Fix compatibility with macOS 11, where `ctype.find_library()` no longer
+   works due to system `.dylib`s no longer being present on the filesystem
+ - Handle the Mac `EPROTOTYPE` error that may be returned when a TLS
+   connection is terminated
+ - Fixed the `oscrypto-tests` sdist on PyPi to work properly to generate a
+   .whl
+
 ## 1.2.0
 
  - Allow `oscrypto.use_ctypes()`, `oscrypto.use_openssl()` and
