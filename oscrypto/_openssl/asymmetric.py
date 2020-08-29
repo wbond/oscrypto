@@ -692,7 +692,7 @@ def load_public_key(source):
             source must be a byte string, unicode string or
             asn1crypto.keys.PublicKeyInfo object, not %s
             ''',
-            type_name(public_key)
+            type_name(source)
         ))
 
     if public_key.algorithm == 'dsa':
