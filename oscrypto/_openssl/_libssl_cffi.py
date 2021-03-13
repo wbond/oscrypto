@@ -1,13 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import platform
-import sys
-
-from ctypes.util import find_library
-
 from .. import _backend_config
-from .._ffi import register_ffi
+from .._ffi import get_library, register_ffi
 from ..errors import LibraryNotFoundError
 from ._libcrypto import libcrypto_version_info
 
@@ -23,11 +18,7 @@ ffi = FFI()
 
 libssl_path = _backend_config().get('libssl_path')
 if libssl_path is None:
-    libssl_path = find_library('ssl')
-    # if we are on catalina, we want to strongly version libssl since unversioned libcrypto has a non-stable ABI
-    if sys.platform == 'darwin' and platform.mac_ver()[0].startswith('10.15') and libssl_path.endswith('libssl.dylib'):
-        # libssl.44.dylib is in libressl-2.6 which as a OpenSSL 1.0.1-compatible API
-        libssl_path = libssl_path.replace('libssl.dylib', 'libssl.44.dylib')
+    libssl_path = get_library('ssl', 'libssl', '44')
 if not libssl_path:
     raise LibraryNotFoundError('The library libssl could not be found')
 

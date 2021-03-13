@@ -23,5 +23,7 @@ ffi.cdef("""
                     char *derivedKey, size_t derivedKeyLen);
 """)
 
-CommonCrypto = ffi.dlopen('/usr/lib/system/libcommonCrypto.dylib')
+common_crypto_path = '/usr/lib/system/libcommonCrypto.dylib'
+
+CommonCrypto = ffi.dlopen(common_crypto_path)
 register_ffi(CommonCrypto, ffi)

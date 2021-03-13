@@ -10,10 +10,9 @@ from setuptools.command.egg_info import egg_info
 
 
 PACKAGE_NAME = 'oscrypto'
-PACKAGE_VERSION = '1.2.0'
+PACKAGE_VERSION = '1.2.1'
 TEST_PACKAGE_NAME = '%s_tests' % PACKAGE_NAME
 TESTS_ROOT = os.path.dirname(os.path.abspath(__file__))
-PACKAGE_ROOT = os.path.abspath(os.path.join(TESTS_ROOT, '..'))
 
 
 # setuptools 38.6.0 and newer know about long_description_content_type, but
@@ -61,7 +60,7 @@ class EggInfoCommand(egg_info):
         if not os.path.exists(egg_info_path):
             os.mkdir(egg_info_path)
         shutil.copy2(
-            os.path.join(PACKAGE_ROOT, 'LICENSE'),
+            os.path.join(TESTS_ROOT, 'LICENSE'),
             os.path.join(egg_info_path, 'LICENSE')
         )
         egg_info.run(self)

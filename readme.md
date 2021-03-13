@@ -22,7 +22,6 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
 [![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
 [![CircleCI](https://circleci.com/gh/wbond/oscrypto.svg?style=shield)](https://circleci.com/gh/wbond/oscrypto)
-[![Codecov](https://codecov.io/gh/wbond/oscrypto/branch/master/graph/badge.svg)](https://codecov.io/gh/wbond/oscrypto)
 [![PyPI](https://img.shields.io/pypi/v/oscrypto.svg)](https://pypi.python.org/pypi/oscrypto)
 
 ## Supported Operating Systems
@@ -58,6 +57,8 @@ care of patching vulnerabilities. Supported operating systems include:
      - macOS 10.12
      - macOS 10.13 with LibreSSL 2.2.7
      - macOS 10.14
+     - macOS 10.15
+     - macOS 11
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
@@ -71,6 +72,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - Ubuntu 12.04 with OpenSSL 1.0.1
      - Ubuntu 15.04 with OpenSSL 1.0.1
      - Ubuntu 16.04 with OpenSSL 1.0.2 on Raspberry Pi 3 (armhf)
+     - Ubuntu 18.04 with OpenSSL 1.1.x (amd64, arm64, ppc64el)
 
 *OS X 10.6 will not be supported due to a lack of available
 cryptographic primitives and due to lack of vendor support.*
@@ -192,7 +194,7 @@ Some downsides include:
 
 ## Current Release
 
-1.2.0 - [changelog](changelog.md)
+1.2.1 - [changelog](changelog.md)
 
 ## Dependencies
 
@@ -216,10 +218,12 @@ pip install oscrypto
 
 ## Continuous Integration
 
- - [Windows](https://ci.appveyor.com/project/wbond/oscrypto/history) via AppVeyor
- - [OS X](https://circleci.com/gh/wbond/oscrypto) via CircleCI
- - [Linux](https://travis-ci.org/wbond/oscrypto/builds) via Travis CI
- - [Test Coverage](https://codecov.io/gh/wbond/oscrypto/commits) via Codecov
+Various combinations of platforms and versions of Python are tested via:
+
+ - [AppVeyor](https://ci.appveyor.com/project/wbond/oscrypto/history)
+ - [CircleCI](https://circleci.com/gh/wbond/oscrypto)
+ - [GitHub Actions](https://github.com/wbond/oscrypto/actions)
+ - [Travis CI](https://travis-ci.org/wbond/oscrypto/builds)
 
 ## Testing
 
