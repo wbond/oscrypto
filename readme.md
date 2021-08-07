@@ -218,10 +218,8 @@ pip install oscrypto
 
 Various combinations of platforms and versions of Python are tested via:
 
- - [AppVeyor](https://ci.appveyor.com/project/wbond/oscrypto/history)
- - [CircleCI](https://circleci.com/gh/wbond/oscrypto)
- - [GitHub Actions](https://github.com/wbond/oscrypto/actions)
- - [Travis CI](https://travis-ci.org/wbond/oscrypto/builds)
+ - [macOS, Linux, Windows](https://github.com/wbond/oscrypto/actions/workflows/ci.yml) via GitHub Actions
+ - [arm64](https://circleci.com/gh/wbond/oscrypto) via CircleCI
 
 ## Testing
 
