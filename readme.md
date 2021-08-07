@@ -19,8 +19,6 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
  - [CI Tasks](#ci-tasks)
 
 [![GitHub Actions CI](https://github.com/wbond/oscrypto/workflows/CI/badge.svg)](https://github.com/wbond/oscrypto/actions?workflow=CI)
-[![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
 [![CircleCI](https://circleci.com/gh/wbond/oscrypto.svg?style=shield)](https://circleci.com/gh/wbond/oscrypto)
 [![PyPI](https://img.shields.io/pypi/v/oscrypto.svg)](https://pypi.python.org/pypi/oscrypto)
 
