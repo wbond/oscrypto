@@ -47,7 +47,7 @@ The API consists of:
 > > def __init__(self, address, port, timeout=10, session=None):
 > >     """
 > >     :param address:
-> >         A unicode string of the domain name or IP address to conenct to
+> >         A unicode string of the domain name or IP address to connect to
 > >
 > >     :param port:
 > >         An integer of the port number to connect to

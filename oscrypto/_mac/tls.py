@@ -103,7 +103,7 @@ def _read_callback(connection_id, data_buffer, data_length_pointer):
     Callback called by Secure Transport to actually read the socket
 
     :param connection_id:
-        An integer identifing the connection
+        An integer identifying the connection
 
     :param data_buffer:
         A char pointer FFI type to write the data to
@@ -218,7 +218,7 @@ def _write_callback(connection_id, data_buffer, data_length_pointer):
     Callback called by Secure Transport to actually write to the socket
 
     :param connection_id:
-        An integer identifing the connection
+        An integer identifying the connection
 
     :param data_buffer:
         A char pointer FFI type containing the data to write
@@ -463,7 +463,7 @@ class TLSSocket(object):
     def __init__(self, address, port, timeout=10, session=None):
         """
         :param address:
-            A unicode string of the domain name or IP address to conenct to
+            A unicode string of the domain name or IP address to connect to
 
         :param port:
             An integer of the port number to connect to
