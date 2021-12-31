@@ -2,7 +2,7 @@
 
 A compilation-free, always up-to-date encryption library for Python that works
 on Windows, OS X, Linux and BSD. Supports the following versions of Python:
-2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8 and pypy.
+2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 and pypy.
 
  - [Supported Operating Systems](#supported-operationg-systems)
  - [Features](#features)
@@ -19,8 +19,6 @@ on Windows, OS X, Linux and BSD. Supports the following versions of Python:
  - [CI Tasks](#ci-tasks)
 
 [![GitHub Actions CI](https://github.com/wbond/oscrypto/workflows/CI/badge.svg)](https://github.com/wbond/oscrypto/actions?workflow=CI)
-[![Travis CI](https://api.travis-ci.org/wbond/oscrypto.svg?branch=master)](https://travis-ci.org/wbond/oscrypto)
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/oscrypto?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/oscrypto)
 [![CircleCI](https://circleci.com/gh/wbond/oscrypto.svg?style=shield)](https://circleci.com/gh/wbond/oscrypto)
 [![PyPI](https://img.shields.io/pypi/v/oscrypto.svg)](https://pypi.python.org/pypi/oscrypto)
 
@@ -199,7 +197,7 @@ Some downsides include:
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8 or pypy
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 or pypy
 
 ## Installation
 
@@ -220,10 +218,8 @@ pip install oscrypto
 
 Various combinations of platforms and versions of Python are tested via:
 
- - [AppVeyor](https://ci.appveyor.com/project/wbond/oscrypto/history)
- - [CircleCI](https://circleci.com/gh/wbond/oscrypto)
- - [GitHub Actions](https://github.com/wbond/oscrypto/actions)
- - [Travis CI](https://travis-ci.org/wbond/oscrypto/builds)
+ - [macOS, Linux, Windows](https://github.com/wbond/oscrypto/actions/workflows/ci.yml) via GitHub Actions
+ - [arm64](https://circleci.com/gh/wbond/oscrypto) via CircleCI
 
 ## Testing
 

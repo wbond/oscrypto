@@ -224,7 +224,7 @@ API:
 >         ValueError - when a blank string is provided for the passphrase
 >
 >     :return:
->         A byte string of the encoded and encrypted public key
+>         A byte string of the encoded and encrypted private key
 >     """
 > ```
 >
@@ -249,7 +249,7 @@ API:
 >         ValueError - when a blank string is provided for the passphrase
 >
 >     :return:
->         A byte string of the encoded and encrypted public key
+>         A byte string of the encoded and encrypted private key
 >     """
 > ```
 >
