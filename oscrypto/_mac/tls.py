@@ -50,6 +50,7 @@ from .._tls import (
     raise_expired_not_yet_valid,
     raise_handshake,
     raise_hostname,
+    raise_lifetime_too_long,
     raise_no_issuer,
     raise_protocol_error,
     raise_protocol_version,
@@ -875,6 +876,7 @@ class TLSSocket(object):
                     expired = result_code == SecurityConst.CSSMERR_TP_CERT_EXPIRED
                     not_yet_valid = result_code == SecurityConst.CSSMERR_TP_CERT_NOT_VALID_YET
                     bad_hostname = result_code == SecurityConst.CSSMERR_APPLETP_HOSTNAME_MISMATCH
+                    validity_too_long = result_code == SecurityConst.CSSMERR_TP_CERT_SUSPENDED
 
                     # On macOS 10.12, some expired certificates return errSSLInternal
                     if osx_version_info >= (10, 12):
@@ -902,6 +904,9 @@ class TLSSocket(object):
 
                 elif self_signed:
                     raise_self_signed(cert)
+
+                elif validity_too_long:
+                    raise_lifetime_too_long(cert)
 
                 if detect_client_auth_request(self._server_hello):
                     raise_client_auth()
