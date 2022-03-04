@@ -455,13 +455,19 @@ class TLSTests(unittest.TestCase):
 
         with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
                               'The remote end closed the connection|TLS handshake failed'):
+            recv_sock = None
+            send_sock = None
+            server = None
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, send_callback)
                 tls.TLSSocket.wrap(sock, 'badtls.io')
             finally:
-                recv_sock.close()
-                send_sock.close()
-                server.close()
+                if recv_sock:
+                    recv_sock.close()
+                if send_sock:
+                    send_sock.close()
+                if server:
+                    server.close()
 
     @connection_timeout()
     def test_tls_closed_connection_read_shutdown(self):
