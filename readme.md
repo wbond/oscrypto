@@ -2,7 +2,7 @@
 
 A compilation-free, always up-to-date encryption library for Python that works
 on Windows, OS X, Linux and BSD. Supports the following versions of Python:
-2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 and pypy.
+2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10 and pypy.
 
  - [Supported Operating Systems](#supported-operationg-systems)
  - [Features](#features)
@@ -197,7 +197,7 @@ Some downsides include:
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 or pypy
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10 or pypy
 
 ## Installation
 
