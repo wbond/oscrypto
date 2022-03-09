@@ -585,8 +585,9 @@ class TLSSocket(object):
                         LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
                         LibsslConst.SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
                     )
-                    handshake_error_info = _homogenize_openssl3_error(handshake_error_info)
-                    if info == handshake_error_info:
+                    # OpenSSL 3.0 no longer has func codes, so this can be confused
+                    # with the following handler which needs to check for client auth
+                    if libcrypto_version_info < (3, ) and info == handshake_error_info:
                         raise_handshake()
 
                     handshake_failure_info = (
