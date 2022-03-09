@@ -341,7 +341,7 @@ PowerShell with `Net.WebClient` is used. This configuration sidesteps issues
 related to getting pip to work properly and messing with `site-packages` for
 the version of Python being used.
 
-The `ci` task runs `lint` (if flake8 is avaiable for the version of Python) and
+The `ci` task runs `lint` (if flake8 is available for the version of Python) and
 `coverage` (or `tests` if coverage is not available for the version of Python).
 If the current directory is a clean git working copy, the coverage data is
 submitted to codecov.io.

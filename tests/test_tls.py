@@ -175,7 +175,7 @@ class TLSTests(unittest.TestCase):
     def test_tls_error_expired_2(self):
         session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
         # This test allows past or future since cert is 1963, which some systems
-        # will intepret as 2063
+        # will interpret as 2063
         with assert_exception(self, errors.TLSVerificationError, 'certificate expired|not valid until'):
             tls.TLSSocket('expired-1963.badtls.io', 11000, session=session)
 
@@ -364,7 +364,7 @@ class TLSTests(unittest.TestCase):
     @connection_timeout(60)
     def test_tls_large_download(self):
         # This tests downloading a large (3MB+) file to ensure
-        # there aren't buffer overlfow issues in TLSSocket()
+        # there aren't buffer overflow issues in TLSSocket()
         c = HttpsClient()
         c.download('https://packagecontrol.io/channel_v3.json', 15)
 

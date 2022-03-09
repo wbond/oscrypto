@@ -57,7 +57,7 @@ def _try_decode(value):
 
 def handle_openssl_error(result, exception_class=None):
     """
-    Checks if an error occured, and if so throws an OSError containing the
+    Checks if an error occurred, and if so throws an OSError containing the
     last OpenSSL error message
 
     :param result:
