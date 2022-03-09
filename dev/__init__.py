@@ -30,6 +30,11 @@ task_keyword_args = [
         'placeholder': 'true',
         'env_var': 'OSCRYPTO_USE_CTYPES',
     },
+    {
+        'name': 'skip_internet',
+        'placeholder': 'true',
+        'env_var': 'OSCRYPTO_SKIP_INTERNET_TESTS',
+    },
 ]
 
 requires_oscrypto = True
