@@ -38,6 +38,13 @@ if libcrypto_version_info < (1, 1):
 libcrypto.OPENSSL_config(null())
 
 
+# This enables legacy algorithms in OpenSSL 3.0, such as RC2, etc
+# which are used by various tests and some old protocols and things
+# like PKCS12
+if libcrypto_version_info >= (3, ):
+    libcrypto.OSSL_PROVIDER_load(None, "legacy".encode("ascii"))
+
+
 def _try_decode(value):
 
     try:

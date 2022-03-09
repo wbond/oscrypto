@@ -74,6 +74,15 @@ if version_info < (1, 1):
         void ERR_free_strings(void);
     """)
 
+
+if version_info >= (3, ):
+    ffi.cdef("""
+        typedef ... OSSL_LIB_CTX;
+        typedef ... OSSL_PROVIDER;
+
+        OSSL_PROVIDER *OSSL_PROVIDER_load(OSSL_LIB_CTX *libctx, const char *name);
+    """)
+
 # The typedef uintptr_t lines here allow us to check for a NULL pointer,
 # without having to redefine the structs in our code. This is kind of a hack,
 # but it should cause problems since we treat these as opaque.

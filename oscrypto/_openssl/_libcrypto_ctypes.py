@@ -99,11 +99,9 @@ try:
         libcrypto.ERR_free_strings.argtypes = []
         libcrypto.ERR_free_strings.restype = None
 
-    if version_info >= (3, 0):
+    if version_info >= (3, ):
         libcrypto.OSSL_PROVIDER_load.argtypes = [OSSL_LIB_CTX, c_char_p]
         libcrypto.OSSL_PROVIDER_load.restype = POINTER(OSSL_PROVIDER)
-
-        libcrypto.OSSL_PROVIDER_load(None, "legacy".encode("ascii"))
 
     libcrypto.ERR_get_error.argtypes = []
     libcrypto.ERR_get_error.restype = c_ulong
