@@ -1418,15 +1418,16 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 handle_openssl_error(res)
 
                 # Use the hash algorithm output length as the salt length
-                res = libcrypto.EVP_PKEY_CTX_ctrl(
-                    evp_pkey_ctx_pointer,
-                    LibcryptoConst.EVP_PKEY_RSA,
-                    LibcryptoConst.EVP_PKEY_OP_SIGN | LibcryptoConst.EVP_PKEY_OP_VERIFY,
-                    LibcryptoConst.EVP_PKEY_CTRL_RSA_PSS_SALTLEN,
-                    -1,
-                    null()
-                )
-                handle_openssl_error(res)
+                if libcrypto_version_info < (3, 0):
+                    res = libcrypto.EVP_PKEY_CTX_ctrl(
+                        evp_pkey_ctx_pointer,
+                        LibcryptoConst.EVP_PKEY_RSA,
+                        LibcryptoConst.EVP_PKEY_OP_SIGN | LibcryptoConst.EVP_PKEY_OP_VERIFY,
+                        LibcryptoConst.EVP_PKEY_CTRL_RSA_PSS_SALTLEN,
+                        -1,
+                        null()
+                    )
+                    handle_openssl_error(res)
 
             res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
             handle_openssl_error(res)
@@ -1834,15 +1835,16 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 handle_openssl_error(res)
 
                 # Use the hash algorithm output length as the salt length
-                res = libcrypto.EVP_PKEY_CTX_ctrl(
-                    evp_pkey_ctx_pointer,
-                    LibcryptoConst.EVP_PKEY_RSA,
-                    LibcryptoConst.EVP_PKEY_OP_SIGN | LibcryptoConst.EVP_PKEY_OP_VERIFY,
-                    LibcryptoConst.EVP_PKEY_CTRL_RSA_PSS_SALTLEN,
-                    -1,
-                    null()
-                )
-                handle_openssl_error(res)
+                if libcrypto_version_info < (3, 0):
+                    res = libcrypto.EVP_PKEY_CTX_ctrl(
+                        evp_pkey_ctx_pointer,
+                        LibcryptoConst.EVP_PKEY_RSA,
+                        LibcryptoConst.EVP_PKEY_OP_SIGN | LibcryptoConst.EVP_PKEY_OP_VERIFY,
+                        LibcryptoConst.EVP_PKEY_CTRL_RSA_PSS_SALTLEN,
+                        -1,
+                        null()
+                    )
+                    handle_openssl_error(res)
 
             res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
             handle_openssl_error(res)
