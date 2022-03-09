@@ -252,11 +252,36 @@ python run.py tests 20
 python run.py tests aes 20
 ```
 
+#### Backend Options
+
 To run tests using a custom build of OpenSSL, or to use OpenSSL on Windows or
 Mac, add `use_openssl` after `run.py`, like:
 
 ```bash
-python run.py use_openssl=/path/to/libcrypto.dylib,/path/to/libssl.dylib tests
+python run.py use_openssl=/path/to/libcrypto.so,/path/to/libssl.so tests
+```
+
+To run tests forcing the use of ctypes, even if cffi is installed, add
+`use_ctypes` after `run.py`:
+
+```bash
+python run.py use_ctypes=true tests
+```
+
+To run tests using the legacy Windows crypto functions on Windows 7+, add
+`use_winlegacy` after `run.py`:
+
+```bash
+python run.py use_winlegacy=true tests
+```
+
+#### Internet Tests
+
+To skip tests that require an internet connection, add `skip_internet` after
+`run.py`:
+
+```bash
+python run.py skip_internet=true tests
 ```
 
 ### PyPi Source Distribution
@@ -267,6 +292,45 @@ PyPi, the full test suite is run via:
 ```bash
 python setup.py test
 ```
+
+#### Test Options
+
+The following env vars can control aspects of running tests:
+
+##### Force OpenSSL Shared Library Paths
+
+Setting the env var `OSCRYPTO_USE_OPENSSL` to a string in the form:
+
+```
+/path/to/libcrypto.so,/path/to/libssl.so
+```
+
+will force use of specific OpenSSL shared libraries.
+
+This also works on Mac and Windows to force use of OpenSSL instead of using
+native crypto libraries.
+
+##### Force Use of ctypes
+
+By default, oscrypto will use the `cffi` module for FFI if it is installed.
+
+To use the slightly slower, but more widely-tested, `ctypes` FFI layer, set
+the env var `OPENSSL_USE_CTYPES=true`.
+
+##### Force Use of Legacy Windows Crypto APIs
+
+On Windows 7 and newer, oscrypto will use the CNG backend by default.
+
+To force use of the older CryptoAPI, set the env var
+`OPENSSL_USE_WINLEGACY=true`.
+
+##### Skip Tests Requiring an Internet Connection
+
+Some of the TLS tests require an active internet connection to ensure that
+various "bad" server certificates are rejected.
+
+To skip tests requiring an internet connection, set the env var
+`OPENSSL_SKIP_INTERNET_TESTS=true`.
 
 ### Package
 
