@@ -138,18 +138,18 @@ def test_classes():
     from .test_asymmetric import AsymmetricTests
     from .test_symmetric import SymmetricTests
     from .test_trust_list import TrustListTests
-    if not os.environ.get('OSCRYPTO_SKIP_INTERNET_TESTS'):
-        from .test_tls import TLSTests
-    else:
-        TLSTests = None
     from .test_init import InitTests
 
-    return filter(None, [
+    test_classes = [
         KDFTests,
         KeyTests,
         AsymmetricTests,
         SymmetricTests,
         TrustListTests,
-        TLSTests,
         InitTests,
-    ])
+    ]
+    if not os.environ.get('OSCRYPTO_SKIP_INTERNET_TESTS'):
+        from .test_tls import TLSTests
+        test_classes.append(TLSTests)
+
+    return test_classes
