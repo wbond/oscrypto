@@ -928,6 +928,22 @@ def rsa_oaep_decrypt(private_key, ciphertext):
     return _decrypt(private_key, ciphertext, LibcryptoConst.RSA_PKCS1_OAEP_PADDING)
 
 
+def _evp_pkey_get_size(evp_pkey):
+    """
+    Handles the function name change from OpenSSL 1.1 -> 3.0
+
+    :param evp_pkey:
+        The EVP_PKEY of the Certificte or PublicKey to get the size of
+
+    :return:
+        An int of the number of bytes necessary for the key
+    """
+
+    if libcrypto_version_info < (3, ):
+        return libcrypto.EVP_PKEY_size(evp_pkey)
+    return libcrypto.EVP_PKEY_get_size(evp_pkey)
+
+
 def _encrypt(certificate_or_public_key, data, padding):
     """
     Encrypts plaintext using an RSA public key or certificate
@@ -970,7 +986,7 @@ def _encrypt(certificate_or_public_key, data, padding):
     rsa = None
 
     try:
-        buffer_size = libcrypto.EVP_PKEY_size(certificate_or_public_key.evp_pkey)
+        buffer_size = _evp_pkey_get_size(certificate_or_public_key.evp_pkey)
         buffer = buffer_from_bytes(buffer_size)
 
         rsa = libcrypto.EVP_PKEY_get1_RSA(certificate_or_public_key.evp_pkey)
@@ -1025,7 +1041,7 @@ def _decrypt(private_key, ciphertext, padding):
     rsa = None
 
     try:
-        buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
+        buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
         buffer = buffer_from_bytes(buffer_size)
 
         rsa = libcrypto.EVP_PKEY_get1_RSA(private_key.evp_pkey)
@@ -1279,7 +1295,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             if is_null(rsa):
                 handle_openssl_error(0)
 
-            buffer_size = libcrypto.EVP_PKEY_size(certificate_or_public_key.evp_pkey)
+            buffer_size = _evp_pkey_get_size(certificate_or_public_key.evp_pkey)
             decrypted_buffer = buffer_from_bytes(buffer_size)
             decrypted_length = libcrypto.RSA_public_decrypt(
                 len(signature),
@@ -1330,7 +1346,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 if is_null(rsa):
                     handle_openssl_error(0)
 
-                buffer_size = libcrypto.EVP_PKEY_size(certificate_or_public_key.evp_pkey)
+                buffer_size = _evp_pkey_get_size(certificate_or_public_key.evp_pkey)
                 decoded_buffer = buffer_from_bytes(buffer_size)
                 decoded_length = libcrypto.RSA_public_decrypt(
                     len(signature),
@@ -1682,7 +1698,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             if is_null(rsa):
                 handle_openssl_error(0)
 
-            buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
+            buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
 
             signature_buffer = buffer_from_bytes(buffer_size)
             signature_length = libcrypto.RSA_private_encrypt(
@@ -1730,7 +1746,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 if is_null(rsa):
                     handle_openssl_error(0)
 
-                buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
+                buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
                 em_buffer = buffer_from_bytes(buffer_size)
                 res = libcrypto.RSA_padding_add_PKCS1_PSS(
                     rsa,
@@ -1752,7 +1768,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 handle_openssl_error(signature_length)
 
             elif private_key.algorithm == 'rsa':
-                buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
+                buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
                 signature_buffer = buffer_from_bytes(buffer_size)
                 signature_length = new(libcrypto, 'unsigned int *')
 
@@ -1807,7 +1823,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 handle_openssl_error(signature_length)
 
         else:
-            buffer_size = libcrypto.EVP_PKEY_size(private_key.evp_pkey)
+            buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
             signature_buffer = buffer_from_bytes(buffer_size)
             signature_length = new(libcrypto, 'size_t *', buffer_size)
 

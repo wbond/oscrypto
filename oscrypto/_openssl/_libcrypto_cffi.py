@@ -149,7 +149,6 @@ ffi.cdef("""
     EVP_PKEY *X509_get_pubkey(X509 *x);
     void X509_free(X509 *a);
 
-    int EVP_PKEY_size(EVP_PKEY *pkey);
     RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
     void RSA_free(RSA *r);
 
@@ -204,6 +203,15 @@ ffi.cdef("""
     int i2o_ECPublicKey(EC_KEY *key, char **out);
     void EC_KEY_free(EC_KEY *key);
 """)
+
+if version_info < (3, ):
+    ffi.cdef("""
+        int EVP_PKEY_size(EVP_PKEY *pkey);
+    """)
+else:
+    ffi.cdef("""
+        int EVP_PKEY_get_size(EVP_PKEY *pkey);
+    """)
 
 if version_info < (1, 1):
     ffi.cdef("""

@@ -317,7 +317,6 @@ try:
             P_EVP_PKEY
         ]
         libcrypto.EVP_PKEY_get_size.restype = c_int
-        libcrypto.EVP_PKEY_size = libcrypto.EVP_PKEY_get_size
 
     libcrypto.EVP_PKEY_get1_RSA.argtypes = [
         P_EVP_PKEY
