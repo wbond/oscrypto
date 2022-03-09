@@ -95,9 +95,15 @@ def peek_openssl_error():
     """
 
     error = libcrypto.ERR_peek_error()
-    lib = int((error >> 24) & 0xff)
-    func = int((error >> 12) & 0xfff)
-    reason = int(error & 0xfff)
+    if libcrypto_version_info < (3, 0):
+        lib = int((error >> 24) & 0xff)
+        func = int((error >> 12) & 0xfff)
+        reason = int(error & 0xfff)
+    else:
+        lib = int((error >> 23) & 0xff)
+        # OpenSSL 3.0 removed ERR_GET_FUNC()
+        func = 0
+        reason = int(error & 0x7fffff)
 
     return (lib, func, reason)
 
