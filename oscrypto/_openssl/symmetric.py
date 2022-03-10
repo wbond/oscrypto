@@ -5,7 +5,7 @@ import math
 
 from .._errors import pretty_message
 from .._ffi import new, null, is_null, buffer_from_bytes, bytes_from_buffer, deref
-from ._libcrypto import libcrypto, LibcryptoConst, handle_openssl_error
+from ._libcrypto import libcrypto, libcrypto_legacy_support, LibcryptoConst, handle_openssl_error
 from ..util import rand_bytes
 from .._types import type_name, byte_cls
 
@@ -236,6 +236,9 @@ def rc4_encrypt(key, data):
         A byte string of the ciphertext
     """
 
+    if not libcrypto_legacy_support:
+        raise EnvironmentError('OpenSSL has been compiled without RC4 support')
+
     if len(key) < 5 or len(key) > 16:
         raise ValueError(pretty_message(
             '''
@@ -265,6 +268,9 @@ def rc4_decrypt(key, data):
     :return:
         A byte string of the plaintext
     """
+
+    if not libcrypto_legacy_support:
+        raise EnvironmentError('OpenSSL has been compiled without RC4 support')
 
     if len(key) < 5 or len(key) > 16:
         raise ValueError(pretty_message(
@@ -300,6 +306,9 @@ def rc2_cbc_pkcs5_encrypt(key, data, iv):
     :return:
         A tuple of two byte strings (iv, ciphertext)
     """
+
+    if not libcrypto_legacy_support:
+        raise EnvironmentError('OpenSSL has been compiled without RC2 support')
 
     if len(key) < 5 or len(key) > 16:
         raise ValueError(pretty_message(
@@ -344,6 +353,9 @@ def rc2_cbc_pkcs5_decrypt(key, data, iv):
     :return:
         A byte string of the plaintext
     """
+
+    if not libcrypto_legacy_support:
+        raise EnvironmentError('OpenSSL has been compiled without RC2 support')
 
     if len(key) < 5 or len(key) > 16:
         raise ValueError(pretty_message(
@@ -487,6 +499,9 @@ def des_cbc_pkcs5_encrypt(key, data, iv):
         A tuple of two byte strings (iv, ciphertext)
     """
 
+    if not libcrypto_legacy_support:
+        raise EnvironmentError('OpenSSL has been compiled without DES support')
+
     if len(key) != 8:
         raise ValueError(pretty_message(
             '''
@@ -529,6 +544,9 @@ def des_cbc_pkcs5_decrypt(key, data, iv):
     :return:
         A byte string of the plaintext
     """
+
+    if not libcrypto_legacy_support:
+        raise EnvironmentError('OpenSSL has been compiled without DES support')
 
     if len(key) != 8:
         raise ValueError(pretty_message(

@@ -100,6 +100,9 @@ try:
         libcrypto.ERR_free_strings.restype = None
 
     if version_info >= (3, ):
+        libcrypto.OSSL_PROVIDER_available.argtypes = [OSSL_LIB_CTX, c_char_p];
+        libcrypto.OSSL_PROVIDER_available.restype = c_int
+
         libcrypto.OSSL_PROVIDER_load.argtypes = [OSSL_LIB_CTX, c_char_p]
         libcrypto.OSSL_PROVIDER_load.restype = POINTER(OSSL_PROVIDER)
 

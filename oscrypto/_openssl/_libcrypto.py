@@ -22,6 +22,7 @@ else:
 __all__ = [
     'handle_openssl_error',
     'libcrypto',
+    'libcrypto_legacy_support',
     'libcrypto_version',
     'libcrypto_version_info',
     'LibcryptoConst',
@@ -41,8 +42,12 @@ libcrypto.OPENSSL_config(null())
 # This enables legacy algorithms in OpenSSL 3.0, such as RC2, etc
 # which are used by various tests and some old protocols and things
 # like PKCS12
+libcrypto_legacy_support = True
 if libcrypto_version_info >= (3, ):
-    libcrypto.OSSL_PROVIDER_load(None, "legacy".encode("ascii"))
+    if libcrypto.OSSL_PROVIDER_available(null(), "legacy".encode("ascii")):
+        libcrypto.OSSL_PROVIDER_load(null(), "legacy".encode("ascii"))
+    else:
+        libcrypto_legacy_support = False
 
 
 def _try_decode(value):

@@ -80,6 +80,7 @@ if version_info >= (3, ):
         typedef ... OSSL_LIB_CTX;
         typedef ... OSSL_PROVIDER;
 
+        int OSSL_PROVIDER_available(OSSL_LIB_CTX *libctx, const char *name);
         OSSL_PROVIDER *OSSL_PROVIDER_load(OSSL_LIB_CTX *libctx, const char *name);
     """)
 
