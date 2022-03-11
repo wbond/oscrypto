@@ -166,6 +166,19 @@ jobs:
       - name: Run test suite
         run: python run.py ci-driver
 
+  build-ubuntu-openssl3:
+    name: Python ${{ matrix.python }} on (Docker) ubuntu-22.04 x64
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    steps:
+      - uses: actions/checkout@master
+      - name: Install dependencies
+        run: python run.py deps
+      - name: Run test suite
+        run: python run.py ci-driver
+      - name: Run test suite (cffi)
+        run: python run.py ci-driver cffi
+
   build-ubuntu-old:
     name: Python ${{ matrix.python }} on ubuntu-18.04 x64
     runs-on: ubuntu-18.04
