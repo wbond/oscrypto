@@ -4,7 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import unittest
 import sys
 
-from oscrypto import symmetric, util
+from oscrypto import symmetric, util, backend
 
 from ._unittest_compat import patch
 from .exception_context import assert_exception
@@ -15,6 +15,16 @@ if sys.version_info < (3,):
     byte_cls = str
 else:
     byte_cls = bytes
+
+
+_backend = backend()
+
+
+if _backend == 'openssl':
+    from oscrypto._openssl._libcrypto import libcrypto_legacy_support
+    supports_legacy = libcrypto_legacy_support
+else:
+    supports_legacy = True
 
 
 class SymmetricTests(unittest.TestCase):
@@ -68,59 +78,94 @@ class SymmetricTests(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_rc4_40_encrypt_decrypt(self):
-        key = util.rand_bytes(5)
-        data = b'This is data to encrypt'
+        def do_run():
+            key = util.rand_bytes(5)
+            data = b'This is data to encrypt'
 
-        ciphertext = symmetric.rc4_encrypt(key, data)
-        self.assertNotEqual(data, ciphertext)
-        self.assertEqual(byte_cls, type(ciphertext))
+            ciphertext = symmetric.rc4_encrypt(key, data)
+            self.assertNotEqual(data, ciphertext)
+            self.assertEqual(byte_cls, type(ciphertext))
 
-        plaintext = symmetric.rc4_decrypt(key, ciphertext)
-        self.assertEqual(data, plaintext)
+            plaintext = symmetric.rc4_decrypt(key, ciphertext)
+            self.assertEqual(data, plaintext)
+
+        if not supports_legacy:
+            with self.assertRaises(EnvironmentError):
+                do_run()
+        else:
+            do_run()
 
     def test_rc4_128_encrypt_decrypt(self):
-        key = util.rand_bytes(16)
-        data = b'This is data to encrypt'
+        def do_run():
+            key = util.rand_bytes(16)
+            data = b'This is data to encrypt'
 
-        ciphertext = symmetric.rc4_encrypt(key, data)
-        self.assertNotEqual(data, ciphertext)
-        self.assertEqual(byte_cls, type(ciphertext))
+            ciphertext = symmetric.rc4_encrypt(key, data)
+            self.assertNotEqual(data, ciphertext)
+            self.assertEqual(byte_cls, type(ciphertext))
 
-        plaintext = symmetric.rc4_decrypt(key, ciphertext)
-        self.assertEqual(data, plaintext)
+            plaintext = symmetric.rc4_decrypt(key, ciphertext)
+            self.assertEqual(data, plaintext)
+
+        if not supports_legacy:
+            with self.assertRaises(EnvironmentError):
+                do_run()
+        else:
+            do_run()
 
     def test_rc2_64_encrypt_decrypt(self):
-        key = util.rand_bytes(8)
-        data = b'This is data to encrypt'
+        def do_run():
+            key = util.rand_bytes(8)
+            data = b'This is data to encrypt'
 
-        iv, ciphertext = symmetric.rc2_cbc_pkcs5_encrypt(key, data, None)
-        self.assertNotEqual(data, ciphertext)
-        self.assertEqual(byte_cls, type(ciphertext))
+            iv, ciphertext = symmetric.rc2_cbc_pkcs5_encrypt(key, data, None)
+            self.assertNotEqual(data, ciphertext)
+            self.assertEqual(byte_cls, type(ciphertext))
 
-        plaintext = symmetric.rc2_cbc_pkcs5_decrypt(key, ciphertext, iv)
-        self.assertEqual(data, plaintext)
+            plaintext = symmetric.rc2_cbc_pkcs5_decrypt(key, ciphertext, iv)
+            self.assertEqual(data, plaintext)
+
+        if not supports_legacy:
+            with self.assertRaises(EnvironmentError):
+                do_run()
+        else:
+            do_run()
 
     def test_rc2_40_encrypt_decrypt(self):
-        key = util.rand_bytes(5)
-        data = b'This is data to encrypt'
+        def do_run():
+            key = util.rand_bytes(5)
+            data = b'This is data to encrypt'
 
-        iv, ciphertext = symmetric.rc2_cbc_pkcs5_encrypt(key, data, None)
-        self.assertNotEqual(data, ciphertext)
-        self.assertEqual(byte_cls, type(ciphertext))
+            iv, ciphertext = symmetric.rc2_cbc_pkcs5_encrypt(key, data, None)
+            self.assertNotEqual(data, ciphertext)
+            self.assertEqual(byte_cls, type(ciphertext))
 
-        plaintext = symmetric.rc2_cbc_pkcs5_decrypt(key, ciphertext, iv)
-        self.assertEqual(data, plaintext)
+            plaintext = symmetric.rc2_cbc_pkcs5_decrypt(key, ciphertext, iv)
+            self.assertEqual(data, plaintext)
+
+        if not supports_legacy:
+            with self.assertRaises(EnvironmentError):
+                do_run()
+        else:
+            do_run()
 
     def test_des_encrypt_decrypt(self):
-        key = util.rand_bytes(8)
-        data = b'This is data to encrypt'
+        def do_run():
+            key = util.rand_bytes(8)
+            data = b'This is data to encrypt'
 
-        iv, ciphertext = symmetric.des_cbc_pkcs5_encrypt(key, data, None)
-        self.assertNotEqual(data, ciphertext)
-        self.assertEqual(byte_cls, type(ciphertext))
+            iv, ciphertext = symmetric.des_cbc_pkcs5_encrypt(key, data, None)
+            self.assertNotEqual(data, ciphertext)
+            self.assertEqual(byte_cls, type(ciphertext))
 
-        plaintext = symmetric.des_cbc_pkcs5_decrypt(key, ciphertext, iv)
-        self.assertEqual(data, plaintext)
+            plaintext = symmetric.des_cbc_pkcs5_decrypt(key, ciphertext, iv)
+            self.assertEqual(data, plaintext)
+
+        if not supports_legacy:
+            with self.assertRaises(EnvironmentError):
+                do_run()
+        else:
+            do_run()
 
     def test_3des_2k_encrypt_decrypt(self):
         key = util.rand_bytes(16)
