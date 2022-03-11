@@ -56,12 +56,15 @@ care of patching vulnerabilities. Supported operating systems include:
      - macOS 10.13 with LibreSSL 2.2.7
      - macOS 10.14
      - macOS 10.15
+     - macOS 10.15 with OpenSSL 3.0
      - macOS 11
+     - macOS 12
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
      - [OpenSSL 1.0.x](https://www.openssl.org/docs/man1.0.0/)
      - [OpenSSL 1.1.0](https://www.openssl.org/docs/man1.1.0/)
+     - [OpenSSL 3.0](https://www.openssl.org/docs/man3.0/)
      - [LibreSSL](http://www.libressl.org/)
    - Tested on:
      - Arch Linux with OpenSSL 1.0.2
@@ -71,6 +74,7 @@ care of patching vulnerabilities. Supported operating systems include:
      - Ubuntu 15.04 with OpenSSL 1.0.1
      - Ubuntu 16.04 with OpenSSL 1.0.2 on Raspberry Pi 3 (armhf)
      - Ubuntu 18.04 with OpenSSL 1.1.x (amd64, arm64, ppc64el)
+     - Ubuntu 22.04 with OpenSSL 3.0 (amd64)
 
 *OS X 10.6 will not be supported due to a lack of available
 cryptographic primitives and due to lack of vendor support.*
