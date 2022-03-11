@@ -172,6 +172,8 @@ jobs:
     container: ubuntu:22.04
     steps:
       - uses: actions/checkout@master
+      - name: Install Python and OpenSSL
+        run: DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -no-install-recommends python3 openssl
       - name: Install dependencies
         run: python run.py deps
       - name: Run test suite
