@@ -233,6 +233,8 @@ class Certificate(_CertificateBase):
 
                 if signature_algo == 'rsassa_pkcs1v15':
                     verify_func = rsa_pkcs1v15_verify
+                elif signature_algo == 'rsassa_pss':
+                    verify_func = rsa_pss_verify
                 elif signature_algo == 'dsa':
                     verify_func = dsa_verify
                 elif signature_algo == 'ecdsa':

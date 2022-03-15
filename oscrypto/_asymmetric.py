@@ -241,10 +241,12 @@ def _unwrap_private_key_info(key_info):
          - asn1crypto.keys.ECPrivateKey
     """
 
-    if key_info.algorithm == 'rsa':
+    key_alg = key_info.algorithm
+
+    if key_alg == 'rsa' or key_alg == 'rsassa_pss':
         return key_info['private_key'].parsed
 
-    if key_info.algorithm == 'dsa':
+    if key_alg == 'dsa':
         params = key_info['private_key_algorithm']['parameters']
         parsed = key_info['private_key'].parsed
         return DSAPrivateKey({
@@ -260,7 +262,7 @@ def _unwrap_private_key_info(key_info):
             'private_key': parsed,
         })
 
-    if key_info.algorithm == 'ec':
+    if key_alg == 'ec':
         parsed = key_info['private_key'].parsed
         parsed['parameters'] = key_info['private_key_algorithm']['parameters']
         return parsed

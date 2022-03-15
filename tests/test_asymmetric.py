@@ -137,6 +137,11 @@ class AsymmetricTests(unittest.TestCase):
         self.assertIsInstance(private_reloaded, asymmetric.PrivateKey)
         self.assertEqual('rsa', private_reloaded.algorithm)
 
+    def test_load_rsa_pss_cert(self):
+        cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test-pss.crt'))
+        self.assertEqual('rsassa_pss', cert.algorithm)
+        self.assertEqual(2048, cert.bit_size)
+
     def test_dh_generate(self):
         dh_parameters = asymmetric.generate_dh_parameters(512)
         self.assertIsInstance(dh_parameters, algos.DHParameters)
@@ -254,6 +259,14 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pss_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_pss_verify_pss_cert(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_pss_signature_pss_cert'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-pss.crt'))
+        asymmetric.rsa_pss_verify(public, signature, original_data, 'sha256')
+
     def test_rsa_pss_verify_fail(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -262,6 +275,15 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         with self.assertRaises(errors.SignatureError):
             asymmetric.rsa_pss_verify(public, signature, original_data + b'1', 'sha1')
+
+    def test_rsa_pss_verify_pss_cert_fail(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_pss_signature_pss_cert'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-pss.crt'))
+        with self.assertRaises(errors.SignatureError):
+            asymmetric.rsa_pss_verify(public, signature, original_data + b'1', 'sha256')
 
     def test_rsa_raw_verify(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
@@ -427,10 +449,30 @@ class AsymmetricTests(unittest.TestCase):
 
         asymmetric.rsa_pss_verify(public, signature, original_data, 'sha1')
 
+    def test_rsa_pss_sign_pss_cert(self):
+        original_data = b'This is data to sign'
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-pss.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-pss.crt'))
+
+        signature = asymmetric.rsa_pss_sign(private, original_data, 'sha1')
+        self.assertIsInstance(signature, byte_cls)
+
+        asymmetric.rsa_pss_verify(public, signature, original_data, 'sha1')
+
     def test_rsa_pss_sha256_sign(self):
         original_data = b'This is data to sign'
         private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
+
+        signature = asymmetric.rsa_pss_sign(private, original_data, 'sha256')
+        self.assertIsInstance(signature, byte_cls)
+
+        asymmetric.rsa_pss_verify(public, signature, original_data, 'sha256')
+
+    def test_rsa_pss_sha256_sign_pss_cert(self):
+        original_data = b'This is data to sign'
+        private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test-pss.key'))
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-pss.crt'))
 
         signature = asymmetric.rsa_pss_sign(private, original_data, 'sha256')
         self.assertIsInstance(signature, byte_cls)
