@@ -1123,7 +1123,9 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
         OSError - when an error is returned by the OS crypto library
     """
 
-    if certificate_or_public_key.algorithm != 'rsa':
+    cp_alg = certificate_or_public_key.algorithm
+
+    if cp_alg != 'rsa' and cp_alg != 'rsassa_pss':
         raise ValueError(pretty_message(
             '''
             The key specified is not an RSA public key, but %s
@@ -1253,13 +1255,16 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             type_name(data)
         ))
 
+    cp_alg = certificate_or_public_key.algorithm
+    cp_is_rsa = cp_alg == 'rsa' or cp_alg == 'rsassa_pss'
+
     valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
-    if certificate_or_public_key.algorithm == 'rsa' and not rsa_pss_padding:
+    if cp_is_rsa and not rsa_pss_padding:
         valid_hash_algorithms |= set(['raw'])
 
     if hash_algorithm not in valid_hash_algorithms:
         valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
-        if certificate_or_public_key.algorithm == 'rsa' and not rsa_pss_padding:
+        if cp_is_rsa and not rsa_pss_padding:
             valid_hash_algorithms_error += ', "raw"'
         raise ValueError(pretty_message(
             '''
@@ -1269,7 +1274,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             repr(hash_algorithm)
         ))
 
-    if certificate_or_public_key.algorithm != 'rsa' and rsa_pss_padding:
+    if not cp_is_rsa and rsa_pss_padding:
         raise ValueError(pretty_message(
             '''
             PSS padding can only be used with RSA keys - the key provided is a
@@ -1278,7 +1283,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             certificate_or_public_key.algorithm.upper()
         ))
 
-    if certificate_or_public_key.algorithm == 'rsa' and hash_algorithm == 'raw':
+    if cp_is_rsa and hash_algorithm == 'raw':
         if len(data) > certificate_or_public_key.byte_size - 11:
             raise ValueError(pretty_message(
                 '''
@@ -1538,12 +1543,14 @@ def rsa_pss_sign(private_key, data, hash_algorithm):
         A byte string of the signature
     """
 
-    if private_key.algorithm != 'rsa':
+    pkey_alg = private_key.algorithm
+
+    if pkey_alg != 'rsa' and pkey_alg != 'rsassa_pss':
         raise ValueError(pretty_message(
             '''
             The key specified is not an RSA private key, but %s
             ''',
-            private_key.algorithm.upper()
+            pkey_alg.upper()
         ))
 
     return _sign(private_key, data, hash_algorithm, rsa_pss_padding=True)
@@ -1656,13 +1663,16 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             type_name(data)
         ))
 
+    pkey_alg = private_key.algorithm
+    pkey_is_rsa = pkey_alg == 'rsa' or pkey_alg == 'rsassa_pss'
+
     valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
-    if private_key.algorithm == 'rsa' and not rsa_pss_padding:
+    if pkey_alg == 'rsa' and not rsa_pss_padding:
         valid_hash_algorithms |= set(['raw'])
 
     if hash_algorithm not in valid_hash_algorithms:
         valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
-        if private_key.algorithm == 'rsa' and not rsa_pss_padding:
+        if pkey_is_rsa and not rsa_pss_padding:
             valid_hash_algorithms_error += ', "raw"'
         raise ValueError(pretty_message(
             '''
@@ -1672,16 +1682,16 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             repr(hash_algorithm)
         ))
 
-    if private_key.algorithm != 'rsa' and rsa_pss_padding:
+    if not pkey_is_rsa and rsa_pss_padding:
         raise ValueError(pretty_message(
             '''
             PSS padding can only be used with RSA keys - the key provided is a
             %s key
             ''',
-            private_key.algorithm.upper()
+            pkey_alg.upper()
         ))
 
-    if private_key.algorithm == 'rsa' and hash_algorithm == 'raw':
+    if pkey_is_rsa and hash_algorithm == 'raw':
         if len(data) > private_key.byte_size - 11:
             raise ValueError(pretty_message(
                 '''
@@ -1741,7 +1751,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         }[hash_algorithm]()
 
         if libcrypto_version_info < (1,):
-            if private_key.algorithm == 'rsa' and rsa_pss_padding:
+            if pkey_alg == 'rsa' and rsa_pss_padding:
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 rsa = libcrypto.EVP_PKEY_get1_RSA(private_key.evp_pkey)
@@ -1769,7 +1779,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 )
                 handle_openssl_error(signature_length)
 
-            elif private_key.algorithm == 'rsa':
+            elif pkey_alg == 'rsa':
                 buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
                 signature_buffer = buffer_from_bytes(buffer_size)
                 signature_length = new(libcrypto, 'unsigned int *')
@@ -1790,7 +1800,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
 
                 signature_length = deref(signature_length)
 
-            elif private_key.algorithm == 'dsa':
+            elif pkey_alg == 'dsa':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 dsa = libcrypto.EVP_PKEY_get1_DSA(private_key.evp_pkey)
@@ -1807,7 +1817,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 signature_length = libcrypto.i2d_DSA_SIG(dsa_sig, signature_pointer)
                 handle_openssl_error(signature_length)
 
-            elif private_key.algorithm == 'ec':
+            elif pkey_alg == 'ec':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 ec_key = libcrypto.EVP_PKEY_get1_EC_KEY(private_key.evp_pkey)
