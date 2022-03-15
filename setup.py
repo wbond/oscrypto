@@ -138,6 +138,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: Implementation :: PyPy',
 
         'Topic :: Security :: Cryptography',
@@ -145,7 +146,7 @@ setup(
 
     keywords='crypto pki tls ssl x509 certificate encrypt decrypt sign verify rsa dsa ec dh',
 
-    install_requires=['asn1crypto>=1.0.0'],
+    install_requires=['asn1crypto>=1.5.1'],
 
     packages=find_packages(exclude=['tests*', 'dev*']),
     package_data=package_data,
