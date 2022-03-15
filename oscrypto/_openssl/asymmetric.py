@@ -32,6 +32,7 @@ from .._ffi import (
     new,
     null,
     unwrap,
+    write_to_buffer,
 )
 from ._libcrypto import libcrypto, LibcryptoConst, libcrypto_version_info, handle_openssl_error
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
@@ -105,6 +106,16 @@ class PrivateKey(_PrivateKeyBase):
             pubkey_data = bytes_from_buffer(pubkey_buffer, pubkey_length)
 
             asn1 = PublicKeyInfo.load(pubkey_data)
+
+            # OpenSSL 1.x suffers from issues trying to use RSASSA-PSS keys, so we
+            # masquerade it as a normal RSA key so the OID checks work
+            if libcrypto_version_info < (3,) and asn1.algorithm == 'rsassa_pss':
+                temp_asn1 = asn1.copy()
+                temp_asn1['algorithm']['algorithm'] = 'rsa'
+                temp_data = temp_asn1.dump()
+                write_to_buffer(pubkey_buffer, temp_data)
+                pubkey_length = len(temp_data)
+
             pub_evp_pkey = libcrypto.d2i_PUBKEY(null(), buffer_pointer(pubkey_buffer), pubkey_length)
             if is_null(pub_evp_pkey):
                 handle_openssl_error(0)
@@ -212,8 +223,13 @@ class Certificate(_CertificateBase):
         """
 
         if not self._public_key and self.x509:
-            evp_pkey = libcrypto.X509_get_pubkey(self.x509)
-            self._public_key = PublicKey(evp_pkey, self.asn1['tbs_certificate']['subject_public_key_info'])
+            # OpenSSL 1.x suffers from issues trying to use RSASSA-PSS keys, so we
+            # masquerade it as a normal RSA key so the OID checks work
+            if libcrypto_version_info < (3,) and self.asn1.public_key.algorithm == 'rsassa_pss':
+                self._public_key = load_public_key(self.asn1.public_key)
+            else:
+                evp_pkey = libcrypto.X509_get_pubkey(self.x509)
+                self._public_key = PublicKey(evp_pkey, self.asn1.public_key)
 
         return self._public_key
 
@@ -714,7 +730,15 @@ def load_public_key(source):
                 '''
             ))
 
-    data = public_key.dump()
+    # OpenSSL 1.x suffers from issues trying to use RSASSA-PSS keys, so we
+    # masquerade it as a normal RSA key so the OID checks work
+    if libcrypto_version_info < (3,) and public_key.algorithm == 'rsassa_pss':
+        temp_key = public_key.copy()
+        temp_key['algorithm']['algorithm'] = 'rsa'
+        data = temp_key.dump()
+    else:
+        data = public_key.dump()
+
     buffer = buffer_from_bytes(data)
     evp_pkey = libcrypto.d2i_PUBKEY(null(), buffer_pointer(buffer), len(data))
     if is_null(evp_pkey):
@@ -1280,7 +1304,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             PSS padding can only be used with RSA keys - the key provided is a
             %s key
             ''',
-            certificate_or_public_key.algorithm.upper()
+            cp_alg.upper()
         ))
 
     if cp_is_rsa and hash_algorithm == 'raw':
@@ -1346,7 +1370,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
         }[hash_algorithm]()
 
         if libcrypto_version_info < (1,):
-            if certificate_or_public_key.algorithm == 'rsa' and rsa_pss_padding:
+            if cp_is_rsa and rsa_pss_padding:
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 rsa = libcrypto.EVP_PKEY_get1_RSA(certificate_or_public_key.evp_pkey)
@@ -1372,7 +1396,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                     LibcryptoConst.EVP_MD_CTX_FLAG_PSS_MDLEN
                 )
 
-            elif certificate_or_public_key.algorithm == 'rsa':
+            elif cp_is_rsa:
                 res = libcrypto.EVP_DigestInit_ex(evp_md_ctx, evp_md, null())
                 handle_openssl_error(res)
 
@@ -1386,7 +1410,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                     certificate_or_public_key.evp_pkey
                 )
 
-            elif certificate_or_public_key.algorithm == 'dsa':
+            elif cp_alg == 'dsa':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 signature_buffer = buffer_from_bytes(signature)
@@ -1401,7 +1425,7 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
 
                 res = libcrypto.DSA_do_verify(digest, len(digest), dsa_sig, dsa)
 
-            elif certificate_or_public_key.algorithm == 'ec':
+            elif cp_alg == 'ec':
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 signature_buffer = buffer_from_bytes(signature)
@@ -1751,7 +1775,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
         }[hash_algorithm]()
 
         if libcrypto_version_info < (1,):
-            if pkey_alg == 'rsa' and rsa_pss_padding:
+            if pkey_is_rsa and rsa_pss_padding:
                 digest = getattr(hashlib, hash_algorithm)(data).digest()
 
                 rsa = libcrypto.EVP_PKEY_get1_RSA(private_key.evp_pkey)
@@ -1779,7 +1803,7 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 )
                 handle_openssl_error(signature_length)
 
-            elif pkey_alg == 'rsa':
+            elif pkey_is_rsa:
                 buffer_size = _evp_pkey_get_size(private_key.evp_pkey)
                 signature_buffer = buffer_from_bytes(buffer_size)
                 signature_length = new(libcrypto, 'unsigned int *')
