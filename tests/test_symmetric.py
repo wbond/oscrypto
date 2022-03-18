@@ -40,6 +40,28 @@ class SymmetricTests(unittest.TestCase):
         plaintext = symmetric.aes_cbc_no_padding_decrypt(key, ciphertext, iv)
         self.assertEqual(data, plaintext)
 
+    def test_aes_192_cbc_no_padding_encrypt_decrypt(self):
+        key = util.rand_bytes(24)
+        data = b'This is the data'
+
+        iv, ciphertext = symmetric.aes_cbc_no_padding_encrypt(key, data, None)
+        self.assertNotEqual(data, ciphertext)
+        self.assertEqual(byte_cls, type(ciphertext))
+
+        plaintext = symmetric.aes_cbc_no_padding_decrypt(key, ciphertext, iv)
+        self.assertEqual(data, plaintext)
+
+    def test_aes_256_cbc_no_padding_encrypt_decrypt(self):
+        key = util.rand_bytes(32)
+        data = b'This is the data'
+
+        iv, ciphertext = symmetric.aes_cbc_no_padding_encrypt(key, data, None)
+        self.assertNotEqual(data, ciphertext)
+        self.assertEqual(byte_cls, type(ciphertext))
+
+        plaintext = symmetric.aes_cbc_no_padding_decrypt(key, ciphertext, iv)
+        self.assertEqual(data, plaintext)
+
     def test_aes_cbc_no_padding_wrong_length(self):
         key = util.rand_bytes(16)
 
