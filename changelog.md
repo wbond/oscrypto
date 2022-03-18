@@ -1,5 +1,22 @@
 # changelog
 
+## 1.3.0
+
+ - Add support for OpenSSL 3.0
+ - Add first-class support for RSASSA-PSS certificates
+ - Add user-friendly handling of the error message with TLS on macOS
+   when a ceritificate has a lifetime that is longer than the CAB forum
+   guidelines
+ - Fix AES 192/256 encryption on OpenSSL and Windows to allow no padding when
+   plaintext is an exact multiple of 16 bytes long. Previously AES192 would
+   require plaintext with a length that was a multiple of 24 AND 16, and
+   AES256 would require plaintext with a length that was a multiple of 32.
+ - Add the ability to skip tests that require internet connectivity
+   *via @jnahmias*
+ - Fix a bug throwing an exception when passing an invalid type to
+   `asymmetric.load_public_key()` *via @Arbitrage0*
+ - Fix a number of typos in doc strings *via @frennkie and @kianmeng*
+
 ## 1.2.1
 
  - Fix running in an environment with a custom OpenSSL install on macOS 10.15
