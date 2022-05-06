@@ -166,8 +166,8 @@ jobs:
       - name: Run test suite
         run: python run.py ci-driver
 
-  build-ubuntu-openssl3:
-    name: Python ${{ matrix.python }} on (Docker) ubuntu-22.04 x64
+  build-ubuntu-openssl3-py3:
+    name: Python 3 on (Docker) ubuntu-22.04 x64
     runs-on: ubuntu-latest
     container: ubuntu:22.04
     steps:
@@ -180,6 +180,22 @@ jobs:
         run: python run.py ci-driver
       - name: Run test suite (cffi)
         run: python run.py ci-driver cffi
+
+  build-ubuntu-openssl3-py2:
+    name: Python 2 on (Docker) ubuntu-22.04 x64
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    steps:
+      - uses: actions/checkout@master
+      - name: Install Python and OpenSSL
+        run: DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends python2 python-setuptools openssl curl ca-certificates git
+      - name: Install dependencies
+        run: python2 run.py deps
+      - name: Run test suite
+        run: python2 run.py ci-driver
+      - name: Run test suite (cffi)
+        run: python2 run.py ci-driver cffi
+
 
   build-ubuntu-old:
     name: Python ${{ matrix.python }} on ubuntu-18.04 x64
