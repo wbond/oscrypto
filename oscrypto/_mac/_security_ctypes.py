@@ -186,6 +186,11 @@ try:
     ]
     Security.SecCertificateCreateWithData.restype = SecCertificateRef
 
+    Security.SecCertificateCopyKey.argtypes = [
+        SecCertificateRef,
+    ]
+    Security.SecCertificateCopyKey.restype = SecKeyRef
+
     Security.SecCertificateCopyPublicKey.argtypes = [
         SecCertificateRef,
         POINTER(SecKeyRef)

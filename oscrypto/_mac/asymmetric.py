@@ -261,9 +261,12 @@ class Certificate(_CertificateBase):
                 sec_cert_ref = self.sec_certificate_ref
 
             sec_public_key_ref_pointer = new(Security, 'SecKeyRef *')
-            res = Security.SecCertificateCopyPublicKey(sec_cert_ref, sec_public_key_ref_pointer)
-            handle_sec_error(res)
-            sec_public_key_ref = unwrap(sec_public_key_ref_pointer)
+            if osx_version_info >= (10, 14):
+                sec_public_key_ref = Security.SecCertificateCopyKey(sec_cert_ref)
+            else:
+                res = Security.SecCertificateCopyPublicKey(sec_cert_ref, sec_public_key_ref_pointer)
+                handle_sec_error(res)
+                sec_public_key_ref = unwrap(sec_public_key_ref_pointer)
             self._public_key = PublicKey(sec_public_key_ref, self.asn1['tbs_certificate']['subject_public_key_info'])
 
         return self._public_key
