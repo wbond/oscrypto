@@ -273,6 +273,8 @@ else:
 
         int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
         int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const char *sig, size_t siglen);
+        int EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
+                        size_t siglen, const unsigned char *tbs, size_t tbslen);
 
         int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd, int p1, void *p2);
     """)

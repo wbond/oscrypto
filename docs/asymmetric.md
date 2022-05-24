@@ -33,6 +33,8 @@ API:
  - [ECDSA](#ecdsa)
    - [`ecdsa_sign()`](#ecdsa_sign-function)
    - [`ecdsa_verify()`](#ecdsa_verify-function)
+ - [EDDSA](#eddsa)
+   - [`eddsa_verify()`](#eddsa_verify-function)
 
 ## Keys/Certificates
 
@@ -643,3 +645,30 @@ API:
 > ```
 >
 > Verifies an ECDSA signature
+
+### `eddsa_verify()` function
+
+> ```python
+> def eddsa_verify(certificate_or_public_key, signature, data, hash_algorithm="raw"):
+>     """
+>     :param certificate_or_public_key:
+>         A Certificate or PublicKey instance to verify the signature with
+>
+>     :param signature:
+>         A byte string of the signature to verify
+>
+>     :param data:
+>         A byte string of the data the signature is for
+>
+>     :param hash_algorithm:
+>         A unicode string of "raw"
+>
+>     :raises:
+>         oscrypto.errors.SignatureError - when the signature is determined to be invalid
+>         ValueError - when any of the parameters contain an invalid value
+>         TypeError - when any of the parameters are of the wrong type
+>         OSError - when an error is returned by the OS crypto library
+>     """
+> ```
+>
+> Verifies an EdDSA signature

@@ -1228,6 +1228,44 @@ def ecdsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     return _verify(certificate_or_public_key, signature, data, hash_algorithm)
 
 
+def eddsa_verify(certificate_or_public_key, signature, data, hash_algorithm="raw"):
+    """
+    Verifies an EdDSA signature
+
+    :param certificate_or_public_key:
+        A Certificate or PublicKey instance to verify the signature with
+
+    :param signature:
+        A byte string of the signature to verify
+
+    :param data:
+        A byte string of the data the signature is for
+
+    :param hash_algorithm:
+        A unicode string of "raw"
+
+    :raises:
+        oscrypto.errors.SignatureError - when the signature is determined to be invalid
+        ValueError - when any of the parameters contain an invalid value
+        TypeError - when any of the parameters are of the wrong type
+        OSError - when an error is returned by the OS crypto library
+    """
+
+    if certificate_or_public_key.algorithm not in ['ed25519', 'ed448']:
+        raise ValueError(pretty_message(
+            '''
+            The key specified is not an Edwards curve public key, but %s
+            ''',
+            certificate_or_public_key.algorithm.upper()
+        ))
+    if hash_algorithm != "raw":
+        raise ValueError(pretty_message(
+             '''Only pure EdDSA signature verification is supported, but %s hashing wanted''',
+             str(hash_algorithm).upper()
+        ))
+    return _verify(certificate_or_public_key, signature, data, hash_algorithm)
+
+
 def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=False):
     """
     Verifies an RSA, DSA or ECDSA signature
@@ -1285,11 +1323,15 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
     valid_hash_algorithms = set(['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'])
     if cp_is_rsa and not rsa_pss_padding:
         valid_hash_algorithms |= set(['raw'])
+    if cp_alg in ['ed25519', 'ed448']:
+        valid_hash_algorithms = set(['raw'])
 
     if hash_algorithm not in valid_hash_algorithms:
         valid_hash_algorithms_error = '"md5", "sha1", "sha224", "sha256", "sha384", "sha512"'
         if cp_is_rsa and not rsa_pss_padding:
             valid_hash_algorithms_error += ', "raw"'
+        if cp_alg in ['ed25519', 'ed448']:
+            valid_hash_algorithms_error = '"raw"'
         raise ValueError(pretty_message(
             '''
             hash_algorithm must be one of %s, not %s
@@ -1366,7 +1408,8 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
             'sha224': libcrypto.EVP_sha224,
             'sha256': libcrypto.EVP_sha256,
             'sha384': libcrypto.EVP_sha384,
-            'sha512': libcrypto.EVP_sha512
+            'sha512': libcrypto.EVP_sha512,
+            'raw': null
         }[hash_algorithm]()
 
         if libcrypto_version_info < (1,):
@@ -1476,10 +1519,18 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                     )
                     handle_openssl_error(res)
 
-            res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
-            handle_openssl_error(res)
+            if cp_alg in ['ed25519', 'ed448']:
+                res = libcrypto.EVP_DigestVerify(
+                    evp_md_ctx,
+                    signature, len(signature),
+                    data, len(data)
+                )
 
-            res = libcrypto.EVP_DigestVerifyFinal(evp_md_ctx, signature, len(signature))
+            else:
+                res = libcrypto.EVP_DigestUpdate(evp_md_ctx, data, len(data))
+                handle_openssl_error(res)
+
+                res = libcrypto.EVP_DigestVerifyFinal(evp_md_ctx, signature, len(signature))
 
         if res < 1:
             raise SignatureError('Signature is invalid')

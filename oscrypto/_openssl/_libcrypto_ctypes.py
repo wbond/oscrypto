@@ -682,6 +682,15 @@ try:
         ]
         libcrypto.EVP_DigestVerifyInit.restype = c_int
 
+        libcrypto.EVP_DigestVerify.argtypes = [
+            P_EVP_MD_CTX,
+            c_char_p,
+            c_size_t,
+            c_char_p,
+            c_size_t
+        ]
+        libcrypto.EVP_DigestVerify.restype = c_int
+
         libcrypto.EVP_DigestVerifyFinal.argtypes = [
             P_EVP_MD_CTX,
             c_char_p,

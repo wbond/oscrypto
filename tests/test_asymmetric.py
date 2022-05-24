@@ -368,6 +368,64 @@ class AsymmetricTests(unittest.TestCase):
             with self.assertRaises(errors.SignatureError):
                 asymmetric.ecdsa_verify(public, signature, original_data + b'1', 'sha1')
 
+    def test_ed25519_verify(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'ed25519_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ed25519.key'))
+        asymmetric.eddsa_verify(public, signature, original_data)
+
+    def test_ed25519_verify_fail_each_byte(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'ed25519_signature'), 'rb') as f:
+            original_signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ed25519.key'))
+        for i in range(0, len(original_signature)):
+            if i == 0:
+                signature = b'\xab' + original_signature[1:]
+            elif i == len(original_signature) - 1:
+                signature = original_signature[0:-1] + b'\xab'
+            else:
+                signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
+            with self.assertRaises(errors.SignatureError):
+                asymmetric.eddsa_verify(public, signature, original_data + b'1')
+
+    def test_ed448_verify(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'ed448_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ed448.key'))
+        asymmetric.eddsa_verify(public, signature, original_data)
+
+    def test_ed448_verify_fail_each_byte(self):
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'ed448_signature'), 'rb') as f:
+            original_signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ed448.key'))
+        for i in range(0, len(original_signature)):
+            if i == 0:
+                signature = b'\xab' + original_signature[1:]
+            elif i == len(original_signature) - 1:
+                signature = original_signature[0:-1] + b'\xab'
+            else:
+                signature = original_signature[0:i] + b'\xab' + original_signature[i+1:]
+            with self.assertRaises(errors.SignatureError):
+                asymmetric.eddsa_verify(public, signature, original_data + b'1', 'raw')
+
+    def test_hashed_ed25519(self):
+        "Only pure EdDSA is supported"
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'ed448_signature'), 'rb') as f:
+            signature = f.read()
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ed448.key'))
+        with self.assertRaises(ValueError):
+            asymmetric.eddsa_verify(public, signature, original_data, "sha256")
+
     def test_rsa_pkcs1v15_encrypt(self):
         original_data = b'This is data to encrypt'
         private = asymmetric.load_private_key(os.path.join(fixtures_dir, 'keys/test.key'))
