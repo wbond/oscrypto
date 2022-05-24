@@ -277,7 +277,7 @@ def dump_private_key(private_key, passphrase, encoding='pem', target_ms=200):
         ValueError - when a blank string is provided for the passphrase
 
     :return:
-        A byte string of the encoded and encrypted public key
+        A byte string of the encoded and encrypted private key
     """
 
     if encoding not in set(['pem', 'der']):
@@ -396,7 +396,7 @@ def dump_openssl_private_key(private_key, passphrase):
         ValueError - when a blank string is provided for the passphrase
 
     :return:
-        A byte string of the encoded and encrypted public key
+        A byte string of the encoded and encrypted private key
     """
 
     if passphrase is not None:
