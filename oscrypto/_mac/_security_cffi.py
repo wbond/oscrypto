@@ -102,7 +102,6 @@ ffi.cdef("""
     SecTransformRef SecVerifyTransformCreate(SecKeyRef key, CFDataRef signature, CFErrorRef *error);
     SecTransformRef SecSignTransformCreate(SecKeyRef key, CFErrorRef *error);
     SecCertificateRef SecCertificateCreateWithData(CFAllocatorRef allocator, CFDataRef data);
-    OSStatus SecCertificateCopyPublicKey(SecCertificateRef certificate, SecKeyRef *key);
     CFStringRef SecCopyErrorMessageString(OSStatus status, void *reserved);
     OSStatus SecTrustCopyAnchorCertificates(CFArrayRef *anchors);
     CFDataRef SecCertificateCopyData(SecCertificateRef certificate);
@@ -230,6 +229,15 @@ else:
 
         OSStatus SSLSetProtocolVersionMin(SSLContextRef context, SSLProtocol minVersion);
         OSStatus SSLSetProtocolVersionMax(SSLContextRef context, SSLProtocol maxVersion);
+    """)
+
+if version_info > (10, 14):
+    ffi.cdef("""
+        SecKeyRef SecCertificateCopyKey(SecCertificateRef certificate);
+    """)
+else:
+    ffi.cdef("""
+        OSStatus SecCertificateCopyPublicKey(SecCertificateRef certificate, SecKeyRef *key);
     """)
 
 security_path = '/System/Library/Frameworks/Security.framework/Security'

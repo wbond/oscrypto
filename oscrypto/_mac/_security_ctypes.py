@@ -186,12 +186,6 @@ try:
     ]
     Security.SecCertificateCreateWithData.restype = SecCertificateRef
 
-    Security.SecCertificateCopyPublicKey.argtypes = [
-        SecCertificateRef,
-        POINTER(SecKeyRef)
-    ]
-    Security.SecCertificateCopyPublicKey.restype = OSStatus
-
     Security.SecCopyErrorMessageString.argtypes = [
         OSStatus,
         c_void_p
@@ -559,6 +553,18 @@ try:
             SSLProtocol
         ]
         Security.SSLSetProtocolVersionMax.restype = OSStatus
+
+    if version_info > (10, 14):
+        Security.SecCertificateCopyKey.argtypes = [
+            SecCertificateRef,
+        ]
+        Security.SecCertificateCopyKey.restype = SecKeyRef
+    else:
+        Security.SecCertificateCopyPublicKey.argtypes = [
+            SecCertificateRef,
+            POINTER(SecKeyRef)
+        ]
+        Security.SecCertificateCopyPublicKey.restype = OSStatus
 
     setattr(Security, 'SSLReadFunc', SSLReadFunc)
     setattr(Security, 'SSLWriteFunc', SSLWriteFunc)
