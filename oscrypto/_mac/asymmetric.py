@@ -266,8 +266,7 @@ class Certificate(_CertificateBase):
                 handle_sec_error(res)
                 sec_public_key_ref = unwrap(sec_public_key_ref_pointer)
             else:
-                res = Security.SecCertificateCopyKey(sec_cert_ref)
-                sec_public_key_ref = unwrap(res)
+                sec_public_key_ref = Security.SecCertificateCopyKey(sec_cert_ref)
 
             self._public_key = PublicKey(sec_public_key_ref, self.asn1['tbs_certificate']['subject_public_key_info'])
 
