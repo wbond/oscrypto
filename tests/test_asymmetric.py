@@ -629,3 +629,9 @@ class AsymmetricTests(unittest.TestCase):
     def test_ec_public_key_unwrap(self):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-ec-named.crt'))
         self.assertIsInstance(public.unwrap(), keys.ECPointBitString)
+
+    def test_macos_public_key_export_issue(self):
+        # This was failing on Apple Silicon Macs with macOS 12+
+        cert = asymmetric.load_certificate(os.path.join(fixtures_dir, 'macos_12_public_key_export_issue.crt'))
+        public = cert.public_key
+        self.assertEqual('rsa', public.asn1.algorithm)
