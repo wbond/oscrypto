@@ -52,7 +52,7 @@ def run(**_):
         if mac_version_info < (10, 15):
             _write_env(env, 'OSCRYPTO_USE_OPENSSL', '/usr/lib/libcrypto.dylib,/usr/lib/libssl.dylib')
         else:
-            _write_env(env, 'OSCRYPTO_USE_OPENSSL', '/usr/lib/libcrypto.35.dylib,/usr/lib/libssl.35.dylib')
+            _write_env(env, 'OSCRYPTO_USE_OPENSSL', '/usr/lib/libcrypto.42.dylib,/usr/lib/libssl.44.dylib')
         newline = True
     if 'openssl3' in options and sys.platform == 'darwin':
         _write_env(
