@@ -139,6 +139,7 @@ def test_classes():
     from .test_symmetric import SymmetricTests
     from .test_trust_list import TrustListTests
     from .test_init import InitTests
+    from .test_legacy_module import LegacyProviderTests
 
     test_classes = [
         KDFTests,
@@ -147,6 +148,7 @@ def test_classes():
         SymmetricTests,
         TrustListTests,
         InitTests,
+        LegacyProviderTests,
     ]
     if not os.environ.get('OSCRYPTO_SKIP_INTERNET_TESTS'):
         from .test_tls import TLSTests
