@@ -295,6 +295,8 @@ else:
         return ctypes.cast(value, type_)
 
     def sizeof(library, value):
+        if isinstance(value, str_cls):
+            return ctypes.sizeof(getattr(library, value))
         return ctypes.sizeof(value)
 
     def bytes_from_buffer(buffer, maxlen=None):

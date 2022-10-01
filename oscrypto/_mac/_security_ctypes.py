@@ -70,7 +70,11 @@ SecExternalFormat = c_uint32
 SecExternalItemType = c_uint32
 SecPadding = c_uint32
 SSLProtocol = c_uint32
-SSLCipherSuite = c_uint16
+# It appears SSLCipherSuite is uint16_t on ARM64, but uint32_t on X86_64
+if platform.machine() == 'arm64':
+    SSLCipherSuite = c_uint16
+else:
+    SSLCipherSuite = c_uint32
 SecPolicyRef = POINTER(c_void_p)
 CSSM_CC_HANDLE = c_uint64
 CSSM_ALGORITHMS = c_uint32
