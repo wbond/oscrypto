@@ -263,6 +263,8 @@ class Certificate(_CertificateBase):
             sec_public_key_ref_pointer = new(Security, 'SecKeyRef *')
             if osx_version_info >= (10, 14):
                 sec_public_key_ref = Security.SecCertificateCopyKey(sec_cert_ref)
+                if is_null(sec_public_key_ref):
+                    raise ValueError('Unable to extract public key from certificate')
             else:
                 res = Security.SecCertificateCopyPublicKey(sec_cert_ref, sec_public_key_ref_pointer)
                 handle_sec_error(res)
