@@ -103,6 +103,7 @@ ffi.cdef("""
     SecTransformRef SecSignTransformCreate(SecKeyRef key, CFErrorRef *error);
     SecCertificateRef SecCertificateCreateWithData(CFAllocatorRef allocator, CFDataRef data);
     OSStatus SecCertificateCopyPublicKey(SecCertificateRef certificate, SecKeyRef *key);
+    SecKeyRef SecCertificateCopyKey(SecCertificateRef certificate);
     CFStringRef SecCopyErrorMessageString(OSStatus status, void *reserved);
     OSStatus SecTrustCopyAnchorCertificates(CFArrayRef *anchors);
     CFDataRef SecCertificateCopyData(SecCertificateRef certificate);
