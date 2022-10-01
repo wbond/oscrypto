@@ -7,7 +7,7 @@ import socket as socket_
 import select
 import numbers
 
-from ._libssl import error_code_version_info, error_code_variant, libssl, LibsslConst
+from ._libssl import error_code_version_info, libssl, LibsslConst
 from ._libcrypto import libcrypto, libcrypto_version_info, handle_openssl_error, peek_openssl_error
 from .. import _backend_config
 from .._asn1 import Certificate as Asn1Certificate

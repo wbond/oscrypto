@@ -102,8 +102,6 @@ if sys.platform == 'darwin' and re.match(r'/usr/lib/libssl\.\d', _backend_config
     LibsslConst.SSL_F_SSL3_GET_RECORD = 4
     LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO = 4
     error_code_version_info = (1, 1, 0)
-    error_code_variant = 'macos'
 
 else:
     error_code_version_info = libcrypto_version_info
-    error_code_variant = 'openssl'
