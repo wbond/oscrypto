@@ -38,7 +38,7 @@ ffi.cdef("""
     typedef uint32_t CSSM_KEYUSE;
     typedef uint32_t CSSM_CERT_TYPE;
     typedef uint32_t SSLProtocol;
-    typedef uint32_t SSLCipherSuite;
+    typedef uint16_t SSLCipherSuite;
     typedef uint32_t SecTrustResultType;
 
     typedef void *CFTypeRef;

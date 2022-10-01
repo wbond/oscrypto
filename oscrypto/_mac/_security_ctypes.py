@@ -2,7 +2,20 @@
 from __future__ import unicode_literals, division, absolute_import, print_function
 
 import platform
-from ctypes import c_void_p, c_int32, c_char_p, c_size_t, c_byte, c_int, c_uint32, c_uint64, c_ulong, c_long, c_bool
+from ctypes import (
+    c_bool,
+    c_byte,
+    c_char_p,
+    c_int,
+    c_int32,
+    c_long,
+    c_size_t,
+    c_uint16,
+    c_uint32,
+    c_uint64,
+    c_ulong,
+    c_void_p,
+)
 from ctypes import CDLL, POINTER, CFUNCTYPE, Structure
 
 from .._ffi import FFIEngineError
@@ -57,7 +70,7 @@ SecExternalFormat = c_uint32
 SecExternalItemType = c_uint32
 SecPadding = c_uint32
 SSLProtocol = c_uint32
-SSLCipherSuite = c_uint32
+SSLCipherSuite = c_uint16
 SecPolicyRef = POINTER(c_void_p)
 CSSM_CC_HANDLE = c_uint64
 CSSM_ALGORITHMS = c_uint32
