@@ -122,7 +122,7 @@ def use_openssl(libcrypto_path, libssl_path, trust_list_path=None):
     do_path_checks = True
     if sys.platform == 'darwin':
         mac_version_info = tuple(map(int, platform.mac_ver()[0].split('.')[:2]))
-        do_path_checks = mac_version_info < (11,)
+        do_path_checks = mac_version_info < (10, 16)
 
     if do_path_checks:
         if not os.path.exists(libcrypto_path):
