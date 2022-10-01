@@ -212,6 +212,7 @@ else:
         'int': c_int,
         'unsigned int': c_uint,
         'size_t': ctypes.c_size_t,
+        'uint16_t': ctypes.c_uint16,
         'uint32_t': ctypes.c_uint32,
     }
     if sys.platform == 'win32':
