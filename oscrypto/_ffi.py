@@ -111,8 +111,6 @@ if ffi() == 'cffi':
             return True
         if ffi.getctype(ffi.typeof(point)) == 'void *':
             return False
-        if point[0] == ffi.NULL:
-            return True
         return False
 
     def errno():
