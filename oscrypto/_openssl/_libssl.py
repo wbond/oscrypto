@@ -93,15 +93,15 @@ if libcrypto_version_info >= (1, 1, 0):
     LibsslConst.SSL_R_DH_KEY_TOO_SMALL = 394
 
 
+error_code_version_info = libcrypto_version_info
 # The Apple version of libssl seems to have changed various codes for
 # some reason, but the rest of the API is still OpenSSL 1.0.1
-if sys.platform == 'darwin' and re.match(r'/usr/lib/libssl\.\d', _backend_config().get('libssl_path', '')):
-    LibsslConst.SSL_F_TLS_PROCESS_SERVER_CERTIFICATE = 7
-    LibsslConst.SSL_F_SSL3_GET_KEY_EXCHANGE = 9
-    LibsslConst.SSL_F_SSL3_READ_BYTES = 4
-    LibsslConst.SSL_F_SSL3_GET_RECORD = 4
-    LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO = 4
-    error_code_version_info = (1, 1, 0)
-
-else:
-    error_code_version_info = libcrypto_version_info
+if sys.platform == 'darwin':
+    libssl_abi_match = re.match(r'/usr/lib/libssl\.(\d+)', _backend_config().get('libssl_path', ''))
+    if libssl_abi_match and int(libssl_abi_match.group(1)) >= 44:
+        LibsslConst.SSL_F_TLS_PROCESS_SERVER_CERTIFICATE = 7
+        LibsslConst.SSL_F_SSL3_GET_KEY_EXCHANGE = 9
+        LibsslConst.SSL_F_SSL3_READ_BYTES = 4
+        LibsslConst.SSL_F_SSL3_GET_RECORD = 4
+        LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO = 4
+        error_code_version_info = (1, 1, 0)
