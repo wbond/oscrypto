@@ -34,7 +34,7 @@ def run(version=None):
     if sys.platform == 'win32':
         raise ValueError('pyenv-install is not designed for Windows')
 
-    if version not in set(['2.6', '3.3']):
+    if version not in set(['2.6', '2.7', '3.3']):
         raise ValueError('Invalid version: %r' % version)
 
     python_path = os.path.expanduser('~/.pyenv/versions/%s/bin' % version)
