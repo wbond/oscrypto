@@ -117,7 +117,6 @@ jobs:
       matrix:
         python:
           - '2.6'
-          - '2.7'
           - '3.3'
     steps:
       - uses: actions/checkout@master
@@ -142,6 +141,22 @@ jobs:
         run: python run.py ci-driver openssl
       - name: Run test suite (Mac OpenSSL/cffi)
         run: python run.py ci-driver cffi openssl
+
+  build-mac-old-native:
+    name: Python 2.7 on macos-11
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@master
+      - name: Install dependencies
+        run: /usr/bin/python run.py deps
+      - name: Run test suite
+        run: /usr/bin/python run.py ci-driver
+      - name: Run test suite (Mac cffi)
+        run: /usr/bin/python run.py ci-driver cffi
+      - name: Run test suite (Mac OpenSSL)
+        run: /usr/bin/python run.py ci-driver openssl
+      - name: Run test suite (Mac OpenSSL/cffi)
+        run: /usr/bin/python run.py ci-driver cffi openssl
 
   build-mac-openssl3:
     name: Python ${{ matrix.python }} on macos-11 with OpenSSL 3.0
