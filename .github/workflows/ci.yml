@@ -166,8 +166,8 @@ jobs:
         run: python run.py ci-driver cffi openssl3
 
   build-ubuntu:
-    name: Python ${{ matrix.python }} on ubuntu-18.04 x64
-    runs-on: ubuntu-18.04
+    name: Python ${{ matrix.python }} on ubuntu-20.04 x64
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python:
@@ -219,8 +219,8 @@ jobs:
 
 
   build-ubuntu-old:
-    name: Python ${{ matrix.python }} on ubuntu-18.04 x64
-    runs-on: ubuntu-18.04
+    name: Python ${{ matrix.python }} on ubuntu-20.04 x64
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python:
