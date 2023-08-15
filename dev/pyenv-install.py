@@ -78,6 +78,24 @@ def run(version=None):
                     ' --if has_broken_mac_readline\n' \
                     'install_package "Python-2.6.9" "https://www.python.org/ftp/python/2.6.9/Python-2.6.9.tgz' \
                     '#7277b1285d8a82f374ef6ebaac85b003266f7939b3f2a24a3af52f9523ac94db" standard verify_py26'
+            elif version == '2.7':
+                contents = '#require_gcc\n' \
+                    'export PYTHON_BUILD_HOMEBREW_OPENSSL_FORMULA="openssl@1.1 openssl@1.0 openssl\n' \
+                    'install_package "openssl-1.0.2q" "https://www.openssl.org/source/old/1.0.2/openssl-1.0.2q.tar.gz' \
+                    '#5744cfcbcec2b1b48629f7354203bc1e5e9b5466998bbccc5b5fcde3b18eb684" mac_openssl ' \
+                    '--if has_broken_mac_openssl\n' \
+                    'install_package "readline-8.0" "https://ftpmirror.gnu.org/readline/readline-8.0.tar.gz' \
+                    '#e339f51971478d369f8a053a330a190781acb9864cf4c541060f12078948e461" mac_readline ' \
+                    '--if has_broken_mac_readline\n' \
+                    'if has_tar_xz_support; then\n' \
+                    '  install_package "Python-2.7.18" "https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tar.xz' \
+                    '#b62c0e7937551d0cc02b8fd5cb0f544f9405bafc9a54d3808ed4594812edef43" standard verify_py27 ' \
+                    'copy_python_gdb ensurepip\n' \
+                    'else\n' \
+                    '  install_package "Python-2.7.18" "https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz' \
+                    '#da3080e3b488f648a3d7a4560ddee895284c3380b11d6de75edb986526b9a814" standard verify_py27 ' \
+                    'copy_python_gdb ensurepip\n' \
+                    'fi'
             elif version == '3.3':
                 contents = '#require_gcc\n' \
                     'install_package "openssl-1.0.2k" "https://www.openssl.org/source/old/1.0.2/openssl-1.0.2k.tar.gz' \
