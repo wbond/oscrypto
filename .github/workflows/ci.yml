@@ -8,7 +8,6 @@ jobs:
     strategy:
       matrix:
         python:
-          - '2.7'
           - '3.9'
           # - 'pypy-3.7-v7.3.5'
         arch:
@@ -37,6 +36,7 @@ jobs:
       matrix:
         python:
           - '2.6'
+          - '2.7'
           - '3.3'
         arch:
           - 'x86'
