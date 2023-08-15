@@ -233,7 +233,7 @@ jobs:
       - name: Update apt
         run: sudo apt-get update
       - name: Install Python ${{matrix.python}}
-        run: sudo apt-get install python${{matrix.python}}
+        run: sudo apt-get install python${{matrix.python}} python${{matrix.python}}-distutils
       - name: Install dependencies
         run: python${{matrix.python}} run.py deps
       - name: Run test suite
