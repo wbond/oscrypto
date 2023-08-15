@@ -32,7 +32,7 @@ def run(version=None, arch=None):
     if sys.platform != 'win32':
         raise ValueError('python-install is only designed for Windows')
 
-    if version not in set(['2.6', '3.3']):
+    if version not in set(['2.6', '2.7', '3.3']):
         raise ValueError('Invalid version: %r' % version)
 
     if arch not in set(['x86', 'x64']):
