@@ -322,14 +322,14 @@ native crypto libraries.
 By default, oscrypto will use the `cffi` module for FFI if it is installed.
 
 To use the slightly slower, but more widely-tested, `ctypes` FFI layer, set
-the env var `OPENSSL_USE_CTYPES=true`.
+the env var `OSCRYPTO_USE_CTYPES=true`.
 
 ##### Force Use of Legacy Windows Crypto APIs
 
 On Windows 7 and newer, oscrypto will use the CNG backend by default.
 
 To force use of the older CryptoAPI, set the env var
-`OPENSSL_USE_WINLEGACY=true`.
+`OSCRYPTO_USE_WINLEGACY=true`.
 
 ##### Skip Tests Requiring an Internet Connection
 
@@ -337,7 +337,7 @@ Some of the TLS tests require an active internet connection to ensure that
 various "bad" server certificates are rejected.
 
 To skip tests requiring an internet connection, set the env var
-`OPENSSL_SKIP_INTERNET_TESTS=true`.
+`OSCRYPTO_SKIP_INTERNET_TESTS=true`.
 
 ### Package
 
