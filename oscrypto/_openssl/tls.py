@@ -773,7 +773,7 @@ class TLSSocket(object):
                 sent = self._socket.send(to_write)
             except (socket_.error) as e:
                 # Handle ECONNRESET and EPIPE
-                if e.errno == 104 or e.errno == 32:
+                if e.errno == 104 or e.errno == 54 or e.errno == 32:
                     raise_disconnect = True
                 # Handle EPROTOTYPE. Newer versions of macOS will return this
                 # if we try to call send() while the socket is being torn down
