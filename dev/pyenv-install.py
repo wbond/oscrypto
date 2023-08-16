@@ -23,6 +23,19 @@ def _write_env(env, key, value):
         env[key] = value
 
 
+def _shell_subproc(args):
+    proc = subprocess.Popen(
+        args,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    so, se = proc.communicate()
+    stdout = so.decode('utf-8')
+    stderr = se.decode('utf-8')
+    return proc.returncode == 0, stdout, stderr
+
+
 def run(version=None):
     """
     Installs a version of Python on Mac using pyenv
@@ -45,58 +58,24 @@ def run(version=None):
     stdout = ""
     stderr = ""
 
-    proc = subprocess.Popen(
-        'command -v pyenv',
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    proc.communicate()
-    if proc.returncode != 0:
-        proc = subprocess.Popen(
-            ['brew', 'install', 'pyenv'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        so, se = proc.communicate()
-        stdout += so.decode('utf-8')
-        stderr += se.decode('utf-8')
-        if proc.returncode != 0:
+    has_pyenv, _, _ = _shell_subproc('command -v pyenv')
+    if not has_pyenv:
+        success, stdout, stderr = _shell_subproc('brew install pyenv')
+        if not success:
             print(stdout)
             print(stderr, file=sys.stderr)
             return False
 
-    proc = subprocess.Popen(
-        'brew list zlib',
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    proc.communicate()
-    if proc.returncode != 0:
-        proc = subprocess.Popen(
-            ['brew', 'install', 'zlib'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        so, se = proc.communicate()
-        stdout += so.decode('utf-8')
-        stderr += se.decode('utf-8')
-        if proc.returncode != 0:
+    has_zlib, _, _ = _shell_subproc('brew list zlib')
+    if not has_zlib:
+        success, stdout, stderr = _shell_subproc('brew install zlib')
+        if not success:
             print(stdout)
             print(stderr, file=sys.stderr)
             return False
 
-    proc = subprocess.Popen(
-        'brew --prefix zlib',
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    so, se = proc.communicate()
-    stdout = so.decode('utf-8')
-    stderr = se.decode('utf-8')
-    if proc.returncode != 0:
+    success, stdout, stderr = _shell_subproc('brew --prefix zlib')
+    if not success:
         print(stdout)
         print(stderr, file=sys.stderr)
         return False
