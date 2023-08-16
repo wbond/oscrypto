@@ -66,6 +66,42 @@ def run(version=None):
             print(stderr, file=sys.stderr)
             return False
 
+    proc = subprocess.Popen(
+        'brew list zlib',
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    proc.communicate()
+    if proc.returncode != 0:
+        proc = subprocess.Popen(
+            ['brew', 'install', 'zlib'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        so, se = proc.communicate()
+        stdout += so.decode('utf-8')
+        stderr += se.decode('utf-8')
+        if proc.returncode != 0:
+            print(stdout)
+            print(stderr, file=sys.stderr)
+            return False
+
+    proc = subprocess.Popen(
+        'brew --prefix zlib',
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    so, se = proc.communicate()
+    stdout = so.decode('utf-8')
+    stderr = se.decode('utf-8')
+    if proc.returncode != 0:
+        print(stdout)
+        print(stderr, file=sys.stderr)
+        return False
+    zlib_prefix = stdout.strip()
+
     pyenv_script = './%s' % version
     try:
         with open(pyenv_script, 'wb') as f:
@@ -106,6 +142,9 @@ def run(version=None):
         stdin_contents = None
         env = os.environ.copy()
 
+        _write_env(env, 'CFLAGS', '-I' + zlib_prefix + '/include')
+        _write_env(env, 'LDFLAGS', '-L' + zlib_prefix + '/lib')
+
         if version == '2.6':
             _write_env(env, 'PYTHON_CONFIGURE_OPTS', '--enable-ipv6')
             stdin = subprocess.PIPE
@@ -129,6 +168,32 @@ def run(version=None):
                 ' for ac_func in getnameinfo\n' \
                 ' do :\n' \
                 '   ac_fn_c_check_func "$LINENO" "getnameinfo" "ac_cv_func_getnameinfo"'
+            stdin_contents = stdin_contents.encode('ascii')
+            args.append('--patch')
+        elif version == '3.3':
+            stdin = subprocess.PIPE
+            stdin_contents = '--- configure\n' \
+                '+++ configure\n' \
+                '@@ -3391,7 +3391,7 @@ $as_echo "#define _BSD_SOURCE 1" >>confdefs.h\n' \
+                '   # has no effect, don\'t bother defining them\n' \
+                '   Darwin/[6789].*)\n' \
+                '     define_xopen_source=no;;\n' \
+                '-  Darwin/1[0-9].*)\n' \
+                '+  Darwin/[12][0-9].*)\n' \
+                '     define_xopen_source=no;;\n' \
+                '   # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but\n' \
+                '   # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined\n' \
+                '--- configure.ac\n' \
+                '+++ configure.ac\n' \
+                '@@ 480,7 +480,7 @@ case $ac_sys_system/$ac_sys_release in\n' \
+                '   # has no effect, don\'t bother defining them\n' \
+                '   Darwin/@<:@6789@:>@.*)\n' \
+                '     define_xopen_source=no;;\n' \
+                '-  Darwin/1@<:@0-9@:>@.*)\n' \
+                '+  Darwin/@<:@[12]@:>@@<:@0-9@:>@.*)\n' \
+                '     define_xopen_source=no;;\n' \
+                '   # On AIX 4 and 5.1, mbstate_t is defined only when _XOPEN_SOURCE == 500 but\n' \
+                '   # used in wcsnrtombs() and mbsnrtowcs() even if _XOPEN_SOURCE is not defined\n'
             stdin_contents = stdin_contents.encode('ascii')
             args.append('--patch')
 

@@ -119,6 +119,8 @@ jobs:
           - '2.6'
           - '2.7'
           - '3.3'
+    env:
+      PYTHONIOENCODING: 'utf-8:surrogateescape'
     steps:
       - uses: actions/checkout@master
 
