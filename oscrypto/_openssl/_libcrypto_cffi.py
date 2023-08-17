@@ -37,7 +37,7 @@ except (AttributeError):
 
 is_libressl = 'LibreSSL' in version_string
 
-version_match = re.search('\\b(\\d\\.\\d\\.\\d[a-z]*)\\b', version_string)
+version_match = re.search('\\b(\\d\\.\\d\\.\\d+[a-z]*)\\b', version_string)
 if not version_match:
     version_match = re.search('(?<=LibreSSL )(\\d\\.\\d(\\.\\d)?)\\b', version_string)
 if not version_match:
