@@ -103,7 +103,12 @@ def _import_from(mod, path, mod_dir=None):
             mod_info = imp.find_module(mod_dir, [path])
             return imp.load_module(mod, *mod_info)
         else:
-            spec = importlib.machinery.PathFinder().find_spec(mod_dir, [path])
+            loader_details = (
+                importlib.machinery.SourceFileLoader,
+                importlib.machinery.SOURCE_SUFFIXES
+            )
+            finder = importlib.machinery.FileFinder(path, loader_details)
+            spec = finder.find_spec(mod_dir)
             module = importlib.util.module_from_spec(spec)
             sys.modules[mod] = module
             spec.loader.exec_module(module)
