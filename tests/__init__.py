@@ -1,9 +1,14 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import importlib
 import os
+import sys
 import unittest
+
+if sys.version_info < (3,):
+    import imp as importlib
+else:
+    import importlib
 
 
 __version__ = '1.3.0'
