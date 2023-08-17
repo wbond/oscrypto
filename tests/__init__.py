@@ -6,7 +6,7 @@ import sys
 import unittest
 
 if sys.version_info < (3,):
-    import imp as importlib
+    import imp
 else:
     import importlib
 
@@ -99,7 +99,12 @@ def _import_from(mod, path, mod_dir=None):
         return None
 
     try:
-        return importlib.import_module(mod)
+        if sys.version_info < (3,):
+            mod_info = imp.find_module(mod_dir, [path])
+            return imp.load_module(mod, *mod_info)
+        else:
+            mod_info = importlib.machinery.PathFinder().find_spec(mod_dir, [path])
+            return importlib.import_module(mod, *mod_info)
     except ImportError:
         return None
 
