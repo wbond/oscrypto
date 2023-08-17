@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-import imp
+import importlib
 import os
 import unittest
 
@@ -94,8 +94,7 @@ def _import_from(mod, path, mod_dir=None):
         return None
 
     try:
-        mod_info = imp.find_module(mod_dir, [path])
-        return imp.load_module(mod, *mod_info)
+        return importlib.import_module(mod)
     except ImportError:
         return None
 
