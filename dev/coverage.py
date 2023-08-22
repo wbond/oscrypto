@@ -16,6 +16,7 @@ import subprocess
 from fnmatch import fnmatch
 
 from . import package_name, package_root, other_packages
+from ._import import _import_from
 
 if sys.version_info < (3,):
     str_cls = unicode  # noqa
@@ -31,11 +32,6 @@ if sys.version_info < (3, 7):
     Pattern = re._pattern_type
 else:
     Pattern = re.Pattern
-
-if sys.version_info < (3, 5):
-    import imp
-else:
-    import importlib
 
 
 def run(ci=False):
@@ -107,20 +103,7 @@ def _load_package_tests(name):
     if not os.path.exists(package_dir):
         return []
 
-    if sys.version_info < (3, 5):
-        tests_module_info = imp.find_module('tests', [package_dir])
-        tests_module = imp.load_module('%s.tests' % name, *tests_module_info)
-    else:
-        loader_details = (
-            importlib.machinery.SourceFileLoader,
-            importlib.machinery.SOURCE_SUFFIXES
-        )
-        finder = importlib.machinery.FileFinder(package_dir, loader_details)
-        spec = finder.find_spec('tests')
-        test_module = importlib.util.module_from_spec(spec)
-        sys.modules['%s.tests' % name] = test_module
-        spec.loader.exec_module(test_module)
-    return tests_module.test_classes()
+    return _import_from('%s.tests' % name, package_dir, 'tests').test_classes()
 
 
 def _env_info():
