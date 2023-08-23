@@ -201,7 +201,7 @@ Some downsides include:
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10 or pypy
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11 or pypy
  - OpenSSL/LibreSSL if on Linux¹
 
 *¹ On Linux, `ctypes.util.find_library()` is used to located OpenSSL. Alpine Linux does not have an appropriate install by default for `find_library()` to work properly. Instead, `oscrypto.use_openssl()` must be called with the path to the OpenSSL shared libraries.*
