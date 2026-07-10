@@ -44,7 +44,7 @@ tests_root = os.path.dirname(__file__)
 fixtures_dir = os.path.join(tests_root, 'fixtures')
 
 digicert_ca_path = os.path.join(fixtures_dir, 'digicert_ca.crt')
-badtls_ca_path = os.path.join(fixtures_dir, 'badtls.io_ca.crt')
+tls_ca_path = os.path.join(fixtures_dir, 'tls.wbond.net_ca.crt')
 
 # PyPy <= 5.6.0 on OS X 10.11 has a bug with _get_clocktime
 osx_pypy_bug = platform.python_implementation() == 'PyPy' \
@@ -90,15 +90,15 @@ class TLSTests(unittest.TestCase):
         return (
             ('google', 'www.google.com', 443),
             ('package_control', 'packagecontrol.io', 443),
-            ('dh1024', 'dh1024.badtls.io', 10005),
+            ('dh1024', 'dh1024.tls.wbond.net', 10005),
         )
 
     @data('tls_hosts', True)
     @connection_timeout()
     def tls_connect(self, hostname, port):
         session = None
-        if hostname == 'dh1024.badtls.io':
-            session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        if hostname == 'dh1024.tls.wbond.net':
+            session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         connection = tls.TLSSocket(hostname, port, session=session)
         self.assertEqual(hostname, connection.hostname)
         self.assertIsInstance(connection.hostname, str_cls)
@@ -146,68 +146,68 @@ class TLSTests(unittest.TestCase):
     def test_tls_error_missing_issuer(self):
         expected = 'certificate issuer not found in trusted root certificate store'
         with assert_exception(self, errors.TLSVerificationError, expected):
-            tls.TLSSocket('domain-match.badtls.io', 10000)
+            tls.TLSSocket('domain-match.tls.wbond.net', 10000)
 
     @connection_timeout()
     def test_tls_error_domain_mismatch(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSVerificationError, 'does not match'):
-            tls.TLSSocket('domain-mismatch.badtls.io', 11002, session=session)
+            tls.TLSSocket('domain-mismatch.tls.wbond.net', 11002, session=session)
 
     @connection_timeout()
     def test_tls_error_san_mismatch(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSVerificationError, 'does not match'):
-            tls.TLSSocket('san-mismatch.badtls.io', 11003, session=session)
+            tls.TLSSocket('san-mismatch.tls.wbond.net', 11003, session=session)
 
     @connection_timeout()
     def test_tls_wildcard_success(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
-        tls.TLSSocket('wildcard-match.badtls.io', 10001, session=session)
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
+        tls.TLSSocket('wildcard-match.tls.wbond.net', 10001, session=session)
 
     @connection_timeout()
     def test_tls_error_not_yet_valid(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSVerificationError, 'not valid until'):
-            tls.TLSSocket('future.badtls.io', 11001, session=session)
+            tls.TLSSocket('future.tls.wbond.net', 11001, session=session)
 
     @connection_timeout()
     def test_tls_error_expired_2(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         # This test allows past or future since cert is 1963, which some systems
         # will interpret as 2063
         with assert_exception(self, errors.TLSVerificationError, 'certificate expired|not valid until'):
-            tls.TLSSocket('expired-1963.badtls.io', 11000, session=session)
+            tls.TLSSocket('expired-1963.tls.wbond.net', 11000, session=session)
 
     @connection_timeout()
     def test_tls_error_client_cert_required(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSError, 'client authentication'):
-            tls.TLSSocket('required-auth.badtls.io', 10003, session=session)
+            tls.TLSSocket('required-auth.tls.wbond.net', 10003, session=session)
 
     @connection_timeout()
     def test_tls_error_handshake_error_3(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSError, 'weak certificate signature algorithm'):
-            tls.TLSSocket('weak-sig.badtls.io', 11004, session=session)
+            tls.TLSSocket('weak-sig.tls.wbond.net', 11004, session=session)
 
     @connection_timeout()
     def test_tls_error_non_web(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSVerificationError, 'verification failed'):
-            tls.TLSSocket('bad-key-usage.badtls.io', 11005, session=session)
+            tls.TLSSocket('bad-key-usage.tls.wbond.net', 11005, session=session)
 
     @connection_timeout()
     def test_tls_error_wildcard_mismatch(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSVerificationError, 'does not match'):
-            tls.TLSSocket('wildcard.mismatch.badtls.io', 11007, session=session)
+            tls.TLSSocket('wildcard.mismatch.tls.wbond.net', 11007, session=session)
 
     @connection_timeout()
     def test_tls_error_expired(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSVerificationError, 'certificate expired'):
-            tls.TLSSocket('expired.badtls.io', 11006, session=session)
+            tls.TLSSocket('expired.tls.wbond.net', 11006, session=session)
 
     @connection_timeout()
     def test_tls_error_self_signed(self):
@@ -218,7 +218,7 @@ class TLSTests(unittest.TestCase):
     def test_tls_error_weak_dh_params(self):
         # badssl.com uses SNI, which Windows XP does not support
         regex = 'weak DH parameters' if not xp else 'self-signed'
-        # ideally we would use badtls.io since that does not require SNI, however
+        # ideally we would use tls.wbond.net since that does not require SNI, however
         # it is not possible to force a good version of OpenSSL to use such a
         # small value for DH params, and I don't feel like the headache of trying
         # to get an old, staticly-linked socat set up just for this text on XP
@@ -227,27 +227,27 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_error_handshake_error(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSError, 'TLS handshake failed'):
-            tls.TLSSocket('rc4-md5.badtls.io', 11009, session=session)
+            tls.TLSSocket('rc4-md5.tls.wbond.net', 11009, session=session)
 
     @connection_timeout()
     def test_tls_error_handshake_error_2(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path])
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
         with assert_exception(self, errors.TLSError, 'TLS handshake failed'):
-            tls.TLSSocket('rc4.badtls.io', 11008, session=session)
+            tls.TLSSocket('rc4.tls.wbond.net', 11008, session=session)
 
     @connection_timeout()
     def test_tls_extra_trust_roots_no_match(self):
         expected = 'certificate issuer not found in trusted root certificate store'
         with assert_exception(self, errors.TLSVerificationError, expected):
             session = tls.TLSSession(extra_trust_roots=[digicert_ca_path])
-            tls.TLSSocket('domain-match.badtls.io', 10000, session=session)
+            tls.TLSSocket('domain-match.tls.wbond.net', 10000, session=session)
 
     @connection_timeout()
     def test_tls_extra_trust_roots(self):
-        session = tls.TLSSession(extra_trust_roots=[badtls_ca_path, digicert_ca_path])
-        tls.TLSSocket('domain-match.badtls.io', 10000, session=session)
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path, digicert_ca_path])
+        tls.TLSSocket('domain-match.tls.wbond.net', 10000, session=session)
 
     @connection_timeout(90)
     def test_tls_graceful_disconnect(self):
@@ -383,13 +383,13 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_closed_connection_read(self):
-        ip = socket.gethostbyname('badtls.io')
+        ip = socket.gethostbyname('wbond.net')
 
         with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
                               'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
-                tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+                tsock = tls.TLSSocket.wrap(sock, 'wbond.net')
                 send_sock.close()
                 tsock.read(8192)
             finally:
@@ -398,13 +398,13 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_closed_connection_write(self):
-        ip = socket.gethostbyname('badtls.io')
+        ip = socket.gethostbyname('wbond.net')
 
         with assert_exception(self, (errors.TLSDisconnectError, errors.TLSError),
                               'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
-                tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+                tsock = tls.TLSSocket.wrap(sock, 'wbond.net')
                 send_sock.close()
                 tsock.write(b'GET / HTTP/1.1\r\n')
                 tsock.write(b'\r\n')
@@ -415,7 +415,7 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_closed_connection_read_handshake(self):
-        ip = socket.gethostbyname('badtls.io')
+        ip = socket.gethostbyname('wbond.net')
 
         # Break the connection after the ServerHello is received
         def recv_callback(src, dest):
@@ -432,7 +432,7 @@ class TLSTests(unittest.TestCase):
                               'The remote end closed the connection|TLS handshake failed'):
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, None, recv_callback)
-                tls.TLSSocket.wrap(sock, 'badtls.io')
+                tls.TLSSocket.wrap(sock, 'wbond.net')
             finally:
                 recv_sock.close()
                 send_sock.close()
@@ -440,7 +440,7 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_closed_connection_write_handshake(self):
-        ip = socket.gethostbyname('badtls.io')
+        ip = socket.gethostbyname('wbond.net')
 
         # Break the connection after the ClientHello is sent
         def send_callback(src, dest):
@@ -460,7 +460,7 @@ class TLSTests(unittest.TestCase):
             server = None
             try:
                 sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443, send_callback)
-                tls.TLSSocket.wrap(sock, 'badtls.io')
+                tls.TLSSocket.wrap(sock, 'wbond.net')
             finally:
                 if recv_sock:
                     recv_sock.close()
@@ -471,12 +471,12 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_closed_connection_read_shutdown(self):
-        ip = socket.gethostbyname('badtls.io')
+        ip = socket.gethostbyname('wbond.net')
         try:
             sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
             tsock = None
             try:
-                tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+                tsock = tls.TLSSocket.wrap(sock, 'wbond.net')
                 send_sock.close()
                 tsock.read(8192)
                 shutdown = False
@@ -491,12 +491,12 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_closed_connection_write_shutdown(self):
-        ip = socket.gethostbyname('badtls.io')
+        ip = socket.gethostbyname('wbond.net')
         try:
             sock, send_sock, recv_sock, server = make_socket_proxy(ip, 443)
             tsock = None
             try:
-                tsock = tls.TLSSocket.wrap(sock, 'badtls.io')
+                tsock = tls.TLSSocket.wrap(sock, 'wbond.net')
                 send_sock.close()
                 tsock.write(b'GET / HTTP/1.1\r\n')
                 tsock.write(b'\r\n')
