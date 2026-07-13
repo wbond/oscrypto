@@ -50,8 +50,8 @@ else:
     def _get_elapsed(start):
         length = datetime.now() - start
         seconds = length.seconds + (length.days * 24 * 3600)
-        milliseconds = (length.microseconds / 10 ** 3)
-        return int(milliseconds + (seconds * 10 ** 3))
+        milliseconds = length.microseconds / 10 ** 3
+        return milliseconds + (seconds * 10 ** 3)
 
 
 def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet=False):
@@ -135,6 +135,8 @@ def pbkdf2_iteration_calculator(hash_algorithm, key_length, target_ms=100, quiet
         start = _get_start()
         pbkdf2(hash_algorithm, password, salt, iterations, key_length)
         observed_ms = _get_elapsed(start)
+        if observed_ms < 1:
+            observed_ms = 1
         if not quiet:
             print('%s iterations in %sms' % (iterations, observed_ms))
         return 1.0 / target_ms * observed_ms
