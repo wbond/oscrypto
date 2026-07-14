@@ -553,13 +553,13 @@ class TLSSocket(object):
 
                     # Newer versions of OpenSSL seem to report this
                     # error when the DH params are too small
-                    dh_key_info_openssl_3 = (
+                    dh_key_info_4 = (
                         LibsslConst.ERR_LIB_EVP,
                         0,
                         LibsslConst.EVP_R_UNKNOWN_SECURITY_BITS,
                     )
 
-                    if info == dh_key_info_1 or info == dh_key_info_2 or info == dh_key_info_3 or info == dh_key_info_openssl_3:
+                    if info in set([dh_key_info_1, dh_key_info_2, dh_key_info_3, dh_key_info_4]):
                         raise_dh_params()
 
                     if error_code_version_info < (1, 1):
