@@ -30,6 +30,7 @@ if libcrypto_version_info < (1, 0):
 
 
 class LibsslConst():
+    ERR_LIB_EVP = 6
     ERR_LIB_ASN1 = 13
     ERR_LIB_SSL = 20
 
@@ -74,6 +75,9 @@ class LibsslConst():
     SSL_F_SSL3_READ_BYTES = 148
     SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE = 1040
     SSL_R_TLSV1_ALERT_PROTOCOL_VERSION = 1070
+
+    # OpenSSL 3.0.0+
+    EVP_R_UNKNOWN_SECURITY_BITS = 168
 
     SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
     TLSEXT_NAMETYPE_host_name = 0
