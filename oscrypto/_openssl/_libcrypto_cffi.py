@@ -107,6 +107,11 @@ ffi.cdef("""
     char *ERR_error_string(unsigned long e, char *buf);
     unsigned long ERR_peek_error(void);
 
+    int sk_num(const void *);
+    X509 *sk_value(const void *, int);
+    int OPENSSL_sk_num(const void *);
+    X509 *OPENSSL_sk_value(const void *, int);
+
     void OPENSSL_config(const char *config_name);
 
     EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);

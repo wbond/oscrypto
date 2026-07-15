@@ -68,6 +68,7 @@ if version_info < (0, 9, 8):
 
 P_EVP_CIPHER_CTX = c_void_p
 P_EVP_CIPHER = c_void_p
+P_STACK = c_void_p
 
 P_EVP_MD_CTX = c_void_p
 P_EVP_MD = c_void_p
@@ -92,6 +93,19 @@ p_int = POINTER(c_int)
 p_uint = POINTER(c_uint)
 
 try:
+    if version_info < (1, 1):
+        libcrypto.sk_num.argtypes = [P_STACK]
+        libcrypto.sk_num.restype = c_int
+
+        libcrypto.sk_value.argtypes = [P_STACK, c_int]
+        libcrypto.sk_value.restype = P_X509
+    else:
+        libcrypto.OPENSSL_sk_num.argtypes = [P_STACK]
+        libcrypto.OPENSSL_sk_num.restype = c_int
+
+        libcrypto.OPENSSL_sk_value.argtypes = [P_STACK, c_int]
+        libcrypto.OPENSSL_sk_value.restype = P_X509
+
     if version_info < (1, 1):
         libcrypto.ERR_load_crypto_strings.argtypes = []
         libcrypto.ERR_load_crypto_strings.restype = None

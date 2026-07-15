@@ -37,12 +37,6 @@ P_STACK = POINTER(_STACK)
 
 try:
     if libcrypto_version_info < (1, 1):
-        libssl.sk_num.argtypes = [P_STACK]
-        libssl.sk_num.restype = c_int
-
-        libssl.sk_value.argtypes = [P_STACK, c_int]
-        libssl.sk_value.restype = P_X509
-
         libssl.SSL_library_init.argtypes = []
         libssl.SSL_library_init.restype = c_int
 
@@ -53,12 +47,6 @@ try:
         libssl.SSLv23_method.restype = P_SSL_METHOD
 
     else:
-        libssl.OPENSSL_sk_num.argtypes = [P_STACK]
-        libssl.OPENSSL_sk_num.restype = c_int
-
-        libssl.OPENSSL_sk_value.argtypes = [P_STACK, c_int]
-        libssl.OPENSSL_sk_value.restype = P_X509
-
         libssl.TLS_method.argtypes = []
         libssl.TLS_method.restype = P_SSL_METHOD
 

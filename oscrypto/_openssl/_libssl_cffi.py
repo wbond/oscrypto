@@ -82,9 +82,6 @@ ffi.cdef("""
 
 if libcrypto_version_info < (1, 1):
     ffi.cdef("""
-        int sk_num(const _STACK *);
-        X509 *sk_value(const _STACK *, int);
-
         int SSL_library_init(void);
         void OPENSSL_add_all_algorithms_noconf(void);
 
@@ -92,8 +89,5 @@ if libcrypto_version_info < (1, 1):
     """)
 else:
     ffi.cdef("""
-        int OPENSSL_sk_num(const _STACK *);
-        X509 *OPENSSL_sk_value(const _STACK *, int);
-
         SSL_METHOD *TLS_method(void);
     """)
