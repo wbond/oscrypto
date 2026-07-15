@@ -263,7 +263,7 @@ class TLSSession(object):
                 x509_store = libssl.SSL_CTX_get_cert_store(ssl_ctx)
                 for cert in self._extra_trust_roots:
                     oscrypto_cert = load_certificate(cert)
-                    result = libssl.X509_STORE_add_cert(
+                    result = libcrypto.X509_STORE_add_cert(
                         x509_store,
                         oscrypto_cert.x509
                     )
@@ -470,13 +470,13 @@ class TLSSocket(object):
                 self._ssl = None
                 handle_openssl_error(0)
 
-            mem_bio = libssl.BIO_s_mem()
+            mem_bio = libcrypto.BIO_s_mem()
 
-            self._rbio = libssl.BIO_new(mem_bio)
+            self._rbio = libcrypto.BIO_new(mem_bio)
             if is_null(self._rbio):
                 handle_openssl_error(0)
 
-            self._wbio = libssl.BIO_new(mem_bio)
+            self._wbio = libcrypto.BIO_new(mem_bio)
             if is_null(self._wbio):
                 handle_openssl_error(0)
 
@@ -728,10 +728,10 @@ class TLSSocket(object):
             # them if for some reason SSL_free() was not called
             else:
                 if self._rbio:
-                    libssl.BIO_free(self._rbio)
+                    libcrypto.BIO_free(self._rbio)
                     self._rbio = None
                 if self._wbio:
-                    libssl.BIO_free(self._wbio)
+                    libcrypto.BIO_free(self._wbio)
                     self._wbio = None
             self.close()
 
@@ -754,7 +754,7 @@ class TLSSocket(object):
         except (socket_.error):
             pass
         output = data
-        written = libssl.BIO_write(self._rbio, data, len(data))
+        written = libcrypto.BIO_write(self._rbio, data, len(data))
         self._raw_bytes = data[written:]
         return output
 
@@ -768,11 +768,11 @@ class TLSSocket(object):
             for debugging the handshake only.
         """
 
-        data_available = libssl.BIO_ctrl_pending(self._wbio)
+        data_available = libcrypto.BIO_ctrl_pending(self._wbio)
         if data_available == 0:
             return b''
         to_read = min(self._buffer_size, data_available)
-        read = libssl.BIO_read(self._wbio, self._bio_write_buffer, to_read)
+        read = libcrypto.BIO_read(self._wbio, self._bio_write_buffer, to_read)
         to_write = bytes_from_buffer(self._bio_write_buffer, read)
         output = to_write
         while len(to_write):

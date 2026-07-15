@@ -91,9 +91,12 @@ ffi.cdef("""
     typedef ... EVP_MD;
     typedef uintptr_t EVP_CIPHER_CTX;
     typedef ... EVP_CIPHER;
+    typedef ... BIO_METHOD;
+    typedef uintptr_t BIO;
     typedef ... ENGINE;
     typedef uintptr_t EVP_PKEY;
     typedef uintptr_t X509;
+    typedef ... X509_STORE;
     typedef uintptr_t DH;
     typedef uintptr_t RSA;
     typedef uintptr_t DSA;
@@ -111,6 +114,15 @@ ffi.cdef("""
     X509 *sk_value(const void *, int);
     int OPENSSL_sk_num(const void *);
     X509 *OPENSSL_sk_value(const void *, int);
+
+    BIO_METHOD *BIO_s_mem(void);
+    BIO *BIO_new(BIO_METHOD *type);
+    int BIO_free(BIO *a);
+    int BIO_read(BIO *b, void *buf, int len);
+    int BIO_write(BIO *b, const void *buf, int len);
+    size_t BIO_ctrl_pending(BIO *b);
+
+    int X509_STORE_add_cert(void *ctx, X509 *x);
 
     void OPENSSL_config(const char *config_name);
 

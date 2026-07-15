@@ -69,6 +69,9 @@ if version_info < (0, 9, 8):
 P_EVP_CIPHER_CTX = c_void_p
 P_EVP_CIPHER = c_void_p
 P_STACK = c_void_p
+P_BIO_METHOD = POINTER(c_void_p)
+P_BIO = POINTER(c_void_p)
+P_X509_STORE = POINTER(c_void_p)
 
 P_EVP_MD_CTX = c_void_p
 P_EVP_MD = c_void_p
@@ -93,6 +96,44 @@ p_int = POINTER(c_int)
 p_uint = POINTER(c_uint)
 
 try:
+    libcrypto.BIO_s_mem.argtypes = []
+    libcrypto.BIO_s_mem.restype = P_BIO_METHOD
+
+    libcrypto.BIO_new.argtypes = [
+        P_BIO_METHOD
+    ]
+    libcrypto.BIO_new.restype = P_BIO
+
+    libcrypto.BIO_free.argtypes = [
+        P_BIO
+    ]
+    libcrypto.BIO_free.restype = c_int
+
+    libcrypto.BIO_read.argtypes = [
+        P_BIO,
+        c_char_p,
+        c_int
+    ]
+    libcrypto.BIO_read.restype = c_int
+
+    libcrypto.BIO_write.argtypes = [
+        P_BIO,
+        c_char_p,
+        c_int
+    ]
+    libcrypto.BIO_write.restype = c_int
+
+    libcrypto.BIO_ctrl_pending.argtypes = [
+        P_BIO
+    ]
+    libcrypto.BIO_ctrl_pending.restype = c_size_t
+
+    libcrypto.X509_STORE_add_cert.argtypes = [
+        P_X509_STORE,
+        P_X509
+    ]
+    libcrypto.X509_STORE_add_cert.restype = c_int
+
     if version_info < (1, 1):
         libcrypto.sk_num.argtypes = [P_STACK]
         libcrypto.sk_num.restype = c_int

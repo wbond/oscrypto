@@ -50,38 +50,6 @@ try:
         libssl.TLS_method.argtypes = []
         libssl.TLS_method.restype = P_SSL_METHOD
 
-    libssl.BIO_s_mem.argtypes = []
-    libssl.BIO_s_mem.restype = P_BIO_METHOD
-
-    libssl.BIO_new.argtypes = [
-        P_BIO_METHOD
-    ]
-    libssl.BIO_new.restype = P_BIO
-
-    libssl.BIO_free.argtypes = [
-        P_BIO
-    ]
-    libssl.BIO_free.restype = c_int
-
-    libssl.BIO_read.argtypes = [
-        P_BIO,
-        c_char_p,
-        c_int
-    ]
-    libssl.BIO_read.restype = c_int
-
-    libssl.BIO_write.argtypes = [
-        P_BIO,
-        c_char_p,
-        c_int
-    ]
-    libssl.BIO_write.restype = c_int
-
-    libssl.BIO_ctrl_pending.argtypes = [
-        P_BIO
-    ]
-    libssl.BIO_ctrl_pending.restype = c_size_t
-
     libssl.SSL_CTX_new.argtypes = [
         P_SSL_METHOD
     ]
@@ -125,12 +93,6 @@ try:
     ]
     libssl.SSL_CTX_get_cert_store.restype = P_X509_STORE
 
-    libssl.X509_STORE_add_cert.argtypes = [
-        P_X509_STORE,
-        P_X509
-    ]
-    libssl.X509_STORE_add_cert.restype = c_int
-
     libssl.SSL_CTX_set_cipher_list.argtypes = [
         P_SSL_CTX,
         c_char_p
@@ -162,8 +124,8 @@ try:
 
     libssl.SSL_set_bio.argtypes = [
         P_SSL,
-        P_BIO,
-        P_BIO
+        c_void_p,
+        c_void_p
     ]
     libssl.SSL_set_bio.restype = None
 
