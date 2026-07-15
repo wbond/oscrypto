@@ -28,6 +28,22 @@ __all__ = [
 ]
 
 
+def _utc_from_timestamp(timestamp):
+    """
+    Converts a timestamp to a naive UTC datetime.
+
+    ``datetime.timezone`` is unavailable on Python 2, so retain the legacy
+    implementation there while avoiding deprecated UTC helpers on Python 3.
+    """
+
+    if hasattr(datetime, 'timezone'):
+        return datetime.datetime.fromtimestamp(
+            timestamp,
+            datetime.timezone.utc
+        ).replace(tzinfo=None)
+    return datetime.datetime.utcfromtimestamp(timestamp)
+
+
 def system_path():
     return None
 
@@ -61,7 +77,10 @@ def extract_from_system(cert_callback=None, callback_only_on_failure=False):
     certificates = {}
     processed = {}
 
-    now = datetime.datetime.utcnow()
+    if hasattr(datetime, 'timezone'):
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    else:
+        now = datetime.datetime.utcnow()
 
     for store in ["ROOT", "CA"]:
         store_handle = crypt32.CertOpenSystemStoreW(null(), store)
@@ -91,7 +110,7 @@ def extract_from_system(cert_callback=None, callback_only_on_failure=False):
 
             not_before_seconds = _convert_filetime_to_timestamp(cert_info.NotBefore)
             try:
-                not_before = datetime.datetime.fromtimestamp(not_before_seconds)
+                not_before = _utc_from_timestamp(not_before_seconds)
                 if not_before > now:
                     if cert_callback:
                         cert_callback(Certificate.load(data), 'not yet valid')
@@ -104,7 +123,7 @@ def extract_from_system(cert_callback=None, callback_only_on_failure=False):
 
             not_after_seconds = _convert_filetime_to_timestamp(cert_info.NotAfter)
             try:
-                not_after = datetime.datetime.fromtimestamp(not_after_seconds)
+                not_after = _utc_from_timestamp(not_after_seconds)
                 if not_after < now:
                     if cert_callback:
                         cert_callback(Certificate.load(data), 'no longer valid')
