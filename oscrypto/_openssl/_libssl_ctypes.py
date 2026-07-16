@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_size_t, c_long
+from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_long
 
 from .. import _backend_config
 from .._ffi import FFIEngineError, get_library
