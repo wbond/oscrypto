@@ -45,6 +45,9 @@ def handle_error(result, exception_class=None):
     if result == Secur32Const.SEC_E_CONTEXT_EXPIRED:
         raise TLSError('The TLS session expired')
 
+    if result == Secur32Const.SEC_E_ALGORITHM_MISMATCH:
+        raise TLSError('No supported TLS protocol or cipher suite is available')
+
     _, error_string = get_error()
 
     if not isinstance(error_string, str_cls):
@@ -79,6 +82,7 @@ class Secur32Const():
     SEC_E_MESSAGE_ALTERED = 0x8009030F
     SEC_E_CONTEXT_EXPIRED = 0x80090317
     SEC_E_INVALID_PARAMETER = 0x8009035D
+    SEC_E_ALGORITHM_MISMATCH = 0x80090331
 
     SEC_E_WRONG_PRINCIPAL = 0x80090322  # Domain name mismatch
     SEC_E_UNTRUSTED_ROOT = 0x80090325
