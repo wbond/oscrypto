@@ -453,13 +453,16 @@ class TLSSocket(object):
 
             try:
                 self._handshake()
-            except (_TLSDowngradeError):
+            except (_TLSDowngradeError) as e:
                 self.close()
-                new_session = TLSSession(
-                    session._protocols - set(['TLSv1.2']),
-                    session._manual_validation,
-                    session._extra_trust_roots
-                )
+                try:
+                    new_session = TLSSession(
+                        session._protocols - set(['TLSv1.2']),
+                        session._manual_validation,
+                        session._extra_trust_roots
+                    )
+                except (TLSError):
+                    raise TLSVerificationError(e.message, e.certificate)
                 session.__del__()
                 self._received_bytes = b''
                 self._session = new_session
