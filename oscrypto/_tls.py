@@ -561,6 +561,17 @@ def raise_protocol_version():
     raise TLSError('TLS handshake failed - protocol version error')
 
 
+def raise_unavailable_protocol_version():
+    """
+    Raises a TLSError due to a TLS version is unavailable
+
+    :raises:
+        TLSError
+    """
+
+    raise TLSError('TLS configuration failed - protocol version error')
+
+
 def raise_dh_params():
     """
     Raises a TLSError due to weak DH params

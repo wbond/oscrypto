@@ -365,8 +365,8 @@ class TLSTests(unittest.TestCase):
 
     @connection_timeout()
     def test_tls_protocol_version(self):
-        session = tls.TLSSession(set(['TLSv1', 'TLSv1.1']))
-        with assert_exception(self, errors.TLSError, 'TLS handshake failed - protocol version error'):
+        with assert_exception(self, errors.TLSError, 'TLS (handshake|configuration) failed - protocol version error'):
+            session = tls.TLSSession(set(['TLSv1', 'TLSv1.1']))
             tls.TLSSocket('github.com', 443, session=session)
 
     @connection_timeout()

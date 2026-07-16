@@ -57,6 +57,7 @@ from .._tls import (
     raise_protocol_version,
     raise_revoked,
     raise_self_signed,
+    raise_unavailable_protocol_version,
     raise_verification,
     raise_weak_signature,
 )
@@ -598,6 +599,11 @@ class TLSSocket(object):
                         protocol_const,
                         enabled
                     )
+                    if result in set([
+                            SecurityConst.errSecParam,
+                            SecurityConst.errSSLBadConfiguration,
+                            SecurityConst.errSSLConfigurationFailed]):
+                        raise_unavailable_protocol_version()
                     handle_sec_error(result)
 
                 if disable_auto_validation:
@@ -612,11 +618,21 @@ class TLSSocket(object):
                     session_context,
                     min_protocol
                 )
+                if result in set([
+                        SecurityConst.errSecParam,
+                        SecurityConst.errSSLBadConfiguration,
+                        SecurityConst.errSSLConfigurationFailed]):
+                    raise_unavailable_protocol_version()
                 handle_sec_error(result)
                 result = Security.SSLSetProtocolVersionMax(
                     session_context,
                     max_protocol
                 )
+                if result in set([
+                        SecurityConst.errSecParam,
+                        SecurityConst.errSSLBadConfiguration,
+                        SecurityConst.errSSLConfigurationFailed]):
+                    raise_unavailable_protocol_version()
                 handle_sec_error(result)
 
                 if disable_auto_validation:

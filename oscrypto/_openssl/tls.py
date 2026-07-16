@@ -30,6 +30,7 @@ from .._tls import (
     raise_protocol_error,
     raise_protocol_version,
     raise_self_signed,
+    raise_unavailable_protocol_version,
     raise_verification,
     raise_weak_signature,
     parse_tls_records,
@@ -62,6 +63,7 @@ _PROTOCOL_MAP = {
     'TLSv1': LibsslConst.SSL_OP_NO_TLSv1,
     'TLSv1.1': LibsslConst.SSL_OP_NO_TLSv1_1,
     'TLSv1.2': LibsslConst.SSL_OP_NO_TLSv1_2,
+    'TLSv1.3': LibsslConst.SSL_OP_NO_TLSv1_3,
 }
 
 
@@ -252,12 +254,18 @@ class TLSSession(object):
             disabled_protocols = set(['SSLv2'])
             disabled_protocols |= (valid_protocols - self._protocols)
             for disabled_protocol in disabled_protocols:
-                libssl.SSL_CTX_ctrl(
-                    ssl_ctx,
-                    LibsslConst.SSL_CTRL_OPTIONS,
-                    _PROTOCOL_MAP[disabled_protocol],
-                    null()
-                )
+                if libcrypto_version_info < (1, 1):
+                    libssl.SSL_CTX_ctrl(
+                        ssl_ctx,
+                        LibsslConst.SSL_CTRL_OPTIONS,
+                        _PROTOCOL_MAP[disabled_protocol],
+                        null()
+                    )
+                else:
+                    libssl.SSL_CTX_set_options(
+                        ssl_ctx,
+                        _PROTOCOL_MAP[disabled_protocol]
+                    )
 
             if self._extra_trust_roots:
                 x509_store = libssl.SSL_CTX_get_cert_store(ssl_ctx)
@@ -529,6 +537,10 @@ class TLSSocket(object):
 
                 else:
                     info = peek_openssl_error()
+
+                    if info[0] == LibsslConst.ERR_LIB_SSL \
+                            and info[2] == LibsslConst.SSL_R_NO_PROTOCOLS_AVAILABLE:
+                        raise_unavailable_protocol_version()
 
                     dh_key_info_1 = (
                         LibsslConst.ERR_LIB_SSL,

@@ -45,6 +45,7 @@ ffi.cdef("""
     long SSL_get_verify_result(const SSL *ssl);
     X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
     int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
+    uint64_t SSL_CTX_set_options(SSL_CTX *ctx, uint64_t op);
     long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
     void SSL_CTX_free(SSL_CTX *a);
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 
-from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_long
+from ctypes import CDLL, CFUNCTYPE, POINTER, c_void_p, c_char_p, c_int, c_long, c_uint64
 
 from .. import _backend_config
 from .._ffi import FFIEngineError, get_library
@@ -98,6 +98,13 @@ try:
         c_char_p
     ]
     libssl.SSL_CTX_set_cipher_list.restype = c_int
+
+    if libcrypto_version_info >= (1, 1):
+        libssl.SSL_CTX_set_options.argtypes = [
+            P_SSL_CTX,
+            c_uint64
+        ]
+        libssl.SSL_CTX_set_options.restype = c_uint64
 
     libssl.SSL_CTX_ctrl.arg_types = [
         P_SSL_CTX,

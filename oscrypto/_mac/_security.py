@@ -93,6 +93,8 @@ class SecurityConst():
     kSSLClientSide = 1
     kSSLStreamType = 0
 
+    errSecParam = -50
+
     errSSLProtocol = -9800
     errSSLWouldBlock = -9803
     errSSLClosedGraceful = -9805
@@ -111,6 +113,8 @@ class SecurityConst():
     errSSLPeerProtocolVersion = -9836
     errSSLPeerUserCancelled = -9839
     errSSLWeakPeerEphemeralDHKey = -9850
+    errSSLBadConfiguration = -9848
+    errSSLConfigurationFailed = -9854
     errSSLServerAuthCompleted = -9841
     errSSLRecordOverflow = -9847
 

@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 from .. import ffi
 from ._decode import _try_decode
 from ..errors import TLSError
+from .._tls import raise_unavailable_protocol_version
 from .._types import str_cls
 
 if ffi() == 'cffi':
@@ -46,7 +47,7 @@ def handle_error(result, exception_class=None):
         raise TLSError('The TLS session expired')
 
     if result == Secur32Const.SEC_E_ALGORITHM_MISMATCH:
-        raise TLSError('No supported TLS protocol or cipher suite is available')
+        raise_unavailable_protocol_version()
 
     _, error_string = get_error()
 
