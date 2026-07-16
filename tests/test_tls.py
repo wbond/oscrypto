@@ -212,18 +212,13 @@ class TLSTests(unittest.TestCase):
     @connection_timeout()
     def test_tls_error_self_signed(self):
         with assert_exception(self, errors.TLSVerificationError, 'self-signed'):
-            tls.TLSSocket('self-signed.badssl.com', 443)
+            tls.TLSSocket('self-signed.tls.wbond.net', 11011)
 
     @connection_timeout()
     def test_tls_error_weak_dh_params(self):
-        # badssl.com uses SNI, which Windows XP does not support
-        regex = 'weak DH parameters' if not xp else 'self-signed'
-        # ideally we would use tls.wbond.net since that does not require SNI, however
-        # it is not possible to force a good version of OpenSSL to use such a
-        # small value for DH params, and I don't feel like the headache of trying
-        # to get an old, staticly-linked socat set up just for this text on XP
-        with assert_exception(self, errors.TLSError, regex):
-            tls.TLSSocket('dh512.badssl.com', 443)
+        session = tls.TLSSession(extra_trust_roots=[tls_ca_path])
+        with assert_exception(self, errors.TLSError, 'weak DH parameters'):
+            tls.TLSSocket('dh512.tls.wbond.net', 11010, session=session)
 
     @connection_timeout()
     def test_tls_error_handshake_error(self):
