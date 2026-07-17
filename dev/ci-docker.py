@@ -66,6 +66,20 @@ def _is_ubuntu_image(container):
     return bool(re.match(r'^ubuntu:', container))
 
 
+def _is_fedora_image(container):
+    """
+    Determines if a docker container is a fedora:* image
+
+    :param container:
+        A unicode string of the docker image name
+
+    :return:
+        A bool - if the image is a fedora variant
+    """
+
+    return bool(re.match(r'^fedora:', container))
+
+
 def run(container=None):
     """
     Runs CI inside of a docker container
@@ -115,6 +129,11 @@ def run(container=None):
         print('Installing Python 3 and setuptools for ubuntu image\n')
         sys.stdout.flush()
         prep_commands.append('dev/ubuntu.sh py3')
+
+    elif _is_fedora_image(container):
+        print('Installing Python 3 and setuptools for fedora image\n')
+        sys.stdout.flush()
+        prep_commands.append('dnf install -y python3 python3-setuptools python-unversioned-command')
 
     else:
         if _is_slim_image(container):
