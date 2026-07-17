@@ -34,6 +34,32 @@ tests_root = os.path.dirname(__file__)
 fixtures_dir = os.path.join(tests_root, 'fixtures')
 
 
+_sha1_signature_tests = set([
+    'test_dsa_2048_sha1_sign',
+    'test_dsa_3072_sign_sha1',
+    'test_dsa_generate',
+    'test_dsa_sign',
+    'test_dsa_verify',
+    'test_dsa_verify_fail',
+    'test_dsa_verify_fail_each_byte',
+    'test_dsa_verify_key_size_mismatch',
+    'test_ec_generate',
+    'test_ecdsa_sign',
+    'test_ecdsa_verify',
+    'test_ecdsa_verify_fail_each_byte',
+    'test_rsa_generate',
+    'test_rsa_pss_sign',
+    'test_rsa_pss_sign_pss_cert',
+    'test_rsa_pss_verify',
+    'test_rsa_pss_verify_fail',
+    'test_rsa_sign',
+    'test_rsa_verify',
+    'test_rsa_verify_fail',
+    'test_rsa_verify_fail_each_byte',
+    'test_rsa_verify_key_size_mismatch',
+])
+
+
 def _win_version_pair():
     ver_info = sys.getwindowsversion()
     return (ver_info[0], ver_info[1])
@@ -52,6 +78,10 @@ def _should_support_sha2():
 
 
 class AsymmetricTests(unittest.TestCase):
+
+    def setUp(self):
+        if self._testMethodName in _sha1_signature_tests and not asymmetric.supports_sha1_signatures():
+            self.skipTest('SHA1 signatures are disabled')
 
     def test_load_incomplete_dsa_cert(self):
         with self.assertRaises(errors.IncompleteAsymmetricKeyError):

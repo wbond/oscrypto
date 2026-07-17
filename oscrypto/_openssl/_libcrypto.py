@@ -20,6 +20,7 @@ else:
 
 
 __all__ = [
+    'get_first_openssl_error',
     'handle_openssl_error',
     'libcrypto',
     'libcrypto_legacy_support',
@@ -27,6 +28,7 @@ __all__ = [
     'libcrypto_version_info',
     'LibcryptoConst',
     'peek_openssl_error',
+    'raise_openssl_error',
 ]
 
 
@@ -69,6 +71,47 @@ def _try_decode(value):
     return str_cls(value, errors='replace')
 
 
+def get_first_openssl_error():
+    """
+    Returns the first OpenSSL error code and drains the rest of the error queue.
+
+    :return:
+        An integer error code
+    """
+
+    error_num = libcrypto.ERR_get_error()
+    while libcrypto.ERR_get_error():
+        pass
+
+    return error_num
+
+
+def raise_openssl_error(error_num, exception_class=None):
+    """
+    Raises an exception for an OpenSSL error code.
+
+    :param error_num:
+        An integer error code
+
+    :param exception_class:
+        The exception class to use
+
+    :raises:
+        OSError - when exception_class is not specified
+    """
+
+    if exception_class is None:
+        exception_class = OSError
+
+    buffer = buffer_from_bytes(120)
+    libcrypto.ERR_error_string(error_num, buffer)
+
+    # Since we are dealing with a string, it is NULL terminated
+    error_string = byte_string_from_buffer(buffer)
+
+    raise exception_class(_try_decode(error_string))
+
+
 def handle_openssl_error(result, exception_class=None):
     """
     Checks if an error occurred, and if so throws an OSError containing the
@@ -87,19 +130,8 @@ def handle_openssl_error(result, exception_class=None):
     if result > 0:
         return
 
-    if exception_class is None:
-        exception_class = OSError
-
-    error_num = libcrypto.ERR_get_error()
-    while libcrypto.ERR_get_error():
-        pass
-    buffer = buffer_from_bytes(120)
-    libcrypto.ERR_error_string(error_num, buffer)
-
-    # Since we are dealing with a string, it is NULL terminated
-    error_string = byte_string_from_buffer(buffer)
-
-    raise exception_class(_try_decode(error_string))
+    error_num = get_first_openssl_error()
+    raise_openssl_error(error_num, exception_class)
 
 
 def peek_openssl_error():

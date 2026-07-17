@@ -19,6 +19,7 @@ from ._asn1 import (
 from ._asymmetric import _unwrap_private_key_info
 from ._errors import pretty_message
 from ._types import type_name, str_cls
+from .errors import SignatureError
 from .kdf import pbkdf2, pbkdf2_iteration_calculator
 from .symmetric import aes_cbc_pkcs7_encrypt
 from .util import rand_bytes
@@ -130,7 +131,27 @@ __all__ = [
     'rsa_pkcs1v15_verify',
     'rsa_pss_sign',
     'rsa_pss_verify',
+    'supports_sha1_signatures',
 ]
+
+
+def supports_sha1_signatures():
+    """
+    Checks if the backend supports creating SHA1 signatures.
+
+    :return:
+        A boolean
+    """
+
+    if not hasattr(supports_sha1_signatures, 'result'):
+        _, private_key = generate_pair('rsa', bit_size=2048)
+        try:
+            rsa_pkcs1v15_sign(private_key, b'test', 'sha1')
+            supports_sha1_signatures.result = True
+        except SignatureError:
+            supports_sha1_signatures.result = False
+
+    return supports_sha1_signatures.result
 
 
 def dump_dh_parameters(dh_parameters, encoding='pem'):

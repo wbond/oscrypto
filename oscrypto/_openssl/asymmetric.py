@@ -34,7 +34,14 @@ from .._ffi import (
     unwrap,
     write_to_buffer,
 )
-from ._libcrypto import libcrypto, LibcryptoConst, libcrypto_version_info, handle_openssl_error
+from ._libcrypto import (
+    get_first_openssl_error,
+    handle_openssl_error,
+    libcrypto,
+    LibcryptoConst,
+    libcrypto_version_info,
+    raise_openssl_error,
+)
 from ..errors import AsymmetricKeyError, IncompleteAsymmetricKeyError, SignatureError
 from .._types import type_name, str_cls, byte_cls, int_types
 from ..util import constant_compare
@@ -1449,7 +1456,10 @@ def _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_
                 null(),
                 certificate_or_public_key.evp_pkey
             )
-            handle_openssl_error(res)
+            if hash_algorithm == "sha1":
+                _handle_sha1_disabled(res)
+            else:
+                handle_openssl_error(res)
             evp_pkey_ctx_pointer = unwrap(evp_pkey_ctx_pointer_pointer)
 
             if rsa_pss_padding:
@@ -1871,7 +1881,10 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
                 null(),
                 private_key.evp_pkey
             )
-            handle_openssl_error(res)
+            if hash_algorithm == "sha1":
+                _handle_sha1_disabled(res)
+            else:
+                handle_openssl_error(res)
             evp_pkey_ctx_pointer = unwrap(evp_pkey_ctx_pointer_pointer)
 
             if rsa_pss_padding:
@@ -1924,3 +1937,19 @@ def _sign(private_key, data, hash_algorithm, rsa_pss_padding=False):
             libcrypto.EC_KEY_free(ec_key)
         if ecdsa_sig:
             libcrypto.ECDSA_SIG_free(ecdsa_sig)
+
+
+def _handle_sha1_disabled(result):
+    if result <= 0:
+        error_num = get_first_openssl_error()
+        # The following errors can occur when SHA1 is disabled:
+        # error:02000068:rsa routines::bad signature
+        # error:02000072:rsa routines::padding check failed
+        # error:0200008A:rsa routines::invalid padding
+        # error:03000098:digital envelope routines::invalid digest
+        if error_num in set([0x02000068, 0x02000072, 0x0200008A, 0x03000098]):
+            raise SignatureError(
+                'SHA1 signatures are disabled by the OpenSSL configuration. '
+                'Try "export OPENSSL_ENABLE_SHA1_SIGNATURES=1" before starting the application.'
+            )
+        raise_openssl_error(error_num, SignatureError)
