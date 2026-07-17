@@ -4,6 +4,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import unittest
 import sys
 import os
+import binascii
 
 from asn1crypto import pem, algos, keys, core
 from oscrypto import asymmetric, errors, backend
@@ -43,6 +44,7 @@ _sha1_signature_tests = set([
     'test_dsa_verify_fail',
     'test_dsa_verify_fail_each_byte',
     'test_dsa_verify_key_size_mismatch',
+    'test_dsa_verify_short_components',
     'test_ec_generate',
     'test_ecdsa_sign',
     'test_ecdsa_verify',
@@ -340,6 +342,14 @@ class AsymmetricTests(unittest.TestCase):
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
         asymmetric.dsa_verify(public, signature, original_data, 'sha1')
 
+    def test_dsa_verify_short_components(self):
+        original_data = b'oscrypto DSA fixed-width regression test 52100'
+        signature = binascii.unhexlify(
+            b'302b0213545e8bec36d184acab69a0d6690514812c7e88021400d12b73eff60373ecfbdf8438caf292cb8adafb'
+        )
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-dsa-1024.crt'))
+        asymmetric.dsa_verify(public, signature, original_data, 'sha1')
+
     def test_dsa_verify_key_size_mismatch(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
             original_data = f.read()
@@ -381,6 +391,15 @@ class AsymmetricTests(unittest.TestCase):
             signature = f.read()
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
         asymmetric.ecdsa_verify(public, signature, original_data, 'sha1')
+
+    def test_ecdsa_verify_short_components(self):
+        original_data = b'oscrypto issue 83 regression test 58792'
+        signature = binascii.unhexlify(
+            b'3042021f67861559fdbcae10bcccbf418265749e42a616b6fcf47466238a89a6a802a7'
+            b'021f2bec0333c7ea481d633553d1b7dc696d7c5fb46dd835f0c0719a89594e7be8'
+        )
+        public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test-public-ec-named.key'))
+        asymmetric.ecdsa_verify(public, signature, original_data, 'sha256')
 
     def test_ecdsa_verify_fail_each_byte(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:

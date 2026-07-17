@@ -2296,6 +2296,15 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     return _verify(certificate_or_public_key, signature, data, hash_algorithm, rsa_pss_padding=True)
 
 
+def _dsa_signature_component_size(certificate_or_public_key):
+    if isinstance(certificate_or_public_key, Certificate):
+        public_key_info = certificate_or_public_key.public_key.asn1
+    else:
+        public_key_info = certificate_or_public_key.asn1
+
+    return public_key_info['algorithm']['parameters'].q_byte_size
+
+
 def dsa_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Verifies a DSA signature
@@ -2535,7 +2544,9 @@ def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm,
             # Windows doesn't use the ASN.1 Sequence for DSA signatures,
             # so we have to convert it here for the verification to work
             try:
-                signature = DSASignature.load(signature).to_p1363()
+                signature = DSASignature.load(signature).to_p1363(
+                    width=_dsa_signature_component_size(certificate_or_public_key)
+                )
                 # Switch the two integers so that the reversal later will
                 # result in the correct order
                 half_len = len(signature) // 2
@@ -2630,7 +2641,12 @@ def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, r
         # Windows doesn't use the ASN.1 Sequence for DSA/ECDSA signatures,
         # so we have to convert it here for the verification to work
         try:
-            signature = DSASignature.load(signature).to_p1363()
+            parsed_signature = DSASignature.load(signature)
+            if cp_alg == 'ec':
+                component_size = certificate_or_public_key.byte_size
+            else:
+                component_size = _dsa_signature_component_size(certificate_or_public_key)
+            signature = parsed_signature.to_p1363(width=component_size)
         except (ValueError, OverflowError, TypeError):
             raise SignatureError('Signature is invalid')
 
