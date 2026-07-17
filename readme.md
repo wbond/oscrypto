@@ -2,7 +2,7 @@
 
 A compilation-free, always up-to-date encryption library for Python that works
 on Windows, OS X, Linux and BSD. Supports the following versions of Python:
-2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10 and pypy.
+2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14 and pypy.
 
  - [Supported Operating Systems](#supported-operationg-systems)
  - [Features](#features)
@@ -59,6 +59,8 @@ care of patching vulnerabilities. Supported operating systems include:
      - macOS 10.15 with OpenSSL 3.0
      - macOS 11
      - macOS 12
+     - macOS 14
+     - macOS 26
  - Linux or BSD
    - Uses one of:
      - [OpenSSL 0.9.8](https://www.openssl.org/docs/man0.9.8/)
@@ -74,7 +76,9 @@ care of patching vulnerabilities. Supported operating systems include:
      - Ubuntu 15.04 with OpenSSL 1.0.1
      - Ubuntu 16.04 with OpenSSL 1.0.2 on Raspberry Pi 3 (armhf)
      - Ubuntu 18.04 with OpenSSL 1.1.x (amd64, arm64, ppc64el)
-     - Ubuntu 22.04 with OpenSSL 3.0 (amd64)
+     - Ubuntu 22.04 with OpenSSL 3.0 (amd64, arm64)
+     - Ubuntu 24.04 with OpenSSL 3.0 (amd64)
+     - Ubuntu 26.04 with OpenSSL 3.0 (amd64)
 
 *OS X 10.6 will not be supported due to a lack of available
 cryptographic primitives and due to lack of vendor support.*
@@ -201,7 +205,7 @@ Some downsides include:
 ## Dependencies
 
  - [*asn1crypto*](https://github.com/wbond/asn1crypto)
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11 or pypy
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14 or pypy
  - OpenSSL/LibreSSL if on Linux¹
 
 *¹ On Linux, `ctypes.util.find_library()` is used to located OpenSSL. Alpine Linux does not have an appropriate install by default for `find_library()` to work properly. Instead, `oscrypto.use_openssl()` must be called with the path to the OpenSSL shared libraries.*
