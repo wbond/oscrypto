@@ -348,6 +348,10 @@ try:
 
         return bytes_from_buffer(output_buffer)
 
-except (LibraryNotFoundError):
+except (LibraryNotFoundError, OSError):
+    # OpenSSL no longer ships with macOS. If you install Homebrew with arch -x86_64, you end
+    # up with a /usr/local/lib/libcrypto.dylib that will not work with an arm64 Python, and
+    # will fail to load with an OSError. In that case, we should still fall back as if it
+    # were missing.
 
     from .._pkcs12 import pkcs12_kdf
