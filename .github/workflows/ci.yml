@@ -9,18 +9,15 @@ jobs:
       fail-fast: false
       matrix:
         python:
+          - '3.14'
           - '3.11'
           - '3.6'
-          # - 'pypy-3.7-v7.3.5'
         arch:
           - 'x86'
           - 'x64'
-        exclude:
-          - python: 'pypy-3.7-v7.3.5'
-            arch: x86
     steps:
       - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           architecture: ${{ matrix.arch }}
@@ -70,13 +67,15 @@ jobs:
       fail-fast: false
       matrix:
         python:
+          - '3.14'
           - '3.11'
+          - '3.8'
     steps:
       - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
-          architecture: x64
+          architecture: arm64
       - name: Install dependencies
         run: python run.py deps
       - name: Run test suite
@@ -88,10 +87,32 @@ jobs:
       - name: Run test suite (Mac OpenSSL/cffi)
         run: python run.py ci-driver cffi openssl
 
+  build-ubuntu:
+    name: Python ${{ matrix.python }} on ubuntu-26.04 x64
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - '3.14'
+          - '3.11'
+          - '3.8'
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Install dependencies
+        run: python run.py deps
+      - name: Run test suite
+        run: python run.py ci-driver
+      - name: Run test suite (cffi)
+        run: python run.py ci-driver cffi
+
   build-ubuntu-openssl3-py3:
     name: Python 3 on (Docker) ubuntu-22.04 x64
-    runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@master
       - name: Install Python and OpenSSL
@@ -105,8 +126,7 @@ jobs:
 
   build-ubuntu-openssl3-py2:
     name: Python 2 on (Docker) ubuntu-22.04 x64
-    runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@master
       - name: Install Python and OpenSSL
