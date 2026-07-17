@@ -581,7 +581,7 @@ def parse_private(data, password=None):
         # Call .native to fully parse since asn1crypto is lazy
         pki.native
         return pki
-    except (ValueError):
+    except (ValueError, KeyError):
         pass  # Data was not PrivateKeyInfo
 
     try:
@@ -593,7 +593,7 @@ def parse_private(data, password=None):
         # Call .native to fully parse since asn1crypto is lazy
         pki.native
         return pki
-    except (ValueError):
+    except (ValueError, KeyError):
         pass  # Data was not EncryptedPrivateKeyInfo
 
     try:
@@ -601,7 +601,7 @@ def parse_private(data, password=None):
         # Call .native to fully parse since asn1crypto is lazy
         parsed.native
         return PrivateKeyInfo.wrap(parsed, 'rsa')
-    except (ValueError):
+    except (ValueError, KeyError):
         pass  # Data was not an RSAPrivateKey
 
     try:
@@ -609,7 +609,7 @@ def parse_private(data, password=None):
         # Call .native to fully parse since asn1crypto is lazy
         parsed.native
         return PrivateKeyInfo.wrap(parsed, 'dsa')
-    except (ValueError):
+    except (ValueError, KeyError):
         pass  # Data was not a DSAPrivateKey
 
     try:
@@ -617,7 +617,7 @@ def parse_private(data, password=None):
         # Call .native to fully parse since asn1crypto is lazy
         parsed.native
         return PrivateKeyInfo.wrap(parsed, 'ec')
-    except (ValueError):
+    except (ValueError, KeyError):
         pass  # Data was not an ECPrivateKey
 
     raise ValueError(pretty_message(

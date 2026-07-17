@@ -209,6 +209,11 @@ class KeyTests(unittest.TestCase):
         # Make sure we can parse the whole structure
         private_object.native
 
+    def test_parse_private_pkcs12(self):
+        with open(os.path.join(fixtures_dir, 'keys/test-aes128.p12'), 'rb') as f:
+            with self.assertRaisesRegex(ValueError, 'does not appear to be a known private key format'):
+                keys.parse_private(f.read(), b'password123')
+
     @staticmethod
     def public_keys():
         return (
