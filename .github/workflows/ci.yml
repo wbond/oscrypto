@@ -16,8 +16,8 @@ jobs:
           - 'x86'
           - 'x64'
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           architecture: ${{ matrix.arch }}
@@ -41,7 +41,7 @@ jobs:
           - 'x86'
           - 'x64'
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
 
       - name: Cache Python
         id: cache-python
@@ -71,8 +71,8 @@ jobs:
           - '3.11'
           - '3.8'
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           architecture: arm64
@@ -98,8 +98,8 @@ jobs:
           - '3.11'
           - '3.8'
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
@@ -114,7 +114,7 @@ jobs:
     name: Python 3 on (Docker) ubuntu-22.04 x64
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
       - name: Install Python and OpenSSL
         run: DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends python3 python3-setuptools python-is-python3 openssl curl ca-certificates git
       - name: Install dependencies
@@ -128,7 +128,7 @@ jobs:
     name: Python 2 on (Docker) ubuntu-22.04 x64
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
       - name: Install Python and OpenSSL
         run: DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends python2 python-setuptools openssl curl ca-certificates git
       - name: Install dependencies
