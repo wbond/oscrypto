@@ -91,6 +91,8 @@ def handle_openssl_error(result, exception_class=None):
         exception_class = OSError
 
     error_num = libcrypto.ERR_get_error()
+    while libcrypto.ERR_get_error():
+        pass
     buffer = buffer_from_bytes(120)
     libcrypto.ERR_error_string(error_num, buffer)
 
