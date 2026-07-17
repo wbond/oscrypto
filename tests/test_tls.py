@@ -126,7 +126,7 @@ class TLSTests(unittest.TestCase):
     @connection_timeout()
     def test_tls_error_http(self):
         with assert_exception(self, errors.TLSError, 'server responded using HTTP'):
-            tls.TLSSocket('www.google.com', 80)
+            tls.TLSSocket('tls.wbond.net', 80)
 
     @connection_timeout()
     def test_tls_error_ftp(self):
