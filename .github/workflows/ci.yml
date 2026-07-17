@@ -96,7 +96,6 @@ jobs:
         python:
           - '3.14'
           - '3.11'
-          - '3.8'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
