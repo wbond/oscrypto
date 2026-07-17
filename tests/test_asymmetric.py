@@ -8,6 +8,7 @@ import binascii
 
 from asn1crypto import pem, algos, keys, core
 from oscrypto import asymmetric, errors, backend
+from oscrypto import _pkcs1
 
 from ._unittest_compat import patch
 
@@ -290,6 +291,43 @@ class AsymmetricTests(unittest.TestCase):
             signature = f.read()
         public = asymmetric.load_public_key(os.path.join(fixtures_dir, 'keys/test.crt'))
         asymmetric.rsa_pss_verify(public, signature, original_data, 'sha1')
+
+    def test_rsa_pss_verify_salt_lengths(self):
+        if _backend not in set(['mac', 'winlegacy']):
+            if sys.version_info < (2, 7):
+                return
+            self.skipTest('Pure-python RSA PSS padding addition is only used on macOS and legacy Windows')
+
+        message = b'arbitrary RSA-PSS salt length'
+        for salt_length in [0, 17, 32, 222]:
+            encoded = _pkcs1.add_pss_padding('sha256', salt_length, 2048, message)
+            self.assertTrue(_pkcs1.verify_pss_padding('sha256', None, 2048, message, encoded))
+            self.assertTrue(_pkcs1.verify_pss_padding('sha256', salt_length, 2048, message, encoded))
+            self.assertFalse(_pkcs1.verify_pss_padding('sha256', None, 2048, message + b'!', encoded))
+
+    def test_raw_rsa_public_crypt_certificate(self):
+        if _backend not in set(['win', 'winlegacy']):
+            if sys.version_info < (2, 7):
+                return
+            self.skipTest('Pure-python raw RSA public operations are only used on Windows')
+
+        with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:
+            original_data = f.read()
+        with open(os.path.join(fixtures_dir, 'rsa_pss_signature'), 'rb') as f:
+            signature = f.read()
+        certificate = asymmetric.load_certificate(os.path.join(fixtures_dir, 'keys/test.crt'))
+
+        with self.assertRaises(ValueError):
+            _pkcs1.raw_rsa_public_crypt(certificate, b'\x00' + signature)
+
+        encoded = _pkcs1.raw_rsa_public_crypt(certificate, signature)
+        if _backend == 'win':
+            self.assertEqual(20, _pkcs1.detect_pss_salt_length(
+                'sha1', certificate.bit_size, encoded
+            ))
+        self.assertTrue(_pkcs1.verify_pss_padding(
+            'sha1', None, certificate.bit_size, original_data, encoded
+        ))
 
     def test_rsa_pss_verify_pss_cert(self):
         with open(os.path.join(fixtures_dir, 'message.txt'), 'rb') as f:

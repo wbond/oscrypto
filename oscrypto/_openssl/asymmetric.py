@@ -1131,9 +1131,8 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
 def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Verifies an RSASSA-PSS signature. For the PSS padding the mask gen algorithm
-    will be mgf1 using the same hash algorithm as the signature. The salt length
-    with be the length of the hash algorithm, and the trailer field with be the
-    standard 0xBC byte.
+    will be mgf1 using the same hash algorithm as the signature, and the trailer
+    field will be the standard 0xBC byte.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with

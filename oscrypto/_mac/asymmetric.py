@@ -1376,9 +1376,8 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
 def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Verifies an RSASSA-PSS signature. For the PSS padding the mask gen algorithm
-    will be mgf1 using the same hash algorithm as the signature. The salt length
-    with be the length of the hash algorithm, and the trailer field with be the
-    standard 0xBC byte.
+    will be mgf1 using the same hash algorithm as the signature, and the trailer
+    field will be the standard 0xBC byte.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -1420,14 +1419,6 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     if cp_algo != 'rsa' and cp_algo != 'rsassa_pss':
         raise ValueError('The key specified is not an RSA public key')
 
-    hash_length = {
-        'sha1': 20,
-        'sha224': 28,
-        'sha256': 32,
-        'sha384': 48,
-        'sha512': 64
-    }.get(hash_algorithm, 0)
-
     key_length = certificate_or_public_key.byte_size
     buffer = buffer_from_bytes(key_length)
     output_length = new(Security, 'size_t *', key_length)
@@ -1442,7 +1433,7 @@ def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     handle_sec_error(result)
 
     plaintext = bytes_from_buffer(buffer, deref(output_length))
-    if not verify_pss_padding(hash_algorithm, hash_length, certificate_or_public_key.bit_size, data, plaintext):
+    if not verify_pss_padding(hash_algorithm, None, certificate_or_public_key.bit_size, data, plaintext):
         raise SignatureError('Signature is invalid')
 
 

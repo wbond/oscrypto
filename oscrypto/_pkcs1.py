@@ -36,6 +36,7 @@ _backend = backend()
 __all__ = [
     'add_pss_padding',
     'add_pkcs1v15_signature_padding',
+    'detect_pss_salt_length',
     'raw_rsa_private_crypt',
     'raw_rsa_public_crypt',
     'remove_pkcs1v15_encryption_padding',
@@ -182,6 +183,104 @@ def add_pss_padding(hash_algorithm, salt_length, key_length, message):
     return masked_db + m_prime_digest + b'\xBC'
 
 
+def _extract_pss_salt(hash_algorithm, salt_length, key_length, signature):
+    """
+    Extracts the salt from an encoded PSS message
+
+    :return:
+        The salt as a byte string, or None if the PSS encoding is invalid
+    """
+
+    hash_func = getattr(hashlib, hash_algorithm)
+
+    em_bits = key_length - 1
+    em_len = int(math.ceil(em_bits / 8))
+    hash_length = len(hash_func(b'').digest())
+
+    if len(signature) != em_len or em_len < hash_length + 2:
+        return None
+
+    if salt_length is not None and em_len < hash_length + salt_length + 2:
+        return None
+
+    if signature[-1:] != b'\xBC':
+        return None
+
+    zero_bits = (8 * em_len) - em_bits
+
+    masked_db_length = em_len - hash_length - 1
+    masked_db = signature[0:masked_db_length]
+
+    first_byte = ord(masked_db[0:1])
+    bits_that_should_be_zero = first_byte >> (8 - zero_bits)
+    if bits_that_should_be_zero != 0:
+        return None
+
+    m_prime_digest = signature[masked_db_length:masked_db_length + hash_length]
+
+    db_mask = _mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
+
+    left_bit_mask = ('0' * zero_bits) + ('1' * (8 - zero_bits))
+    left_int_mask = int(left_bit_mask, 2)
+
+    if left_int_mask != 255:
+        db_mask = chr_cls(left_int_mask & ord(db_mask[0:1])) + db_mask[1:]
+
+    db = int_to_bytes(int_from_bytes(masked_db) ^ int_from_bytes(db_mask))
+    if len(db) < len(masked_db):
+        db = (b'\x00' * (len(masked_db) - len(db))) + db
+
+    if salt_length is None:
+        zero_length = db.find(b'\x01')
+        if zero_length == -1:
+            return None
+    else:
+        zero_length = em_len - hash_length - salt_length - 2
+
+    zero_string = b'\x00' * zero_length
+    if not constant_compare(db[0:zero_length], zero_string):
+        return None
+
+    if db[zero_length:zero_length + 1] != b'\x01':
+        return None
+
+    return db[zero_length + 1:]
+
+
+def detect_pss_salt_length(hash_algorithm, key_length, signature):
+    """
+    Determines the salt length from an encoded PSS message
+
+    :return:
+        The salt length as an integer, or None if the PSS encoding is invalid
+    """
+
+    if _backend != 'win':
+        raise SystemError('PSS salt length detection is only used on Windows')
+
+    if not isinstance(signature, byte_cls):
+        raise TypeError(pretty_message(
+            '''
+            signature must be a byte string, not %s
+            ''',
+            type_name(signature)
+        ))
+
+    if hash_algorithm not in set(['sha1', 'sha224', 'sha256', 'sha384', 'sha512']):
+        raise ValueError(pretty_message(
+            '''
+            hash_algorithm must be one of "sha1", "sha224", "sha256", "sha384",
+            "sha512", not %s
+            ''',
+            repr(hash_algorithm)
+        ))
+
+    salt = _extract_pss_salt(hash_algorithm, None, key_length, signature)
+    if salt is None:
+        return None
+    return len(salt)
+
+
 def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signature):
     """
     Verifies the PSS padding on an encoded message
@@ -191,8 +290,8 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
         "sha256", "sha384", "sha512"
 
     :param salt_length:
-        The length of the salt as an integer - typically the same as the length
-        of the output from the hash_algorithm
+        The length of the salt as an integer, or None to determine the salt
+        length from the encoded message
 
     :param key_length:
         The length of the RSA key, in bits
@@ -207,11 +306,11 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
         A boolean indicating if the signature is invalid
     """
 
-    if _backend != 'winlegacy' and sys.platform != 'darwin':
+    if _backend not in set(['win', 'winlegacy']) and sys.platform != 'darwin':
         raise SystemError(pretty_message(
             '''
             Pure-python RSA PSS signature padding verification code is only for
-            Windows XP/2003 and OS X
+            Windows and OS X
             '''
         ))
 
@@ -231,15 +330,15 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
             type_name(signature)
         ))
 
-    if not isinstance(salt_length, int_types):
+    if salt_length is not None and not isinstance(salt_length, int_types):
         raise TypeError(pretty_message(
             '''
-            salt_length must be an integer, not %s
+            salt_length must be an integer or None, not %s
             ''',
             type_name(salt_length)
         ))
 
-    if salt_length < 0:
+    if salt_length is not None and salt_length < 0:
         raise ValueError(pretty_message(
             '''
             salt_length must be 0 or more - is %s
@@ -257,52 +356,15 @@ def verify_pss_padding(hash_algorithm, salt_length, key_length, message, signatu
         ))
 
     hash_func = getattr(hashlib, hash_algorithm)
-
-    em_bits = key_length - 1
-    em_len = int(math.ceil(em_bits / 8))
-
     message_digest = hash_func(message).digest()
+    salt = _extract_pss_salt(hash_algorithm, salt_length, key_length, signature)
+    if salt is None:
+        return False
+
     hash_length = len(message_digest)
-
-    if em_len < hash_length + salt_length + 2:
-        return False
-
-    if signature[-1:] != b'\xBC':
-        return False
-
-    zero_bits = (8 * em_len) - em_bits
-
+    em_len = len(signature)
     masked_db_length = em_len - hash_length - 1
-    masked_db = signature[0:masked_db_length]
-
-    first_byte = ord(masked_db[0:1])
-    bits_that_should_be_zero = first_byte >> (8 - zero_bits)
-    if bits_that_should_be_zero != 0:
-        return False
-
     m_prime_digest = signature[masked_db_length:masked_db_length + hash_length]
-
-    db_mask = _mgf1(hash_algorithm, m_prime_digest, em_len - hash_length - 1)
-
-    left_bit_mask = ('0' * zero_bits) + ('1' * (8 - zero_bits))
-    left_int_mask = int(left_bit_mask, 2)
-
-    if left_int_mask != 255:
-        db_mask = chr_cls(left_int_mask & ord(db_mask[0:1])) + db_mask[1:]
-
-    db = int_to_bytes(int_from_bytes(masked_db) ^ int_from_bytes(db_mask))
-    if len(db) < len(masked_db):
-        db = (b'\x00' * (len(masked_db) - len(db))) + db
-
-    zero_length = em_len - hash_length - salt_length - 2
-    zero_string = b'\x00' * zero_length
-    if not constant_compare(db[0:zero_length], zero_string):
-        return False
-
-    if db[zero_length:zero_length + 1] != b'\x01':
-        return False
-
-    salt = db[0 - salt_length:]
 
     m_prime = (b'\x00' * 8) + message_digest + salt
 
@@ -696,8 +758,8 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
         A byte string of the transformed data
     """
 
-    if _backend != 'winlegacy':
-        raise SystemError('Pure-python RSA crypt is only for Windows XP/2003')
+    if _backend not in set(['win', 'winlegacy']):
+        raise SystemError('Pure-python RSA crypt is only for Windows')
 
     has_asn1 = hasattr(certificate_or_public_key, 'asn1')
     valid_types = (PublicKeyInfo, Certificate)
@@ -711,7 +773,11 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
             type_name(certificate_or_public_key)
         ))
 
-    algo = certificate_or_public_key.asn1['algorithm']['algorithm'].native
+    public_key_info = certificate_or_public_key.asn1
+    if isinstance(public_key_info, Certificate):
+        public_key_info = public_key_info['tbs_certificate']['subject_public_key_info']
+
+    algo = public_key_info['algorithm']['algorithm'].native
     if algo != 'rsa' and algo != 'rsassa_pss':
         raise ValueError(pretty_message(
             '''
@@ -728,13 +794,18 @@ def raw_rsa_public_crypt(certificate_or_public_key, data):
             type_name(data)
         ))
 
-    rsa_public_key = certificate_or_public_key.asn1['public_key'].parsed
+    rsa_public_key = public_key_info['public_key'].parsed
+    modulus = rsa_public_key['modulus'].native
+    data_int = int_from_bytes(data)
+    if len(data) > public_key_info.byte_size or data_int >= modulus:
+        raise ValueError('data must be less than the RSA modulus')
+
     transformed_int = pow(
-        int_from_bytes(data),
+        data_int,
         rsa_public_key['public_exponent'].native,
-        rsa_public_key['modulus'].native
+        modulus
     )
     return int_to_bytes(
         transformed_int,
-        width=certificate_or_public_key.asn1.byte_size
+        width=public_key_info.byte_size
     )

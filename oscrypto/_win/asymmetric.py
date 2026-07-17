@@ -60,6 +60,7 @@ from .._types import type_name, str_cls, byte_cls, int_types
 from .._pkcs1 import (
     add_pkcs1v15_signature_padding,
     add_pss_padding,
+    detect_pss_salt_length,
     raw_rsa_private_crypt,
     raw_rsa_public_crypt,
     remove_pkcs1v15_signature_padding,
@@ -2265,9 +2266,8 @@ def rsa_pkcs1v15_verify(certificate_or_public_key, signature, data, hash_algorit
 def rsa_pss_verify(certificate_or_public_key, signature, data, hash_algorithm):
     """
     Verifies an RSASSA-PSS signature. For the PSS padding the mask gen algorithm
-    will be mgf1 using the same hash algorithm as the signature. The salt length
-    with be the length of the hash algorithm, and the trailer field with be the
-    standard 0xBC byte.
+    will be mgf1 using the same hash algorithm as the signature, and the trailer
+    field will be the standard 0xBC byte.
 
     :param certificate_or_public_key:
         A Certificate or PublicKey instance to verify the signature with
@@ -2491,16 +2491,14 @@ def _advapi32_verify(certificate_or_public_key, signature, data, hash_algorithm,
     algo_is_rsa = algo == 'rsa' or algo == 'rsassa_pss'
 
     if algo_is_rsa and rsa_pss_padding:
-        hash_length = {
-            'sha1': 20,
-            'sha224': 28,
-            'sha256': 32,
-            'sha384': 48,
-            'sha512': 64
-        }.get(hash_algorithm, 0)
-        decrypted_signature = raw_rsa_public_crypt(certificate_or_public_key, signature)
+        if len(signature) != certificate_or_public_key.byte_size:
+            raise SignatureError('Signature is invalid')
+        try:
+            decrypted_signature = raw_rsa_public_crypt(certificate_or_public_key, signature)
+        except ValueError:
+            raise SignatureError('Signature is invalid')
         key_size = certificate_or_public_key.bit_size
-        if not verify_pss_padding(hash_algorithm, hash_length, key_size, data, decrypted_signature):
+        if not verify_pss_padding(hash_algorithm, None, key_size, data, decrypted_signature):
             raise SignatureError('Signature is invalid')
         return
 
@@ -2617,6 +2615,23 @@ def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, r
     cp_alg = certificate_or_public_key.algorithm
     cp_is_rsa = cp_alg == 'rsa' or cp_alg == 'rsassa_pss'
 
+    if cp_is_rsa and rsa_pss_padding:
+        # CNG requires an explicit salt length, so inspect the PSS encoding to
+        # determine the salt length before asking CNG to verify the signature.
+        if len(signature) != certificate_or_public_key.byte_size:
+            raise SignatureError('Signature is invalid')
+        try:
+            decrypted_signature = raw_rsa_public_crypt(certificate_or_public_key, signature)
+        except ValueError:
+            raise SignatureError('Signature is invalid')
+        salt_length = detect_pss_salt_length(
+            hash_algorithm,
+            certificate_or_public_key.bit_size,
+            decrypted_signature
+        )
+        if salt_length is None:
+            raise SignatureError('Signature is invalid')
+
     if cp_is_rsa:
         if rsa_pss_padding:
             flags = BcryptConst.BCRYPT_PAD_PSS
@@ -2625,7 +2640,7 @@ def _bcrypt_verify(certificate_or_public_key, signature, data, hash_algorithm, r
             # This has to be assigned to a variable to prevent cffi from gc'ing it
             hash_buffer = buffer_from_unicode(hash_constant)
             padding_info_struct.pszAlgId = cast(bcrypt, 'wchar_t *', hash_buffer)
-            padding_info_struct.cbSalt = len(digest)
+            padding_info_struct.cbSalt = salt_length
         else:
             flags = BcryptConst.BCRYPT_PAD_PKCS1
             padding_info_struct_pointer = struct(bcrypt, 'BCRYPT_PKCS1_PADDING_INFO')
