@@ -591,6 +591,16 @@ class TLSSocket(object):
                     if info == unknown_protocol_info:
                         raise_protocol_error(handshake_server_bytes)
 
+                    packet_length_info = (
+                        LibsslConst.ERR_LIB_SSL,
+                        LibsslConst.SSL_F_SSL3_GET_RECORD,
+                        LibsslConst.SSL_R_PACKET_LENGTH_TOO_LONG
+                    )
+                    packet_length_info = _homogenize_openssl3_error(packet_length_info)
+
+                    if info == packet_length_info:
+                        raise_protocol_error(handshake_server_bytes)
+
                     tls_version_info_error = (
                         LibsslConst.ERR_LIB_SSL,
                         LibsslConst.SSL_F_SSL23_GET_SERVER_HELLO,
