@@ -1,3 +1,4 @@
+packaging == 24.2 ; python_version >= '3.8'
 setuptools == 36.8.0 ; python_version == '2.6'
 setuptools == 44.1.1 ; python_version == '2.7'
 setuptools == 18.4 ; python_version == '3.1'
