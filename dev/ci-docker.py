@@ -107,7 +107,7 @@ def run(container=None):
     print('Working directory: %s\n' % workdir)
     sys.stdout.flush()
 
-    command = 'python3 run.py deps && python3 run.py ci-driver'
+    command = 'python run.py deps && python run.py ci-driver'
 
     prep_commands = []
 
@@ -121,11 +121,6 @@ def run(container=None):
             print('Installing tools for slim image\n')
             sys.stdout.flush()
             prep_commands.append('apt-get update && apt-get install -y curl ca-certificates git')
-
-        if _is_python_312_or_newer(container):
-            print('Installing setuptools for Python 3.12+\n')
-            sys.stdout.flush()
-            prep_commands.append('python3 -m pip install --root-user-action ignore setuptools')
 
     if prep_commands:
         command = ' && '.join(prep_commands) + ' && ' + command
